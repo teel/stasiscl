@@ -1,0 +1,7 @@
+#summary How to make a helpful bug report.
+
+If something goes wrong, please include the following bits of information:
+
+  # What exactly went wrong (was a particular stat reported incorrectly, was a raider assigned the wrong class or pets, was a log split up improperly, or was it something else?)
+  # Were there any error messages or warnings on the console when you ran the program?
+  # Don't do it right away, but please be prepared to send a copy of the combat log that caused you trouble if it is not of a confidential nature.
