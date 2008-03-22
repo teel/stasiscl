@@ -71,7 +71,9 @@ my $action = lc shift @ARGV;
 
 # Get options.
 my $opt_version = 2;
+my $opt_minlength;
 my $opt_dir = ".";
+my $opt_nowrite;
 my $opt_hintsfile;
 my $opt_logger;
 my $opt_attempts;
@@ -81,7 +83,9 @@ my $rc = GetOptions(
     "logger=s"      => \$opt_logger,
     #"hintsfile=s"   => \$opt_hintsfile,
     "dir=s"         => \$opt_dir,
+    "opt_minlength=i" => \$opt_minlength,
     "attempts"      => \$opt_attempts,
+    "nowrite"       => \$opt_nowrite,
 	);
 
 # Create a parser.
@@ -122,10 +126,10 @@ if( $action eq "print" ) {
     print STDERR sprintf "%d total actions: %d (%0.1f%%) recognized, %d (%0.1f%%) printable\n", 
         $actions, 
         $actions - $unrecognized, 
-        $actions ? ($actions-$unrecognized)/$actions*100 : 0, 
+        $actions ? floor( ($actions-$unrecognized) / $actions * 1000 )/10 : 0, 
         $actions - $unrecognized - $unprinted, 
-        $actions ? ($actions-$unrecognized-$unprinted)/$actions*100 : 0;
-} elsif( $action eq "process" ) {
+        $actions ? floor( ($actions-$unrecognized-$unprinted) / $actions * 1000 )/10 : 0;
+} elsif( $action eq "add" ) {
     # Going to output in $opt_dir
     bomb "not a directory: $opt_dir" unless -d $opt_dir;
     
@@ -162,9 +166,14 @@ if( $action eq "print" ) {
     }
     
     while( my ($boss, $split) = each(%splits) ) {
+        # Check minlength option.
+        if( $opt_minlength && $split->{end} - $split->{start} < $opt_minlength ) {
+            status sprintf "Skipping %s: Too short (%ds).", $boss, $split->{end} - $split->{start};
+        }
+        
         # Run statistics for each boss.
         my $dname = sprintf "%s/sws-%d", $opt_dir, floor($split->{start});
-        status sprintf "Writing: %s (sws-%d).", $boss, floor($split->{start});
+        status sprintf "Processing: %s (sws-%d).", $boss, floor($split->{start});
         
         # Start all the extensions.
         foreach my $ext (values %exts) {
@@ -184,37 +193,75 @@ if( $action eq "print" ) {
         }
         
         # Write the files.
-        eval {
-            # Remove the directory if it exists.
-            rmtree($dname) if -d $dname;
-            
-            # Create the directory.
-            mkdir $dname or die $!;
-            
-            # Write the index.
-            my $charter = Stasis::ChartPage->new( name => $boss, raid => \%raid, ext => \%exts );
-            my ($chart_xml, $chart_html) = $charter->page;
-            open CHARTPAGE, ">$dname/index.html" or die;
-            print CHARTPAGE $chart_html;
-            close CHARTPAGE;
-            
-            # Write the actor files.
-            my $ap = Stasis::ActorPage->new( name => $boss, raid => \%raid, ext => \%exts );
-            foreach my $actor (keys %{$exts{Presence}{actors}}) {
-                my $id = lc $actor;
-                $id =~ s/[^\w]/_/g;
+        unless( $opt_nowrite ) {
+            eval {
+                # Remove the directory if it exists.
+                rmtree($dname) if -d $dname;
 
-                open ACTORPAGE, sprintf ">$dname/actor_%s.html", $id or die;
-                print ACTORPAGE $ap->page($actor);
-                close ACTORPAGE;
+                # Create the directory.
+                mkdir $dname or die $!;
+
+                # Write the index.
+                my $charter = Stasis::ChartPage->new( name => $boss, raid => \%raid, ext => \%exts );
+                my ($chart_xml, $chart_html) = $charter->page;
+                open CHARTPAGE, ">$dname/index.html" or die;
+                print CHARTPAGE $chart_html;
+                close CHARTPAGE;
+
+                # Write the actor files.
+                my $ap = Stasis::ActorPage->new( name => $boss, raid => \%raid, ext => \%exts );
+                foreach my $actor (keys %{$exts{Presence}{actors}}) {
+                    my $id = lc $actor;
+                    $id =~ s/[^\w]/_/g;
+
+                    open ACTORPAGE, sprintf ">$dname/actor_%s.html", $id or die;
+                    print ACTORPAGE $ap->page($actor);
+                    close ACTORPAGE;
+                }
+
+                # Write the data.xml file.
+                open DATAXML, ">$dname/data.xml" or die;
+                print DATAXML $chart_xml;
+                close DATAXML;
+            }; if( $@ ) {
+                bomb $@;
             }
-            
-            # Write the data.xml file.
-            open DATAXML, ">$dname/data.xml" or die;
-            print DATAXML $chart_xml;
-            close DATAXML;
-        }; if( $@ ) {
-            bomb $@;
+        }
+    }
+} elsif( $action eq "rm" ) {
+    # Going to output in $opt_dir
+    bomb "not a directory: $opt_dir" unless -d $opt_dir;
+    
+    # Read the log file to @log
+    status "Reading log file.";
+    my @log;
+    while( <STDIN> ) {
+        my %entry = $parser->parse($_);
+        push @log, \%entry if $entry{action};
+    }
+    
+    # Done with STDIN.
+    close STDIN;
+    
+    # Split the log to %splits
+    status "Splitting out boss attempts.";
+    my $splitter = Stasis::LogSplit->new( attempts => $opt_attempts );
+    my %splits = $splitter->split(\@log);
+    
+    while( my ($boss, $split) = each(%splits) ) {
+        # Remove the directories.
+        unless( $opt_nowrite ) {
+            eval {
+                # Remove the directory if it exists.
+                my $dname = sprintf "%s/sws-%d", $opt_dir, floor($split->{start});
+                
+                if( -d $dname ) {
+                    status sprintf "Removing: %s (sws-%d).", $boss, floor($split->{start});
+                    rmtree($dname);
+                }
+            }; if( $@ ) {
+                bomb $@;
+            }
         }
     }
 } else {

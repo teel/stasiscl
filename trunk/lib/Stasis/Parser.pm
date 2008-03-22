@@ -908,6 +908,13 @@ sub parse {
                 glancing => shift @col,
                 crushing => shift @col,
             }
+        } elsif( $result{action} eq "RANGE_MISSED" ) {
+            $result{extra} = {
+                spellid => shift @col,
+                spellname => shift @col,
+                spellschool => hex shift @col,
+                misstype => shift @col,
+            }
         } elsif( $result{action} eq "SPELL_DAMAGE" ) {
             $result{extra} = {
                 spellid => shift @col,
@@ -1183,7 +1190,10 @@ sub parse {
                 glancing => shift @col,
                 crushing => shift @col,
             }
+        } elsif( $result{action} eq "UNIT_DIED" || $result{action} eq "PARTY_KILL" ) {
+            $result{extra} = {};
         } else {
+            $result{action} = "";
             $result{extra} = {};
         }
     }
