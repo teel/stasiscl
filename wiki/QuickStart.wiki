@@ -1,3 +1,5 @@
+#summary Instructions to get you going on a Unix-like system (sorry Windows)
+
 ==Quick Start==
 
 These instructions are heavily biased towards Unix-like systems, since I'm writing them on a Mac. That being said:
