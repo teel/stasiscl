@@ -1,13 +1,12 @@
 #summary Instructions to get you going on a Unix-like system (sorry Windows)
 
-==Quick Start==
-
 These instructions are heavily biased towards Unix-like systems, since I'm writing them on a Mac. That being said:
 
   * First you need to download the latest version of the code. There is no real release cycle at this time so you are stuck using the subversion trunk at `http://stasiscl.googlecode.com/svn/trunk/`. If you don't know how then your best shot is to open up a terminal and do the following (on a Mac this may require you to have the developer tools installed, which should have shipped with your computer or with the OS):
 
 {{{
 svn checkout http://stasiscl.googlecode.com/svn/trunk/ stasiscl
+cd stasiscl
 }}}
 
   * Create a folder on your machine that you would like to store your guild's web stats in. For purposes of the quick start I will use `/home/jqpublic/sws`. Once this is done you must copy the folder `extras` from the subversion trunk into the folder you just made. This should contain a `.js` and a `.css` file which are necessary for proper display.
@@ -17,5 +16,18 @@ svn checkout http://stasiscl.googlecode.com/svn/trunk/ stasiscl
   * At this point setup is complete. For each log file you wish to run, you need to call "stasis add" with the appropriate options and send it the file over standard input. On a Unix-like system you would do this in a terminal:
 
 {{{
-dd
+# Pre-2.4 log (a.k.a. v1) -- note the name of the logger is needed:
+./stasis add -dir /home/jqpublic/sws -ver 1 -log Gian < /path/to/log/file
+
+# 2.4 log (a.k.a v2) -- name of logger is not needed:
+./stasis add -dir /home/jqpublic/sws -ver 2 < /path/to/log/file
+
+# Normally boss attempts are discarded and only kills are recorded. If you wish to preserve all attempts, add "-attempt", for example:
+./stasis add -dir /home/jqpublic/sws -ver 2 -attempt < /path/to/log/file
+}}}
+
+  * If you chose to create an index, when you are done adding logs you should run the following command, which will generate a data.xml inside the wws-history folder you made earlier:
+
+{{{
+./stasis history -dir /home/jqpublic/sws
 }}}
