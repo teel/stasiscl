@@ -1,3 +1,5 @@
+#summary Documentation for Stasis::Parser, which can read both 2.3 and 2.4 logs and convert them to simple hashes
+
 =Parser.pm=
 
 The parser is a perl module reads both 2.3 and 2.4 logs, line by line. It must be told in advance whether the log will be 2.3 or 2.4 by setting a "version" tag to "1" or "2". It exposes the two methods parse($line), which returns a hash corresponding to a single log line, and toString($hashref) which returns a more human readable string corresponding to such a hash.
