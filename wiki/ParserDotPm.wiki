@@ -1,0 +1,109 @@
+=Parser.pm=
+
+The parser is a perl module reads both 2.3 and 2.4 logs, line by line. It must be told in advance whether the log will be 2.3 or 2.4 by setting a "version" tag to "1" or "2". It exposes the two methods parse($line), which returns a hash corresponding to a single log line, and toString($hashref) which returns a more human readable string corresponding to such a hash.
+
+One thing that is important to note is that the 2.3 parser is not localized and currently only works on English logs. Each log line is converted into a Perl hash that can be used for analysis or printed with an included toString function. that always has the following keys:
+
+  * *action*: a string that corresponds to a 2.4 combat log action. SPELL_DAMAGE, SWING_MISS, UNIT_DIED, etc
+  * *actor*: a string unique ID for the actor (or in other words source) in this log line. For 2.4 logs this is a string like "0x00323...", whatever was in the file. For 2.3 logs this is the same as the next item, actor_name.
+  * *actor_name*: the name of the actor as it appears in game
+  * *actor_relationship*: a bit field describing the relationship of the actor to the logger. This is not stored as a string (for example "0x514", which means a friendly player in the logger's raid) but is stored as the actual value that string corresponds to (in that case, 1300). For 2.3 logs this value will always be zero.
+  * *target*, *target_name*, and *target_relationship*: same as actor_X, but for the target of the action.
+  * *t*: standard UNIX timestamp (seconds since epoch) but preserving the millisecond accuracy
+  * *extra*: a sub-hash that contains extra fields from the log entry. This may be empty but it usually isn't. The format of this sub hash is described later.
+
+Sometimes log entries have no actor or no target (for example when a buff is gained, the action is SPELL_AURA_APPLIED with no actor, and the target is the unit that got the buff). In this case the actor is set to "0", the relationship is set to "0", and the name is set to "" (empty string).
+
+==Format of the "extra" hash==
+The keys are the ones defined in Kalman's MATLAB code here: [http://elitistjerks.com/f32/t21579-matlab-based_logfile_parser_2_4_combat_logs/ http://elitistjerks.com/f32/t21579-matlab-based_logfile_parser_2_4_combat_logs/].
+
+In general, for 2.4 logs, the keys just contain data pulled directly out of the log file. Values represented in the log file as hex (0x...) are stored as the actual value that hex string corresponds to. If the log file contains the value "nil" it will be stored as a "0". This is because null values are annoying and I don't think there is any spot in the logs where there would be an actual difference between "nil" and "0".
+
+The one exception to this is that for power drains and gains, instead of storing a code corresponding to the powertype, it will store the word "mana" or "rage" or whatnot.
+
+==Sample code==
+
+{{{
+# This prints out a human-readable version of a 2.4 log supplied over STDIN
+my $parser = Stasis::Parser->new( version => 2 );
+
+while( <STDIN> ) {
+    my %entry = $parser->parse($_);
+    if( my $text = $parser->toString( \%entry ) ) {
+        print "$text\n";
+    }
+}
+}}}
+
+==Example of the format==
+This 2.4 log entry:
+{{{
+2/16 14:03:26.034  SPELL_AURA_APPLIED,0x0000000000000000,nil,0x80000000,0x0000000000572160,Sunstyle,0x514,25222,Renew,0x2,BUFF
+}}}
+
+
+Would yield this hash (the order is crazy because Perl hashes do not preserve order):
+
+{{{
+$VAR1 = {
+          'actor_relationship' => 0,
+          'target_relationship' => 1300,
+          'actor_name' => '',
+          'actor' => 0,
+          'target' => '0x0000000000572160',
+          'action' => 'SPELL_AURA_APPLIED',
+          'target_name' => 'Sunstyle',
+          'extra' => {
+                       'spellname' => 'Renew',
+                       'spellid' => '25222',
+                       'auratype' => 'BUFF',
+                       'spellschool' => 2
+                     },
+          't' => '1203199406.034'
+        };
+}}}
+
+
+and would print using toString as:
+
+{{{
+[Sunstyle] gain Renew
+}}}
+
+
+Also this 2.3 log entry:
+
+{{{
+3/10 20:15:42.671  Ferf gains 32 Mana from Imbrium's Vampiric Touch.
+}}}
+
+
+Would yield this hash:
+
+{{{
+
+$VAR1 = {
+          'actor_relationship' => 0,
+          'target_relationship' => 0,
+          'actor_name' => 'Imbrium',
+          'actor' => 'Imbrium',
+          'target' => 'Ferf',
+          'action' => 'SPELL_ENERGIZE',
+          'target_name' => 'Ferf',
+          'extra' => {
+                       'powertype' => 'mana',
+                       'amount' => 32,
+                       'spellname' => 'Vampiric Touch',
+                       'spellid' => 'Vampiric Touch',
+                       'spellschool' => 0
+                     },
+          't' => '1205208942.671'
+        };
+}}}
+
+
+and print using toString as:
+
+{{{
+[Imbrium] Vampiric Touch energize [Ferf] 32 mana
+}}}
