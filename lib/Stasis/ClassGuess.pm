@@ -464,7 +464,9 @@ sub guess {
         }
         
         # Copy over pets if we guessed a class.
-        if( exists $raid{ $aname } && exists $raid{ $aname }{class} && $adata->{pets} ) {
+        if( exists $raid{ $aname } && exists $raid{ $aname }{class} ) {
+            $adata->{pets} ||= {};
+            
             my @pets = keys %{$adata->{pets}};
             $raid{ $aname }{pets} = \@pets;
             

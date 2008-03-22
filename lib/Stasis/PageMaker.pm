@@ -173,6 +173,17 @@ sub textBox {
     $TABLE .= "</table>";
 }
 
+sub jsClose {
+    my $self = shift;
+    my $section = shift;
+    return <<END;
+<script type="text/javascript">
+toggleTableSection('$section');
+</script>   
+
+END
+}
+
 sub tameText {
     my $self = shift;
     my $text = shift;
