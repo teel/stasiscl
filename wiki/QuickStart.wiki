@@ -31,3 +31,5 @@ cd stasiscl
 {{{
 ./stasis history -dir /home/jqpublic/sws
 }}}
+
+  * You can now upload the contents of your folder (`/home/jqpublic/sws`) to a web server or open the various `index.html` on your local machine.
