@@ -34,6 +34,7 @@ use Stasis::ActorPage;
 use Stasis::ChartPage;
 use File::Find qw();
 use File::Path qw();
+use File::Spec qw();
 use POSIX;
 use Getopt::Long;
 
@@ -97,6 +98,11 @@ my $rc = GetOptions(
     "nowrite"       => \$opt_nowrite,
 	);
 
+# Clean up opt_dir
+if( $opt_dir ) {
+    $opt_dir = File::Spec->rel2abs($opt_dir);
+}
+
 # Create a parser.
 my $parser = Stasis::Parser->new( version => $opt_version, logger => $opt_logger );
 
@@ -141,6 +147,7 @@ if( $action eq "print" ) {
 } elsif( $action eq "add" ) {
     # Going to output in $opt_dir
     bomb "not a directory: $opt_dir" unless $opt_dir && -d $opt_dir;
+    status "Using directory: $opt_dir";
     
     # Check if $opt_hints (hints file) exists
     bomb "not a file: $opt_hintsfile" if( $opt_hintsfile && ! -f $opt_hintsfile && ! -l $opt_hintsfile );
@@ -177,7 +184,7 @@ if( $action eq "print" ) {
     while( my ($boss, $split) = each(%splits) ) {
         # Check minlength option.
         if( $opt_minlength && $split->{end} - $split->{start} < $opt_minlength ) {
-            status sprintf "Skipping %s: Too short (%ds).", $boss, $split->{end} - $split->{start};
+            status sprintf "Skipping: %s (too short).", $boss, $split->{end} - $split->{start};
             next;
         }
         
@@ -241,6 +248,7 @@ if( $action eq "print" ) {
 } elsif( $action eq "rm" ) {
     # Going to output in $opt_dir
     bomb "not a directory: $opt_dir" unless $opt_dir && -d $opt_dir;
+    status "Using directory: $opt_dir";
     
     # Read the log file to @log
     status "Reading log file.";
@@ -277,6 +285,7 @@ if( $action eq "print" ) {
 } elsif( $action eq "history" ) {
     # Going to output in $opt_dir
     bomb "not a directory: $opt_dir" unless $opt_dir && -d $opt_dir;
+    status "Using directory: $opt_dir";
     
     # Header
     my $xml = "<wws-history>\n";
@@ -284,8 +293,11 @@ if( $action eq "print" ) {
     # Look at all data.xmls.
     @dataxmls = ();
     File::Find::find( \&wantedDataXML, ($opt_dir) );
+    
+    status "Found " . (scalar @dataxmls) . " subdirectories.";
+    
     foreach my $dataxml (@dataxmls) {
-        open DXML, $dataxml;
+        open DXML, $dataxml or die "Could not open a subdirectory for reading.";
         while( <DXML> ) {
             $xml .= $_;
         }
@@ -303,6 +315,8 @@ if( $action eq "print" ) {
     open DXML, ">$opt_dir/wws-history/data.xml" or die "Could not open data.xml for writing";
     print DXML $xml;
     close DXML;
+    
+    status "Wrote: $opt_dir/wws-history/data.xml";
 } else {
     bomb "bad action: $action";
 }
