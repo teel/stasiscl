@@ -62,12 +62,20 @@ sub process {
 
 sub spellname {
     my ($self, $spell) = @_;
-    return $self->{spells}{$spell} || $spell;
+    if( $spell ) {
+        return $self->{spells}{$spell} || $spell;
+    } else {
+        return "Melee";
+    }
 }
 
 sub actorname {
     my ($self, $actor) = @_;
-    return $self->{actors}{$actor} || $actor;
+    if( $actor ) {
+        return $self->{actors}{$actor} || $actor;
+    } else {
+        return "Environment";
+    }
 }
 
 1;
