@@ -1,3 +1,0 @@
-This is a set of Perl code that parses WoW combat logs, pre-2.4 and post-2.4, and generates statistics from them. The current version creates static HTML output which you should upload to your guild's web server. I use a Mac so I'm not sure how well this will work on Windows. If anyone has success setting it up on Windows please let me know.
-
-See QuickStart to get going.
