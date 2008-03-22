@@ -1,0 +1,201 @@
+#!/usr/bin/perl -w
+
+# Copyright (c) 2008, Gian Merlino
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+#    1. Redistributions of source code must retain the above copyright
+#       notice, this list of conditions and the following disclaimer.
+#    2. Redistributions in binary form must reproduce the above copyright
+#       notice, this list of conditions and the following disclaimer in the
+#       documentation and/or other materials provided with the distribution.
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+# WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
+# EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+# OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+# OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
+# ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+use strict;
+use warnings;
+use lib 'lib';
+use Stasis::Parser;
+use Stasis::LogSplit;
+use Stasis::ClassGuess;
+use Stasis::Extension;
+use Stasis::ChartPage;
+use Data::Dumper;
+use Getopt::Long;
+
+## SUBS ##
+
+sub usage() {
+    my $prog = $0;
+    $prog =~ s/^.*\///;
+    print STDERR "Usage: $0 command [options]\n";
+    print STDERR "See 'perldoc $prog'\n";
+    exit 1;
+}
+
+sub bomb($) {
+    my $msg = shift;
+    my $prog = $0;
+    $msg =~ s/^/$prog: /gm;
+    chomp $msg;
+    print STDERR $msg . "\n";
+    exit 1;
+}
+
+sub status($) {
+    my $msg = shift;
+    my $prog = $0;
+    $msg =~ s/^/$prog: /gm;
+    chomp $msg;
+    print STDERR $msg . "\n";
+}
+
+## CODE ##
+
+# Get the action first.
+usage unless @ARGV;
+my $action = lc shift @ARGV;
+
+# Get options.
+my $opt_version = 2;
+my $opt_dir = ".";
+my $opt_hintsfile;
+my $opt_logger;
+my $opt_attempts;
+
+my $rc = GetOptions(
+    "version=s"     => \$opt_version,
+    "logger=s"      => \$opt_logger,
+    #"hintsfile=s"   => \$opt_hintsfile,
+    "dir=s"         => \$opt_dir,
+    "attempts"      => \$opt_attempts,
+	);
+
+# Create a parser.
+my $parser = Stasis::Parser->new( version => $opt_version, logger => $opt_logger );
+
+# Case out the various actions.
+if( $action eq "print" ) {
+    # action PRINT: used to print out actions from a log file
+    while( <STDIN> ) {
+        my %entry = $parser->parse($_);
+        if( $entry{action} ) {
+            my $text = $parser->toString( \%entry );
+            print "$text\n" if $text;
+        }
+    }
+} elsif( $action eq "check" ) {
+    # action CHECK: see how many unrecognizable and unprintable actions there are.
+    my $actions = 0;
+    my $unrecognized = 0;
+    my $unprinted = 0;
+    
+    while( <STDIN> ) {
+        $actions ++;
+        my %entry = $parser->parse($_);
+        if( $entry{action} ) {
+            my $text = $parser->toString( \%entry );
+            
+            if( !$text ) {
+                $unprinted ++;
+                #print STDERR "noprint: $_";
+            }
+        } else {
+            print STDERR "noparse: $_";
+            $unrecognized ++;
+        }
+    }
+    
+    print STDERR sprintf "%d total actions: %d (%0.1f%%) recognized, %d (%0.1f%%) printable\n", 
+        $actions, 
+        $actions - $unrecognized, 
+        $actions ? ($actions-$unrecognized)/$actions*100 : 0, 
+        $actions - $unrecognized - $unprinted, 
+        $actions ? ($actions-$unrecognized-$unprinted)/$actions*100 : 0;
+} elsif( $action eq "process" ) {
+    # Going to output in $opt_dir
+    bomb "not a directory: $opt_dir" unless -d $opt_dir;
+    
+    # Check if $opt_hints (hints file) exists
+    bomb "not a file: $opt_hintsfile" if( $opt_hintsfile && ! -f $opt_hintsfile && ! -l $opt_hintsfile );
+    
+    # Read the log file to @log
+    status "Reading log file.";
+    my @log;
+    while( <STDIN> ) {
+        my %entry = $parser->parse($_);
+        push @log, \%entry if $entry{action};
+    }
+    
+    # Done with STDIN.
+    close STDIN;
+    
+    # Assign classes to %raid
+    status "Assigning classes and pets.";
+    my $classer = Stasis::ClassGuess->new( hintsfile => $opt_hintsfile );
+    $classer->read_hints() if $opt_hintsfile;
+    my %raid = $classer->guess(\@log);
+    
+    # Split the log to %splits
+    status "Splitting out boss attempts.";
+    my $splitter = Stasis::LogSplit->new( attempts => $opt_attempts );
+    my %splits = $splitter->split(\@log);
+    
+    # Compute statistics.
+    status time;
+    my @ext_names = qw(Activity Damage Healing Aura Cast ExtraAttack Interrupt Power Presence Index);
+    my %exts;
+    foreach (@ext_names) {
+        $exts{$_} = Stasis::Extension->factory($_);
+    }
+    
+    while( my ($boss, $split) = each(%splits) ) {
+        next if $boss eq "Illidan Stormrage";
+        next if $split->{end} - $split->{start} < 90;
+        status "Running $boss.";
+        
+        # Start all the extensions.
+        foreach my $ext (values %exts) {
+            $ext->start();
+        }
+        
+        # Process each line.
+        foreach my $entry (@log[$split->{startLine} .. $split->{endLine}]) {
+            foreach my $ext (values %exts) {
+                $ext->process($entry);
+            }
+        }
+        
+        # End all the extensions.
+        foreach my $ext (values %exts) {
+            $ext->finish();
+            #print Dumper($ext);
+        }
+        
+        status time;
+        
+        print Dumper(%raid);
+        my $chart = Stasis::ChartPage->new( name => $boss, raid => \%raid, ext => \%exts );
+        my ($xml, $page) = $chart->page();
+        
+        print $xml . "\n";
+        print $page . "\n";
+        
+        exit;
+    }
+} else {
+    bomb "bad action: $action";
+}
+
+exit 0;
