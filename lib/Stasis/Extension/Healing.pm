@@ -88,7 +88,7 @@ sub process {
             # Reset HP to zero (meaning full).
             $self->{ohtrack}{ $entry->{target} } = 0;
         }
-    } elsif( grep $entry->{action} eq $_, qw(ENVIRONMENTAL_DAMAGE SWING_DAMAGE RANGE_DAMAGE SPELL_PERIODIC_DAMAGE DAMAGE_SHIELD) ) {
+    } elsif( grep $entry->{action} eq $_, qw(ENVIRONMENTAL_DAMAGE SWING_DAMAGE RANGE_DAMAGE SPELL_DAMAGE SPELL_PERIODIC_DAMAGE DAMAGE_SHIELD) ) {
             # If someone is taking damage we need to debit it for overheal tracking.
             $self->{ohtrack}{ $entry->{target} } -= $entry->{extra}{amount};
     }

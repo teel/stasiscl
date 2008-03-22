@@ -36,7 +36,7 @@ sub start {
     $self->{_dpstimeout} = 5;
     
     # When a DPS span is closed, add this amount of buffer time.
-    $self->{_dpsaddclose} = 3;
+    $self->{_dpsaddclose} = 5;
 }
 
 sub process {
@@ -129,13 +129,13 @@ sub finish {
     foreach $actor (keys %{ $self->{actors} }) {
         # Close total DPS time.
         if( $self->{actors}{$actor}{all}{start} ) {
-            $self->{actors}{$actor}{all}{time} += $self->{actors}{$actor}{all}{end} - $self->{actors}{$actor}{all}{start} + $self->{_dpsaddclose};
+            $self->{actors}{$actor}{all}{time} += $self->{actors}{$actor}{all}{end} - $self->{actors}{$actor}{all}{start};
         }
     
         # Next close DPS time for each of this person's targets.
         foreach my $target (keys %{ $self->{actors}{$actor}{targets} }) {
             if( $self->{actors}{$actor}{targets}{$target}{start} ) {
-                $self->{actors}{$actor}{targets}{$target}{time} += $self->{actors}{$actor}{targets}{$target}{end} - $self->{actors}{$actor}{targets}{$target}{start} + $self->{_dpsaddclose};
+                $self->{actors}{$actor}{targets}{$target}{time} += $self->{actors}{$actor}{targets}{$target}{end} - $self->{actors}{$actor}{targets}{$target}{start};
             }
         }
     }

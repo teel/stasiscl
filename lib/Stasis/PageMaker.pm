@@ -185,12 +185,13 @@ sub tameText {
 
 sub actorLink {
     my $self = shift;
+    my $id = shift;
     my $name = shift;
     my $color = shift;
     
     $color ||= "464646";
     
-    return sprintf "<a href=\"actor_%s.html\" class=\"actor\" style=\"color: #%s\">%s</a>", $self->tameText($name), $color, $name;
+    return sprintf "<a href=\"actor_%s.html\" class=\"actor\" style=\"color: #%s\">%s</a>", $self->tameText($id), $color, $name;
 }
 
 sub classColor {
@@ -209,7 +210,7 @@ sub classColor {
             "Shaman" => "00806c",
         );
     
-    return $colors{$class} ? $colors{$class} : "464646";
+    return $class && $colors{$class} ? $colors{$class} : "464646";
 }
 
 1;

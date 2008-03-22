@@ -27,8 +27,6 @@ use strict;
 use warnings;
 use POSIX;
 use Stasis::PageMaker;
-use Data::Dumper;
-use Carp;
 
 sub new {
     my $class = shift;
@@ -60,8 +58,8 @@ sub page {
             $raidStart = $self->{ext}{Presence}{actors}{$_}{start};
         }
                 
-        if( !$raidEnd || $self->{ext}{Presence}{actors}{$_}{start} > $raidEnd ) {
-            $raidEnd = $self->{ext}{Presence}{actors}{$_}{start};
+        if( !$raidEnd || $self->{ext}{Presence}{actors}{$_}{end} > $raidEnd ) {
+            $raidEnd = $self->{ext}{Presence}{actors}{$_}{end};
         }
     }
     
@@ -72,17 +70,69 @@ sub page {
     # Also get a list of total damage by raid member (on the side)
     my %raiderDamage;
     my $raidDamage;
-    foreach my $actor (keys %{$self->{ext}{Damage}{actors}}) {
+    foreach my $actor (keys %{$self->{ext}{Presence}{actors}}) {
+        # Only show raiders
+        next unless $self->{raid}{$actor}{class};
+        
+        if( $self->{raid}{$actor}{class} eq "Pet" ) {
+            # Pet.
+            # Add damage to the raider.
+            
+            foreach my $spell (keys %{$self->{ext}{Damage}{actors}{$actor}}) {
+                foreach my $target (keys %{$self->{ext}{Damage}{actors}{$actor}{$spell}}) {
+                    # Skip friendlies
+                    next if $self->{raid}{$target}{class};
+                    
+                    # Find the raider to add this damage to.
+                    foreach my $raider (keys %{$self->{raid}}) {
+                        next unless $self->{raid}{$raider}{pets} && grep $actor eq $_, @{$self->{raid}{$raider}{pets}};
+                        
+                        $raiderDamage{$raider} += $self->{ext}{Damage}{actors}{$actor}{$spell}{$target}{total};
+                        $raidDamage += $self->{ext}{Damage}{actors}{$actor}{$spell}{$target}{total};
+                        last;
+                    }
+                }
+            }
+        } else {
+            # Raider.
+            # Start it at zero.
+            $raiderDamage{$actor} ||= 0;
+
+            foreach my $spell (keys %{$self->{ext}{Damage}{actors}{$actor}}) {
+                foreach my $target (keys %{$self->{ext}{Damage}{actors}{$actor}{$spell}}) {
+                    # Skip friendlies
+                    next if $self->{raid}{$target}{class};
+
+                    $raiderDamage{$actor} += $self->{ext}{Damage}{actors}{$actor}{$spell}{$target}{total};
+                    $raidDamage += $self->{ext}{Damage}{actors}{$actor}{$spell}{$target}{total};
+                }
+            }
+        }
+    }
+    
+    # Calculate raid healing
+    # Also get a list of total healing and effectiving healing by raid member (on the side)
+    my %raiderHealing;
+    my %raiderHealingTotal;
+    my $raidHealing;
+    my $raidHealingTotal;
+    foreach my $actor (keys %{$self->{ext}{Presence}{actors}}) {
         # Only show raiders
         next unless $self->{raid}{$actor}{class} && $self->{raid}{$actor}{class} ne "Pet";
         
-        foreach my $spell (keys %{$self->{ext}{Damage}{actors}{$actor}}) {
-            foreach my $target (keys %{$self->{ext}{Damage}{actors}{$actor}{$spell}}) {
-                # Skip friendlies
-                next if $self->{raid}{$target}{class};
+        # Start it at zero.
+        $raiderHealing{$actor} ||= 0;
+        $raiderHealingTotal{$actor} ||= 0;
+
+        foreach my $spell (keys %{$self->{ext}{Healing}{actors}{$actor}}) {
+            foreach my $target (keys %{$self->{ext}{Healing}{actors}{$actor}{$spell}}) {
+                # Skip non-friendlies
+                next unless $self->{raid}{$target}{class};
                 
-                $raiderDamage{$actor} += $self->{ext}{Damage}{actors}{$actor}{$spell}{$target}{total};
-                $raidDamage += $self->{ext}{Damage}{actors}{$actor}{$spell}{$target}{total};
+                $raiderHealing{$actor} += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{effective};
+                $raidHealing += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{effective};
+                $raiderHealingTotal{$actor} += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{total};
+                $raidHealingTotal += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{total};
             }
         }
     }
@@ -97,7 +147,141 @@ sub page {
     $PAGE .= $pm->pageHeader($self->{name}, $raidStart);
     
     $PAGE .= "<h3>Raid Information</h3>";
-    $PAGE .= $pm->textBox( sprintf( "Raid duration: %02d:%02d<br />Raid DPS: %d", $raidPresence/60, $raidPresence%60, $raidDPS ) );
+    $PAGE .= $pm->textBox( sprintf( "%d DPS over %dm%02ds<br />%d raid members", $raidDPS, $raidPresence/60, $raidPresence%60, scalar keys %raiderDamage ) );
+    
+    ################
+    # DAMAGE CHART #
+    ################
+    
+    $PAGE .= "<h3><a name=\"damage\"></a>Damage</h3>";
+    
+    $PAGE .= $pm->tableStart( "chart" );
+    
+    my @damageHeader = (
+            "Player",
+            "Presence",
+            "R-Dam. Out",
+            "R-Dam. %",
+            "R-DPS",
+            "R-DPS Time",
+            " ",
+        );
+    
+    $PAGE .= $pm->tableHeader(@damageHeader);
+    
+    my @damagesort = sort {
+        $raiderDamage{$b} <=> $raiderDamage{$a} || $a cmp $b
+    } keys %raiderDamage;
+    
+    my $mostdmg = $raiderDamage{ $damagesort[0] };
+    
+    foreach my $actor (@damagesort) {
+        my $ptime = $self->{ext}{Presence}{actors}{$actor}{end} - $self->{ext}{Presence}{actors}{$actor}{start};
+        
+        $PAGE .= $pm->tableRow( 
+            header => \@damageHeader,
+            data => {
+                "Player" => $pm->actorLink( $actor, $self->{ext}{Index}->actorname($actor), $pm->classColor( $self->{raid}{$actor}{class} ) ),
+                "Presence" => sprintf( "%02d:%02d", $ptime/60, $ptime%60 ),
+                "R-Dam. %" => $raiderDamage{$actor} && $raidDamage && sprintf( "%d%%", ceil($raiderDamage{$actor} / $raidDamage * 100) ),
+                "R-Dam. Out" => $raiderDamage{$actor},
+                " " => $mostdmg && sprintf( "%d", ceil($raiderDamage{$actor} / $mostdmg * 100) ),
+                "R-DPS" => $self->{ext}{Activity}{actors}{$actor}{all}{time} && sprintf( "%d", $raiderDamage{$actor} / $self->{ext}{Activity}{actors}{$actor}{all}{time} ),
+                "R-DPS Time" => $self->{ext}{Activity}{actors}{$actor}{all}{time} && $ptime && sprintf( "%0.1f%%", $self->{ext}{Activity}{actors}{$actor}{all}{time} / $ptime * 100 ),
+            },
+            type => "",
+        );
+    }
+    
+    $PAGE .= $pm->tableEnd;
+    
+    #################
+    # HEALING CHART #
+    #################
+    
+    $PAGE .= "<h3><a name=\"healing\"></a>Healing</h3>";
+    
+    $PAGE .= $pm->tableStart( "chart" );
+    
+    my @healingHeader = (
+            "Player",
+            "Presence",
+            "R-Eff. Heal",
+            "R-%",
+            "R-Overheal",
+            " ",
+        );
+    
+    $PAGE .= $pm->tableHeader(@healingHeader);
+    
+    my @healsort = sort {
+        $raiderHealing{$b} <=> $raiderHealing{$a} || $a cmp $b
+    } keys %raiderHealing;
+    
+    my $mostheal = $raiderHealing{ $healsort[0] };
+    
+    foreach my $actor (@healsort) {
+        my $ptime = $self->{ext}{Presence}{actors}{$actor}{end} - $self->{ext}{Presence}{actors}{$actor}{start};
+        
+        $PAGE .= $pm->tableRow( 
+            header => \@healingHeader,
+            data => {
+                "Player" => $pm->actorLink( $actor, $self->{ext}{Index}->actorname($actor), $pm->classColor( $self->{raid}{$actor}{class} ) ),
+                "Presence" => sprintf( "%02d:%02d", $ptime/60, $ptime%60 ),
+                "R-Eff. Heal" => $raiderHealing{$actor},
+                "R-%" => $raiderHealing{$actor} && $raidHealing && sprintf( "%d%%", ceil($raiderHealing{$actor} / $raidHealing * 100) ),
+                " " => $mostheal && $raiderHealing{$actor} && sprintf( "%d", ceil($raiderHealing{$actor} / $mostheal * 100) ),
+                "R-Overheal" => $raiderHealingTotal{$actor} && $raiderHealing{$actor} && sprintf( "%0.1f%%", ($raiderHealingTotal{$actor}-$raiderHealing{$actor}) / $raiderHealingTotal{$actor} * 100 ),
+            },
+            type => "",
+        );
+    }
+    
+    $PAGE .= $pm->tableEnd;
+    
+    ####################
+    # RAID & MOBS LIST #
+    ####################
+    
+    $PAGE .= "<h3><a name=\"actors\"></a>Raid &amp; Mobs</h3>";
+    
+    $PAGE .= $pm->tableStart("chart");
+    
+    my @actorHeader = (
+            "Actor",
+            "Class",
+            "Presence",
+            "R-Presence %",
+        );
+    
+    my @actorsort = sort {
+        $self->{ext}{Index}->actorname($a) cmp $self->{ext}{Index}->actorname($b)
+    } keys %{$self->{ext}{Presence}{actors}};
+        
+    $PAGE .= $pm->tableHeader(@actorHeader);
+    
+    foreach my $actor (@actorsort) {
+        my $ptime = $self->{ext}{Presence}{actors}{$actor}{end} - $self->{ext}{Presence}{actors}{$actor}{start};
+
+        $PAGE .= $pm->tableRow( 
+            header => \@actorHeader,
+            data => {
+                "Actor" => $pm->actorLink( $actor,  $self->{ext}{Index}->actorname($actor), $pm->classColor( $self->{raid}{$actor}{class} ) ),
+                "Class" => $self->{raid}{$actor}{class} || "Mob",
+                "Presence" => sprintf( "%02d:%02d", $ptime/60, $ptime%60 ),
+                "R-Presence %" => $raidPresence && sprintf( "%d%%", ceil($ptime/$raidPresence*100) ),
+            },
+            type => "",
+        );
+    }
+    
+    $PAGE .= $pm->tableEnd;
+    
+    #####################
+    # PRINT HTML FOOTER #
+    #####################
+    
+    $PAGE .= $pm->pageFooter;
     
     #########################
     # PRINT OPENING XML TAG #
@@ -115,12 +299,11 @@ sub page {
     # We will store player keys in here.
     my %xml_keys;
     
-    #######################
-    # PRINT CLOSING STUFF #
-    #######################
+    ####################
+    # PRINT XML FOOTER #
+    ####################
     
     $XML .= "  </raid>\n";
-    $PAGE .= $pm->pageFooter;
     
     return ($XML, $PAGE);
 }

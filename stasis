@@ -30,8 +30,10 @@ use Stasis::Parser;
 use Stasis::LogSplit;
 use Stasis::ClassGuess;
 use Stasis::Extension;
+use Stasis::ActorPage;
 use Stasis::ChartPage;
-use Data::Dumper;
+use File::Path qw(rmtree);
+use POSIX;
 use Getopt::Long;
 
 ## SUBS ##
@@ -153,7 +155,6 @@ if( $action eq "print" ) {
     my %splits = $splitter->split(\@log);
     
     # Compute statistics.
-    status time;
     my @ext_names = qw(Activity Damage Healing Aura Cast ExtraAttack Interrupt Power Presence Index);
     my %exts;
     foreach (@ext_names) {
@@ -161,9 +162,9 @@ if( $action eq "print" ) {
     }
     
     while( my ($boss, $split) = each(%splits) ) {
-        next if $boss eq "Illidan Stormrage";
-        next if $split->{end} - $split->{start} < 90;
-        status "Running $boss.";
+        # Run statistics for each boss.
+        my $dname = sprintf "%s/sws-%d", $opt_dir, floor($split->{start});
+        status sprintf "Writing: %s (sws-%d).", $boss, floor($split->{start});
         
         # Start all the extensions.
         foreach my $ext (values %exts) {
@@ -180,19 +181,41 @@ if( $action eq "print" ) {
         # End all the extensions.
         foreach my $ext (values %exts) {
             $ext->finish();
-            #print Dumper($ext);
         }
         
-        status time;
-        
-        print Dumper(%raid);
-        my $chart = Stasis::ChartPage->new( name => $boss, raid => \%raid, ext => \%exts );
-        my ($xml, $page) = $chart->page();
-        
-        print $xml . "\n";
-        print $page . "\n";
-        
-        exit;
+        # Write the files.
+        eval {
+            # Remove the directory if it exists.
+            rmtree($dname) if -d $dname;
+            
+            # Create the directory.
+            mkdir $dname or die $!;
+            
+            # Write the index.
+            my $charter = Stasis::ChartPage->new( name => $boss, raid => \%raid, ext => \%exts );
+            my ($chart_xml, $chart_html) = $charter->page;
+            open CHARTPAGE, ">$dname/index.html" or die;
+            print CHARTPAGE $chart_html;
+            close CHARTPAGE;
+            
+            # Write the actor files.
+            my $ap = Stasis::ActorPage->new( name => $boss, raid => \%raid, ext => \%exts );
+            foreach my $actor (keys %{$exts{Presence}{actors}}) {
+                my $id = lc $actor;
+                $id =~ s/[^\w]/_/g;
+
+                open ACTORPAGE, sprintf ">$dname/actor_%s.html", $id or die;
+                print ACTORPAGE $ap->page($actor);
+                close ACTORPAGE;
+            }
+            
+            # Write the data.xml file.
+            open DATAXML, ">$dname/data.xml" or die;
+            print DATAXML $chart_xml;
+            close DATAXML;
+        }; if( $@ ) {
+            bomb $@;
+        }
     }
 } else {
     bomb "bad action: $action";
