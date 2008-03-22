@@ -149,6 +149,8 @@ sub process {
         } elsif( $entry->{extra}{misstype} ) {
             # MISS
             $ddata->{ lc( $entry->{extra}{misstype} ) . "Count" }++;
+        } else {
+            carp( "Unrecognized potential damage event (warning)" );
         }
     }
 }

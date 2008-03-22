@@ -69,7 +69,7 @@ sub page {
     # Calculate raid DPS
     # Also get a list of total damage by raid member (on the side)
     my %raiderDamage;
-    my $raidDamage;
+    my $raidDamage = 0;
     foreach my $actor (keys %{$self->{ext}{Presence}{actors}}) {
         # Only show raiders
         next unless $self->{raid}{$actor}{class};
@@ -114,8 +114,8 @@ sub page {
     # Also get a list of total healing and effectiving healing by raid member (on the side)
     my %raiderHealing;
     my %raiderHealingTotal;
-    my $raidHealing;
-    my $raidHealingTotal;
+    my $raidHealing = 0;
+    my $raidHealingTotal = 0;
     foreach my $actor (keys %{$self->{ext}{Presence}{actors}}) {
         # Only show raiders
         next unless $self->{raid}{$actor}{class} && $self->{raid}{$actor}{class} ne "Pet";
@@ -186,8 +186,8 @@ sub page {
                 "R-Dam. %" => $raiderDamage{$actor} && $raidDamage && sprintf( "%d%%", ceil($raiderDamage{$actor} / $raidDamage * 100) ),
                 "R-Dam. Out" => $raiderDamage{$actor},
                 " " => $mostdmg && sprintf( "%d", ceil($raiderDamage{$actor} / $mostdmg * 100) ),
-                "R-DPS" => $self->{ext}{Activity}{actors}{$actor}{all}{time} && sprintf( "%d", $raiderDamage{$actor} / $self->{ext}{Activity}{actors}{$actor}{all}{time} ),
-                "R-DPS Time" => $self->{ext}{Activity}{actors}{$actor}{all}{time} && $ptime && sprintf( "%0.1f%%", $self->{ext}{Activity}{actors}{$actor}{all}{time} / $ptime * 100 ),
+                "R-DPS" => $raiderDamage{$actor} && $self->{ext}{Activity}{actors}{$actor}{all}{time} && sprintf( "%d", $raiderDamage{$actor} / $self->{ext}{Activity}{actors}{$actor}{all}{time} ),
+                "R-DPS Time" => $raiderDamage{$actor} && $self->{ext}{Activity}{actors}{$actor}{all}{time} && $ptime && sprintf( "%0.1f%%", $self->{ext}{Activity}{actors}{$actor}{all}{time} / $ptime * 100 ),
             },
             type => "",
         );
@@ -295,9 +295,44 @@ sub page {
                 $raidPresence*60000,
                 sprintf( "sws-%d", floor($raidStart) ),
             );
+    
+    #########################
+    # PRINT PLAYER XML KEYS #
+    #########################
+    
+    my %xml_classmap = (
+            "Warrior" => "war",
+            "Druid" => "drd",
+            "Warlock" => "wrl",
+            "Shaman" => "sha",
+            "Paladin" => "pal",
+            "Priest" => "pri",
+            "Rogue" => "rog",
+            "Mage" => "mag",
+            "Hunter" => "hnt",
+        );
         
-    # We will store player keys in here.
-    my %xml_keys;
+    foreach my $actor (@damagesort) {
+        my $ptime = $self->{ext}{Presence}{actors}{$actor}{end} - $self->{ext}{Presence}{actors}{$actor}{start};
+        
+        my %xml_keys = (
+            name => $self->{ext}{Index}->actorname($actor) || "Unknown",
+            classe => $xml_classmap{ $self->{raid}{$actor}{class} } || "war",
+            dps => $self->{ext}{Activity}{actors}{$actor}{all}{time} && ceil( $raiderDamage{$actor} / $self->{ext}{Activity}{actors}{$actor}{all}{time} ) || 0,
+            dpstime => $self->{ext}{Activity}{actors}{$actor}{all}{time} && $ptime && $self->{ext}{Activity}{actors}{$actor}{all}{time} / $ptime * 100 || 0,
+            dmgout => $raiderDamage{$actor} && $raidDamage && $raiderDamage{$actor} / $raidDamage * 100 || 0,
+            heal => $raiderHealing{$actor} && $raidHealing && $raiderHealing{$actor} / $raidHealing * 100 || 0,
+            ovh => $raiderHealing{$actor} && $raiderHealingTotal{$actor} && ceil( ($raiderHealingTotal{$actor} - $raiderHealing{$actor}) / $raiderHealingTotal{$actor} * 100 ) || 0,
+            death => 0,
+            
+            # Ignored values
+            dmgin => 0,
+            decurse => 0,
+            pres => 100,
+        );
+        
+        $XML .= sprintf "    <player %s />\n", join " ", map { sprintf "%s=\"%s\"", $_, $xml_keys{$_} } (keys %xml_keys);
+    }
     
     ####################
     # PRINT XML FOOTER #

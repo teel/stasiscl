@@ -387,10 +387,24 @@ our %fingerprints = (
 # SUNWELL #
 ###########
 
+"Kalecgos" => {
+    mobStart => [ "Kalecgos" ],
+    mobContinue => [ "Kalecgos", "Sathrovarr the Corruptor" ],
+    mobEnd => [ "Kalecgos", "Sathrovarr the Corruptor" ],
+    timeout => 30,
+},
+
 "Brutallus" => {
     mobStart => [ "Brutallus" ],
     mobContinue => [ "Brutallus" ],
     mobEnd => [ "Brutallus" ],
+    timeout => 30,
+},
+
+"Felmyst" => {
+    mobStart => [ "Felmyst" ],
+    mobContinue => [ "Felmyst" ],
+    mobEnd => [ "Felmyst" ],
     timeout => 30,
 },
 
@@ -427,14 +441,13 @@ sub split {
             if( $scratch{$boss}{start} ) {
                 if( $entry->{t} > $scratch{$boss}{end} + $print->{timeout} ) {
                     # This fingerprint timed out without ending.
-                    # Record it as an attempt.
+                    # Record it as an attempt, but disallow zero-length splits.
                     
                     $scratch{$boss}{attempt} ||= 0;
                     $scratch{$boss}{attempt} ++;
                     
                     my $splitname = $boss . " try " . $scratch{$boss}{attempt};
-                    
-                    $splits{$splitname} = { start => $scratch{$boss}{start}, end => $scratch{$boss}{end}, startLine => $scratch{$boss}{startLine}, endLine => $scratch{$boss}{endLine} } if $self->{attempts};
+                    $splits{$splitname} = { start => $scratch{$boss}{start}, end => $scratch{$boss}{end}, startLine => $scratch{$boss}{startLine}, endLine => $scratch{$boss}{endLine} } if $self->{attempts} && $scratch{$boss}{end} && $scratch{$boss}{start} && $scratch{$boss}{end} - $scratch{$boss}{start} > 0;
                     
                     # Reset the start/end times for this fingerprint.
                     $scratch{$boss}{start} = 0;
@@ -515,7 +528,10 @@ sub split {
                 
                 # Record the attempt.
                 my $splitname = $boss . " try " . $scratch{$boss}{attempt};
-                $splits{$splitname} = { start => $scratch{$boss}{start}, end => $scratch{$boss}{end}, startLine => $scratch{$boss}{startLine}, endLine => $scratch{$boss}{endLine} };
+                
+                if( $scratch{$boss}{end} && $scratch{$boss}{start} && $scratch{$boss}{end} - $scratch{$boss}{start} > 0 ) {
+                    $splits{$splitname} = { start => $scratch{$boss}{start}, end => $scratch{$boss}{end}, startLine => $scratch{$boss}{startLine}, endLine => $scratch{$boss}{endLine} };
+                }
             }
         }
     }

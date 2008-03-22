@@ -89,7 +89,7 @@ sub page {
     ###############
     
     $PAGE .= $pm->pageHeader($self->{name}, $raidStart);
-    $PAGE .= sprintf "<h3 style=\"color: #%s\">%s</h3>", $pm->classColor( $self->{raid}{$PLAYER}{class} ), $PLAYER;
+    $PAGE .= sprintf "<h3 style=\"color: #%s\">%s</h3>", $pm->classColor( $self->{raid}{$PLAYER}{class} ), $self->{ext}{Index}->actorname($PLAYER);
     
     my $ptime = $self->{ext}{Presence}{actors}{$PLAYER}{end} - $self->{ext}{Presence}{actors}{$PLAYER}{start};
     my $presence_text = sprintf( "Presence: %02d:%02d", $ptime/60, $ptime%60 );
