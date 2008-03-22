@@ -1,4 +1,4 @@
-#summary Documentation for Stasis::Parser, which can read both 2.3 and 2.4 logs and convert them to simple hashes
+#summary Documentation for Stasis::Parser, an included but independent perl module which can read both 2.3 and 2.4 logs and convert them to simple hashes
 
 =Parser.pm=
 
