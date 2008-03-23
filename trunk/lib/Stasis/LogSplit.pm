@@ -26,7 +26,6 @@ package Stasis::LogSplit;
 use strict;
 use warnings;
 use POSIX;
-use Data::Dumper;
 use Carp;
 
 # Fingerprints of various boss encounters.
@@ -407,6 +406,13 @@ our %fingerprints = (
     mobEnd => [ "Felmyst" ],
     timeout => 30,
 },
+
+"M'uru" => {
+    mobStart => [ "M'uru" ],
+    mobContinue => [ "M'uru", "Entropius" ],
+    mobEnd => [ "M'uru" ],
+    timeout => 30,
+}
 
 );
 

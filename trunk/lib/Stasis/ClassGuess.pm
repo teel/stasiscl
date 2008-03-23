@@ -26,7 +26,6 @@ package Stasis::ClassGuess;
 use strict;
 use warnings;
 use POSIX;
-use Data::Dumper;
 use Carp;
 
 # Fingerprints of various classes.
@@ -131,6 +130,7 @@ my %profiles = (
     
     "auras" => [
         "Icy Veins",
+        "Arcane Blast",
     ]
 },
 
@@ -338,8 +338,8 @@ sub guess {
     # Scratchpad for storing class matches per-actor.
     my %scratch;
     
-    # Player names look like this.
-    my $rxplayer = '^[A-Z][a-z]+$';
+    # Player names look like this (no whitespace).
+    my $rxplayer = '^[^\s]+$';
     
     foreach my $entry (@{$arrayref}) {
         # Skip entries with no action.
@@ -451,7 +451,7 @@ sub guess {
         }
         
         # Sort.
-        my @class_names = sort { $matches{$a} <=> $matches{$b} } keys %matches;
+        my @class_names = sort { $matches{$b} <=> $matches{$a} } keys %matches;
         my @class_numbers = map { $matches{$_} } @class_names;
         
         # Make a decision.

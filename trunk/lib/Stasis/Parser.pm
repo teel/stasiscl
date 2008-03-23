@@ -44,6 +44,7 @@ Stasis::Parser - parse a log file into a list of combat actions.
 use strict;
 use warnings;
 use POSIX;
+use Text::CSV_XS;
 use Carp;
 
 # Constants from the 2.4 combat log
@@ -104,6 +105,7 @@ sub new {
     
     $params{logger} ||= "You";
     $params{version} = 1 if $params{version} != 2;
+    $params{csv} = Text::CSV_XS->new({ binary => 1, eol => $/ });
     
     bless \%params, $class;
 }
@@ -866,7 +868,10 @@ sub parse {
         
         # Split the action and rewrite "nil" as undef
         chomp $line;
-        my @col = split /,/, $line;
+        
+        my @col;
+        $self->{csv}->parse($line);
+        @col = $self->{csv}->fields();
         @col = map { $_ ne "nil" ? $_ : undef } @col;
         
         # Common processing
@@ -1309,8 +1314,8 @@ sub _legacyAction {
 sub toString {
     my ($self, $entry) = @_;
     
-    my $actor = $entry->{actor_name} || "Nobody";
-    my $target = $entry->{target_name} || "Nobody";
+    my $actor = $entry->{actor_name} || "Environment";
+    my $target = $entry->{target_name} || "Environment";
     my $text;
     
     if( $entry->{action} eq "SWING_DAMAGE" ) {

@@ -26,6 +26,7 @@ package Stasis::PageMaker;
 use strict;
 use warnings;
 use POSIX;
+use HTML::Entities qw();
 use Carp;
 
 sub new {
@@ -188,7 +189,7 @@ sub tameText {
     my $self = shift;
     my $text = shift;
     
-    my $tamed = lc $text;
+    my $tamed = HTML::Entities::encode_entities(lc $text);
     $tamed =~ s/[^\w]/_/g;
     
     return $tamed
@@ -200,10 +201,11 @@ sub actorLink {
     my $name = shift;
     my $color = shift;
     
+    $name ||= "";
     $color ||= "464646";
     
     if( $id ) {
-        return sprintf "<a href=\"actor_%s.html\" class=\"actor\" style=\"color: #%s\">%s</a>", $self->tameText($id), $color, $name;
+        return sprintf "<a href=\"actor_%s.html\" class=\"actor\" style=\"color: #%s\">%s</a>", $self->tameText($id), $color, HTML::Entities::encode_entities($name);;
     } else {
         return $name;
     }
