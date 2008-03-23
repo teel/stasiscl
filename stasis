@@ -83,7 +83,7 @@ my $action = lc shift @ARGV;
 
 # Get options.
 my $opt_version = 2;
-my $opt_minlength;
+my $opt_minlength = 30;
 my $opt_dir = ".";
 my $opt_nowrite;
 my $opt_hintsfile;
