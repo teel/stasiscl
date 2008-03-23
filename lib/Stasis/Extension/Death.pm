@@ -25,16 +25,62 @@ package Stasis::Extension::Death;
 
 use strict;
 use warnings;
+use Stasis::Parser;
 
 our @ISA = "Stasis::Extension";
 
 sub start {
     my $self = shift;
     $self->{actors} = {};
+    $self->{ohtrack} = {};
+    $self->{dtrack} = {};
+    $self->{_autopsylen} = 30;
 }
 
 sub process {
     my ($self, $entry) = @_;
+    
+    # HP tracking, done in the same manner as overheal tracking for Healing.pm
+    if( $entry->{action} eq "SPELL_HEAL" || $entry->{action} eq "SPELL_PERIODIC_HEAL" ) {
+        # This was a heal. Add the HP to the target.
+        $self->{ohtrack}{ $entry->{target} } += $entry->{extra}{amount};
+    
+        # Account for overhealing, if it happened, by removing the excess.
+        $self->{ohtrack}{ $entry->{target} } = 0 if( $self->{ohtrack}{ $entry->{target} } > 0 );
+    } elsif( grep $entry->{action} eq $_, qw(ENVIRONMENTAL_DAMAGE SWING_DAMAGE RANGE_DAMAGE SPELL_DAMAGE SPELL_PERIODIC_DAMAGE DAMAGE_SHIELD) ) {
+        # If someone is taking damage we need to debit the HP.
+        $self->{ohtrack}{ $entry->{target} } -= $entry->{extra}{amount};
+    } elsif( $entry->{action} eq "UNIT_DIED" ) {
+        # Make a deaths array if it doesn't exist already.
+        $self->{actors}{ $entry->{actor} } ||= [];
+        
+        # Push this death onto it.
+        push @{$self->{actors}{ $entry->{target} }}, {
+            "t" => $entry->{t},
+            "autopsy" => $self->{dtrack}{ $entry->{target} } || [],
+        };
+        
+        # Delete the death tracker log.
+        delete $self->{dtrack}{ $entry->{target} };
+        
+        # Bail out.
+        return;
+    } else {
+        # Bail out now.
+        # If this action was a damage, miss, or heal we will fall through to the next section.
+        return;
+    }
+    
+    # Add a combat event to the death tracker log.
+    $self->{dtrack}{ $entry->{target} } ||= [];
+    push @{ $self->{dtrack}{ $entry->{target} } }, {
+        "t" => $entry->{t},
+        "hp" => $self->{ohtrack}{ $entry->{target} },
+        "text" => Stasis::Parser->toString( $entry ),
+    };
+    
+    # Shorten the list if it got too long.
+    shift @{ $self->{dtrack}{ $entry->{target} } } if scalar @{ $self->{dtrack}{ $entry->{target} } } > $self->{_autopsylen};
 }
 
 1;

@@ -78,7 +78,7 @@ sub process {
         $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{gains} += 1;
         
         # Update the type of this aura.
-        $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{type} = $entry->{extra}{auratype};
+        $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{type} ||= $entry->{extra}{auratype};
     } elsif( $entry->{action} eq "SPELL_AURA_REMOVED" ) {
         # Create a blank entry if none exists.
         if( !exists $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} } ) {
@@ -112,6 +112,9 @@ sub process {
         
         # Update the number of times this aura faded.
         $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{fades} += 1;
+        
+        # Update the type of this aura.
+        $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{type} ||= $entry->{extra}{auratype};
     }
 }
 
