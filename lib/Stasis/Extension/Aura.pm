@@ -57,7 +57,8 @@ sub process {
                 end => 0,
                 gains => 0,
                 fades => 0,
-                uptime => 0,
+                time => 0,
+                type => "",
             }
         }
         
@@ -86,7 +87,8 @@ sub process {
                 end => 0,
                 gains => 0,
                 fades => 0,
-                uptime => 0,
+                time => 0,
+                type => "",
             }
         }
         

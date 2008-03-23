@@ -202,7 +202,11 @@ sub actorLink {
     
     $color ||= "464646";
     
-    return sprintf "<a href=\"actor_%s.html\" class=\"actor\" style=\"color: #%s\">%s</a>", $self->tameText($id), $color, $name;
+    if( $id ) {
+        return sprintf "<a href=\"actor_%s.html\" class=\"actor\" style=\"color: #%s\">%s</a>", $self->tameText($id), $color, $name;
+    } else {
+        return $name;
+    }
 }
 
 sub classColor {
