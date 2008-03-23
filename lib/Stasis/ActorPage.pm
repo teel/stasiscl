@@ -696,7 +696,7 @@ sub page {
                 my $id = lc $sourceid;
                 $id =~ s/[^\w]/_/g;
 
-                my $source_ptime = $self->{ext}{Presence}{actors}{$sourceid}{end} - $self->{ext}{Presence}{actors}{$sourceid}{start};
+                my $source_ptime = $sourceid && $self->{ext}{Presence}{actors}{$sourceid}{end} - $self->{ext}{Presence}{actors}{$sourceid}{start};
                 my $dpstime_target = $self->{ext}{Activity}{actors}{$sourceid}{targets}{$PLAYER}{time};
                 my $dpstime_all = $self->{ext}{Activity}{actors}{$sourceid}{all}{time};
                 $PAGE .= $pm->tableRow( 
