@@ -35,7 +35,7 @@ my %profiles = (
 "Shaman" => {
     "damage" => [
         #"Earth Shock",
-        #"Flame Shock",
+        "Flame Shock",
         "Frost Shock",
         "Lightning Bolt",
         "Chain Lightning",
