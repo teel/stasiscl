@@ -175,7 +175,7 @@ if( $action eq "print" ) {
     my %splits = $splitter->split(\@log);
     
     # Compute statistics.
-    my @ext_names = qw(Activity Damage Healing Aura Cast ExtraAttack Interrupt Power Presence Index);
+    my @ext_names = qw(Activity Damage Death Healing Aura Cast ExtraAttack Interrupt Power Presence Index);
     my %exts;
     foreach (@ext_names) {
         $exts{$_} = Stasis::Extension->factory($_);

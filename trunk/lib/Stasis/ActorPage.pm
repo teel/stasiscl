@@ -182,7 +182,7 @@ sub page {
                 "R-Crush",
                 "R-Glance",
                 "R-Avoid %",
-                "M/D/P/B/A/R/I",
+                "MDPBARI",
             );
     
         my @spellsort = sort {
@@ -201,19 +201,7 @@ sub page {
             next unless $sdata->{total};
             
             # In case this is an encoded pet spell, split it into $spellactor, $spellid, and $spellname
-            my $spellactor;
-            my $spellid;
-            my $spellname;
-            
-            if( $spellkey =~ /^([A-Za-z0-9]+): (.+)$/ ) {
-                $spellactor = $1;
-                $spellid = $2;
-                $spellname = sprintf( "%s: %s", $pm->actorLink( $1, $self->{ext}{Index}->actorname($1), $pm->classColor( $self->{raid}{$1}{class} ) ), $self->{ext}{Index}->spellname($2) );
-            } else {
-                $spellactor = $PLAYER;
-                $spellid = $spellkey;
-                $spellname = $self->{ext}{Index}->spellname($spellkey);
-            }
+            my ($spellactor, $spellname, $spellid) = $self->_decodespell($spellkey, $pm, $PLAYER);
             
             $PAGE .= $pm->tableRow( 
                 header => \@damageHeader,
@@ -230,7 +218,7 @@ sub page {
                     "R-Glance" => ($sdata->{count} - $sdata->{tickCount}) && sprintf( "%0.1f%%", $sdata->{glancing} / ($sdata->{count} - $sdata->{tickCount}) * 100 ),
                     "R-Crush" => ($sdata->{count} - $sdata->{tickCount}) && sprintf( "%0.1f%%", $sdata->{crushing} / ($sdata->{count} - $sdata->{tickCount}) * 100 ),
                     "R-Avoid %" => ($sdata->{count} - $sdata->{tickCount}) && sprintf( "%0.1f%%", ($sdata->{count} - $sdata->{tickCount} - $sdata->{hitCount} - $sdata->{critCount}) / ($sdata->{count} - $sdata->{tickCount}) * 100 ),
-                    "M/D/P/B/A/R/I" => sprintf( "%d/%d/%d/%d/%d/%d/%d", $sdata->{missCount}, $sdata->{dodgeCount}, $sdata->{parryCount}, $sdata->{blockCount}, $sdata->{absorbCount}, $sdata->{resistCount}, $sdata->{immuneCount} ),
+                    "MDPBARI" => sprintf( "%d/%d/%d/%d/%d/%d/%d", $sdata->{missCount}, $sdata->{dodgeCount}, $sdata->{parryCount}, $sdata->{blockCount}, $sdata->{absorbCount}, $sdata->{resistCount}, $sdata->{immuneCount} ),
                 },
                 type => "master",
                 name => "damage_$id",
@@ -256,7 +244,7 @@ sub page {
                         "R-Glance" => ($sdata->{count} - $sdata->{tickCount}) && sprintf( "%0.1f%%", $sdata->{glancing} / ($sdata->{count} - $sdata->{tickCount}) * 100 ),
                         "R-Crush" => ($sdata->{count} - $sdata->{tickCount}) && sprintf( "%0.1f%%", $sdata->{crushing} / ($sdata->{count} - $sdata->{tickCount}) * 100 ),
                         "R-Avoid %" => sprintf( "%0.1f%%", ($sdata->{count} - $sdata->{tickCount}) && ($sdata->{count} - $sdata->{tickCount} - $sdata->{hitCount} - $sdata->{critCount}) / ($sdata->{count} - $sdata->{tickCount}) * 100 ),
-                        "M/D/P/B/A/R/I" => sprintf( "%d/%d/%d/%d/%d/%d/%d", $sdata->{missCount}, $sdata->{dodgeCount}, $sdata->{parryCount}, $sdata->{blockCount}, $sdata->{absorbCount}, $sdata->{resistCount}, $sdata->{immuneCount} ),
+                        "MDPBARI" => sprintf( "%d/%d/%d/%d/%d/%d/%d", $sdata->{missCount}, $sdata->{dodgeCount}, $sdata->{parryCount}, $sdata->{blockCount}, $sdata->{absorbCount}, $sdata->{resistCount}, $sdata->{immuneCount} ),
                     },
                     type => "slave",
                     name => "damage_$id",
@@ -347,6 +335,64 @@ sub page {
     
     $PAGE .= $pm->tableEnd;
     
+    ##########
+    # DEATHS #
+    ##########
+
+    if( exists $self->{ext}{Death}{actors}{$PLAYER} ) {
+        $PAGE .= $pm->tableStart;
+
+        my @header = (
+                "Death Time",
+                "R-Health",
+                "Event",
+            );
+
+        $PAGE .= $pm->tableHeader(@header);
+
+        # Loop through all deaths.
+        foreach my $death (@{$self->{ext}{Death}{actors}{$PLAYER}}) {
+            my $id = $death->{t};
+            $id =~ s/[^\w]/_/g;
+
+            # Get the last line of the autopsy.
+            my $lastline = pop @{$death->{autopsy}};
+            push @{$death->{autopsy}}, $lastline;
+
+            # Print the front row.
+            my $t = $death->{t} - $raidStart;
+            $PAGE .= $pm->tableRow(
+                    header => \@header,
+                    data => {
+                        "Death Time" => $death->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
+                        "R-Health" => $lastline->{hp} || "",
+                        "Event" => $lastline->{text} || "",
+                    },
+                    type => "master",
+                    name => "death_$id",
+                );
+
+            # Print subsequent rows.
+            foreach my $line (@{$death->{autopsy}}) {
+                my $t = ($line->{t}||0) - $raidStart;
+
+                $PAGE .= $pm->tableRow(
+                        header => \@header,
+                        data => {
+                            "Death Time" => $line->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
+                            "R-Health" => $line->{hp} || "",
+                            "Event" => $line->{text} || "",
+                        },
+                        type => "slave",
+                        name => "death_$id",
+                    );
+            }
+
+            $PAGE .= $pm->jsClose("death_$id");
+        }
+
+        $PAGE .= $pm->tableEnd;
+    }
     
     #########
     # CASTS #
@@ -440,6 +486,57 @@ sub page {
         }
     }
     
+    #################
+    # EXTRA ATTACKS #
+    #################
+    
+    if( exists $self->{ext}{ExtraAttack}{actors}{$PLAYER} ) {
+        my @powerHeader = (
+                "Gain Name",
+                "Source",
+                "R-Total",
+                "R-Ticks",
+                "R-Avg",
+                "R-Per 5",
+            );
+        
+        # Build a list of extra attacks without the per-source splitting.
+        my %powtot;
+        while( my ($pname, $psources) = each(%{$self->{ext}{ExtraAttack}{actors}{$PLAYER}}) ) {
+            while( my ($sname, $sdata) = each %$psources ) {
+                $powtot{$pname}{type} = "extra attacks";
+                $powtot{$pname}{amount} += $sdata->{amount};
+                $powtot{$pname}{count} += $sdata->{count};
+            }
+        }
+        
+        my @powersort = sort {
+            ($powtot{$a}{type} cmp $powtot{$b}{type}) || ($powtot{$b}{amount} <=> $powtot{$a}{amount})
+        } keys %powtot;
+        
+        $PAGE .= $pm->tableHeader(@powerHeader) unless exists $self->{ext}{Power}{actors}{$PLAYER};
+        foreach my $powerid (@powersort) {
+            my $id = lc $powerid;
+            $id =~ s/[^\w]/_/g;
+
+            my $sdata;
+            $sdata = $powtot{$powerid};
+            $PAGE .= $pm->tableRow( 
+                header => \@powerHeader,
+                data => {
+                    "Gain Name" => sprintf( "%s (%s)", $self->{ext}{Index}->spellname($powerid), $sdata->{type} ),
+                    "R-Total" => $sdata->{amount},
+                    "Source" => join( ", ", map $pm->actorLink( $_, $self->{ext}{Index}->actorname($_), $pm->classColor( $self->{raid}{$_}{class} ) ), keys %{ $self->{ext}{ExtraAttack}{actors}{$PLAYER}{$powerid} } ),
+                    "R-Ticks" => $sdata->{count},
+                    "R-Avg" => $sdata->{count} && sprintf( "%d", $sdata->{amount} / $sdata->{count} ),
+                    "R-Per 5" => $ptime && sprintf( "%0.1f", $sdata->{amount} / $ptime * 5 ),
+                },
+                type => "",
+                name => "power_$id",
+            );
+        }
+    }
+    
     #########
     # AURAS #
     #########
@@ -483,11 +580,190 @@ sub page {
     
     $PAGE .= $pm->tableEnd;
     
+    $PAGE .= $pm->tableStart;
+
+    ######################
+    # DAMAGE OUT TARGETS #
+    ######################
+    
+    if( $alldmg ) {
+        my @header = (
+                "Damage Out",
+                "R-Total",
+                "R-DPS",
+                "Time",
+                "R-Time % (Presence)",
+                "R-Time % (DPS Time)",
+            );
+
+        my @targetsort = sort {
+            $damage_target{$b}{total} <=> $damage_target{$a}{total}
+        } keys %damage_target;
+        
+        $PAGE .= $pm->tableHeader(@header);
+        
+        foreach my $targetid (@targetsort) {
+            my $id = lc $targetid;
+            $id =~ s/[^\w]/_/g;
+            
+            my $sdata = $damage_target{$targetid};
+            my $dpstime_target = $self->{ext}{Activity}{actors}{$PLAYER}{targets}{$targetid}{time};
+            my $dpstime_all = $self->{ext}{Activity}{actors}{$PLAYER}{all}{time};
+            $PAGE .= $pm->tableRow( 
+                header => \@header,
+                data => {
+                    "Damage Out" => $pm->actorLink( $targetid, $self->{ext}{Index}->actorname($targetid), $pm->classColor( $self->{raid}{$targetid}{class} ) ),
+                    "R-Total" => $sdata->{total},
+                    "R-DPS" => $dpstime_target && sprintf( "%d", $damage_target{$targetid}{total} / $dpstime_target ),
+                    "Time" => $dpstime_target && sprintf( "%02d:%02d", $dpstime_target/60, $dpstime_target%60 ),
+                    "R-Time % (Presence)" => $dpstime_target && $ptime && sprintf( "%0.1f%%", $dpstime_target / $ptime * 100 ),
+                    "R-Time % (DPS Time)" => $dpstime_target && $dpstime_all && sprintf( "%0.1f%%", $dpstime_target / $dpstime_all * 100 ),
+                },
+                type => "master",
+                name => "dmgout_$id",
+            );
+            
+            # Check all spells this $PLAYER used against $targetid.
+            my %targetid_damage;
+            foreach my $encoded_spellid (keys %damage_spell) {
+                # In case this is an encoded pet spell, split it into $spellactor, $spellid, and $spellname
+                my ($spellactor, $spellname, $spellid) = $self->_decodespell($encoded_spellid, $pm, $PLAYER);
+                
+                if( exists $self->{ext}{Damage}{actors}{$spellactor}{$spellid}{$targetid} ) {
+                    $targetid_damage{$encoded_spellid} = $self->{ext}{Damage}{actors}{$spellactor}{$spellid}{$targetid};
+                }
+            }
+            
+            # Sort
+            my @spellsort = sort { 
+                $targetid_damage{$b}{total} <=> $targetid_damage{$a}{total} 
+            } keys %targetid_damage;
+            
+            foreach my $encoded_spellid (@spellsort) {
+                # In case this is an encoded pet spell, split it into $spellactor, $spellid, and $spellname
+                my ($spellactor, $spellname, $spellid) = $self->_decodespell($encoded_spellid, $pm, $PLAYER);
+                
+                # Make sure this spell was used against this target.
+                if( $sdata = $self->{ext}{Damage}{actors}{$spellactor}{$spellid}{$targetid} ) {
+                    $PAGE .= $pm->tableRow( 
+                        header => \@header,
+                        data => {
+                            "Damage Out" => $spellname,
+                            "R-Total" => $sdata->{total},
+                        },
+                        type => "slave",
+                        name => "dmgout_$id",
+                    );
+                }
+            }
+            
+            $PAGE .= $pm->jsClose("dmgout_$id");
+        }
+    }
+    
+    #####################
+    # DAMAGE IN SOURCES #
+    #####################
+    
+    if( 1 ) {
+        my @header = (
+                "Damage In",
+                "R-Total",
+                "R-DPS",
+                "Time",
+                "R-Time % (Presence)",
+                "R-Time % (DPS Time)",
+            );
+        
+        my %sourcedmg;
+        my %sourcedmg_byspell;
+        foreach my $actor (keys %{ $self->{ext}{Damage}{actors} }) {
+            foreach my $spell (keys %{ $self->{ext}{Damage}{actors}{$actor} }) {
+                next unless exists $self->{ext}{Damage}{actors}{$actor}{$spell}{$PLAYER};
+                $sourcedmg{$actor} += $self->{ext}{Damage}{actors}{$actor}{$spell}{$PLAYER}{total};
+                $sourcedmg_byspell{$actor}{$spell} += $self->{ext}{Damage}{actors}{$actor}{$spell}{$PLAYER}{total};
+            }
+        }
+
+        my @sources = sort {
+            $sourcedmg{$b} <=> $sourcedmg{$a}
+        } keys %sourcedmg;
+        
+        if( @sources ) {
+            $PAGE .= $pm->tableHeader(@header);
+
+            foreach my $sourceid (@sources) {
+                my $id = lc $sourceid;
+                $id =~ s/[^\w]/_/g;
+
+                my $source_ptime = $self->{ext}{Presence}{actors}{$sourceid}{end} - $self->{ext}{Presence}{actors}{$sourceid}{start};
+                my $dpstime_target = $self->{ext}{Activity}{actors}{$sourceid}{targets}{$PLAYER}{time};
+                my $dpstime_all = $self->{ext}{Activity}{actors}{$sourceid}{all}{time};
+                $PAGE .= $pm->tableRow( 
+                    header => \@header,
+                    data => {
+                        "Damage In" => $pm->actorLink( $sourceid, $self->{ext}{Index}->actorname($sourceid), $pm->classColor( $self->{raid}{$sourceid}{class} ) ),
+                        "R-Total" => $sourcedmg{$sourceid},
+                        "R-DPS" => $dpstime_target && sprintf( "%d", $sourcedmg{$sourceid} / $dpstime_target ),
+                        "Time" => $dpstime_target && sprintf( "%02d:%02d", $dpstime_target/60, $dpstime_target%60 ),
+                        "R-Time % (Presence)" => $dpstime_target && $source_ptime && sprintf( "%0.1f%%", $dpstime_target / $source_ptime * 100 ),
+                        "R-Time % (DPS Time)" => $dpstime_target && $dpstime_all && sprintf( "%0.1f%%", $dpstime_target / $dpstime_all * 100 ),
+                    },
+                    type => "master",
+                    name => "dmgin_$id",
+                );
+                
+                my @spellsort = sort {
+                    $sourcedmg_byspell{$sourceid}{$b} <=> $sourcedmg_byspell{$sourceid}{$a}
+                } keys %{$sourcedmg_byspell{$sourceid}};
+                
+                foreach my $spellid (@spellsort) {
+                    $PAGE .= $pm->tableRow( 
+                        header => \@header,
+                        data => {
+                            "Damage In" => $self->{ext}{Index}->spellname($spellid),
+                            "R-Total" => $sourcedmg_byspell{$sourceid}{$spellid},
+                        },
+                        type => "slave",
+                        name => "dmgin_$id",
+                    );
+                }
+
+                $PAGE .= $pm->jsClose("dmgin_$id");
+            }
+        }
+    }
+    
+    $PAGE .= $pm->tableEnd;
+    
     ##########
     # FOOTER #
     ##########
     
     $PAGE .= $pm->pageFooter;
+}
+
+sub _decodespell {
+    my $self = shift;
+    my $encoded_spellid = shift;
+    my $pm = shift;
+    my $PLAYER = shift;
+    
+    my $spellactor;
+    my $spellname;
+    my $spellid;
+
+    if( $encoded_spellid =~ /^([A-Za-z0-9]+): (.+)$/ ) {
+        $spellactor = $1;
+        $spellname = sprintf( "%s: %s", $pm->actorLink( $1, $self->{ext}{Index}->actorname($1), $pm->classColor( $self->{raid}{$1}{class} ) ), $self->{ext}{Index}->spellname($2) );
+        $spellid = $2;
+    } else {
+        $spellactor = $PLAYER;
+        $spellname = $self->{ext}{Index}->spellname($encoded_spellid);
+        $spellid = $encoded_spellid;
+    }
+    
+    return ($spellactor, $spellname, $spellid);
 }
 
 1;
