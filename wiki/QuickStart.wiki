@@ -34,4 +34,4 @@ cd stasiscl
 
   * You can now upload the contents of your folder (`/home/jqpublic/sws`) to a web server or open the various `index.html` on your local machine.
 
-  * If at some point you wish to re-run the log file (new version of the program maybe) then you need only to run the same `stasis add` command again. It will remove the old directories and write out new ones.
+  * If at some point you wish to re-run the log file (new version of the program maybe) then you need only to run the same `stasis add` command again. It will remove the old directories and write out new ones. At some point there will probably be a way to do this automatically but for now it must be done manually.
