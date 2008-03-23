@@ -734,6 +734,176 @@ sub page {
         }
     }
     
+    #######################
+    # HEALING OUT TARGETS #
+    #######################
+    
+    if( exists $self->{ext}{Healing}{actors}{$PLAYER} ) {
+        my @header = (
+                "Heals Out",
+                "R-Eff. Heal",
+                "R-Hits",
+                "R-Eff. Out %",
+                "R-Overheal %",
+                "",
+            );
+        
+        my %targetheal;
+        my %totalheal;
+        foreach my $spell (keys %{ $self->{ext}{Healing}{actors}{$PLAYER} }) {
+            foreach my $target (keys %{ $self->{ext}{Healing}{actors}{$PLAYER}{$spell} }) {
+                $targetheal{$target}{effective} += $self->{ext}{Healing}{actors}{$PLAYER}{$spell}{$target}{effective};
+                $targetheal{$target}{total} += $self->{ext}{Healing}{actors}{$PLAYER}{$spell}{$target}{total};
+                $targetheal{$target}{hits} += $self->{ext}{Healing}{actors}{$PLAYER}{$spell}{$target}{hitCount};
+                $targetheal{$target}{hits} += $self->{ext}{Healing}{actors}{$PLAYER}{$spell}{$target}{critCount};
+                $targetheal{$target}{hits} += $self->{ext}{Healing}{actors}{$PLAYER}{$spell}{$target}{tickCount};
+                
+                $totalheal{effective} += $self->{ext}{Healing}{actors}{$PLAYER}{$spell}{$target}{effective};
+                $totalheal{total} += $self->{ext}{Healing}{actors}{$PLAYER}{$spell}{$target}{total};
+            }
+        }
+
+        my @targets = sort {
+            $targetheal{$b}{effective} <=> $targetheal{$a}{effective}
+        } keys %targetheal;
+
+        if( @targets ) {
+            $PAGE .= $pm->tableHeader(@header);
+            foreach my $targetid (@targets) {
+                my $id = lc $targetid;
+                $id =~ s/[^\w]/_/g;
+                
+                $PAGE .= $pm->tableRow( 
+                    header => \@header,
+                    data => {
+                        "Heals Out" => $pm->actorLink( $targetid, $self->{ext}{Index}->actorname($targetid), $pm->classColor( $self->{raid}{$targetid}{class} ) ),
+                        "R-Eff. Heal" => $targetheal{$targetid}{effective},
+                        "R-Hits" => $targetheal{$targetid}{hits},
+                        "R-Overheal %" => $targetheal{$targetid}{total} ? sprintf "%0.1f%%", ( $targetheal{$targetid}{total} - $targetheal{$targetid}{effective} ) / $targetheal{$targetid}{total} * 100: "",
+                        "R-Eff. Out %" => $totalheal{effective} ? sprintf "%0.1f%%", $targetheal{$targetid}{effective} / $totalheal{effective} * 100: "",
+                    },
+                    type => "master",
+                    name => "healout_$id",
+                );
+                
+                # Check all spells this $PLAYER used on $targetid.
+                my %targetid_healing;
+                foreach my $spell (keys %{ $self->{ext}{Healing}{actors}{$PLAYER} }) {
+                    next unless exists $self->{ext}{Healing}{actors}{$PLAYER}{$spell}{$targetid};
+                    $targetid_healing{$spell} = $self->{ext}{Healing}{actors}{$PLAYER}{$spell}{$targetid}{effective};
+                }
+            
+                my @spellsort = sort {
+                    $targetid_healing{$b} <=> $targetid_healing{$a}
+                } keys %targetid_healing;
+            
+                foreach my $spellid (@spellsort) {
+                    my $sdata = $self->{ext}{Healing}{actors}{$PLAYER}{$spellid}{$targetid};
+                    $PAGE .= $pm->tableRow( 
+                        header => \@header,
+                        data => {
+                            "Heals Out" => $self->{ext}{Index}->spellname($spellid),
+                            "R-Eff. Heal" => $sdata->{effective},
+                            "R-Hits" => $sdata->{hitCount} + $sdata->{critCount} + $sdata->{tickCount},
+                            "R-Overheal %" => $sdata->{total} ? sprintf "%0.1f%%", ( $sdata->{total} - $sdata->{effective} ) / $sdata->{total} * 100: "",
+                            "R-Eff. Out %" => $targetheal{$targetid}{effective} ? sprintf "%0.1f%%", $sdata->{effective} / $targetheal{$targetid}{effective} * 100: "",
+                        },
+                        type => "slave",
+                        name => "healout_$id",
+                    );
+                }
+            
+                $PAGE .= $pm->jsClose("healout_$id");
+            }
+        }
+    }
+    
+    ######################
+    # HEALING IN SOURCES #
+    ######################
+    
+    if( 1 ) {
+        my @header = (
+                "Heals In",
+                "R-Eff. Heal",
+                "R-Hits",
+                "R-Eff. Out %",
+                "R-Overheal %",
+                "",
+            );
+        
+        my %sourceheal;
+        my %totalheal;
+        foreach my $actor (keys %{ $self->{ext}{Healing}{actors} }) {
+            foreach my $spell (keys %{ $self->{ext}{Healing}{actors}{$actor} }) {
+                next unless exists $self->{ext}{Healing}{actors}{$actor}{$spell}{$PLAYER};
+                
+                $sourceheal{$actor}{effective} += $self->{ext}{Healing}{actors}{$actor}{$spell}{$PLAYER}{effective};
+                $sourceheal{$actor}{total} += $self->{ext}{Healing}{actors}{$actor}{$spell}{$PLAYER}{total};
+                $sourceheal{$actor}{hits} += $self->{ext}{Healing}{actors}{$actor}{$spell}{$PLAYER}{hitCount};
+                $sourceheal{$actor}{hits} += $self->{ext}{Healing}{actors}{$actor}{$spell}{$PLAYER}{critCount};
+                $sourceheal{$actor}{hits} += $self->{ext}{Healing}{actors}{$actor}{$spell}{$PLAYER}{tickCount};
+                                
+                $totalheal{effective} += $self->{ext}{Healing}{actors}{$actor}{$spell}{$PLAYER}{effective};
+                $totalheal{total} += $self->{ext}{Healing}{actors}{$actor}{$spell}{$PLAYER}{total};
+            }
+        }
+
+        my @sources = sort {
+            $sourceheal{$b}{effective} <=> $sourceheal{$a}{effective}
+        } keys %sourceheal;
+
+        if( @sources ) {
+            $PAGE .= $pm->tableHeader(@header);
+            foreach my $sourceid (@sources) {
+                my $id = lc $sourceid;
+                $id =~ s/[^\w]/_/g;
+                
+                $PAGE .= $pm->tableRow( 
+                    header => \@header,
+                    data => {
+                        "Heals In" => $pm->actorLink( $sourceid, $self->{ext}{Index}->actorname($sourceid), $pm->classColor( $self->{raid}{$sourceid}{class} ) ),
+                        "R-Eff. Heal" => $sourceheal{$sourceid}{effective},
+                        "R-Hits" => $sourceheal{$sourceid}{hits},
+                        "R-Overheal %" => $sourceheal{$sourceid}{total} ? sprintf "%0.1f%%", ( $sourceheal{$sourceid}{total} - $sourceheal{$sourceid}{effective} ) / $sourceheal{$sourceid}{total} * 100: "",
+                        "R-Eff. Out %" => $totalheal{effective} ? sprintf "%0.1f%%", $sourceheal{$sourceid}{effective} / $totalheal{effective} * 100: "",
+                    },
+                    type => "master",
+                    name => "healin_$id",
+                );
+                
+                # Check all spells that $sourceid used on $PLAYER.
+                my %sourceid_healing;
+                foreach my $spell (keys %{ $self->{ext}{Healing}{actors}{$sourceid} }) {
+                    next unless exists $self->{ext}{Healing}{actors}{$sourceid}{$spell}{$PLAYER};
+                    $sourceid_healing{$spell} = $self->{ext}{Healing}{actors}{$sourceid}{$spell}{$PLAYER}{effective};
+                }
+            
+                my @spellsort = sort {
+                    $sourceid_healing{$b} <=> $sourceid_healing{$a}
+                } keys %sourceid_healing;
+            
+                foreach my $spellid (@spellsort) {
+                    my $sdata = $self->{ext}{Healing}{actors}{$sourceid}{$spellid}{$PLAYER};
+                    $PAGE .= $pm->tableRow( 
+                        header => \@header,
+                        data => {
+                            "Heals In" => $self->{ext}{Index}->spellname($spellid),
+                            "R-Eff. Heal" => $sdata->{effective},
+                            "R-Hits" => $sdata->{hitCount} + $sdata->{critCount} + $sdata->{tickCount},
+                            "R-Overheal %" => $sdata->{total} ? sprintf "%0.1f%%", ( $sdata->{total} - $sdata->{effective} ) / $sdata->{total} * 100: "",
+                            "R-Eff. Out %" => $sourceheal{$sourceid}{effective} ? sprintf "%0.1f%%", $sdata->{effective} / $sourceheal{$sourceid}{effective} * 100: "",
+                        },
+                        type => "slave",
+                        name => "healin_$id",
+                    );
+                }
+            
+                $PAGE .= $pm->jsClose("healin_$id");
+            }
+        }
+    }
+    
     $PAGE .= $pm->tableEnd;
     
     ##########
