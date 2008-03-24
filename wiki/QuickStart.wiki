@@ -1,6 +1,6 @@
 #summary Instructions to get you going on a Unix-like system (sorry Windows)
 
-These instructions are heavily biased towards Unix-like systems, since I'm writing them on a Mac. That being said:
+These instructions are heavily biased towards Unix-like systems, since I'm writing them on a Mac. I have heard reports that the code does work on Windows using [http://www.activestate.com/Products/activeperl/ ActiveState's distribution] and the same general idea of the commands listed below, although the exact text you type will probably be slightly different. You may need to omit the "`./`" before the `stasis` commands and use backslashes instead of forward slashes, I'm not exactly sure since I have not done it personally. That being said here are the instructions for Unix-like systems:
 
   * First you need to download the latest version of the code. There is no real release cycle at this time so you are stuck using the subversion trunk at `http://stasiscl.googlecode.com/svn/trunk/`. If you don't know how then your best shot is to open up a terminal and do the following (on a Mac this may require you to have the developer tools installed, which should have shipped with your computer or with the OS):
 
