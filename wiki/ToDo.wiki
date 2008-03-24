@@ -3,3 +3,7 @@
 Add version:2 logic for ClassGuess.pm -- should warn if players could not be identified, or perhaps be more aggressive identifying players, and should block mobs from being identified (using the relationship field)
 
 Ability to include trash reports: -trash makes a parse called "Trash mobs" that includes all log entries not covered by a %split. Make sure this doesn't include attempts by accident if the user did not put -attempt.
+
+Ability to import logs into a SQLite db, probably store all the entries in one big table and tag each one with a log file ID. Unique key will be the start time I think but the primary key will be just some sequence.
+
+The db also needs to store classes and splits. Classes will probably be per log and not global.
