@@ -1,6 +1,12 @@
 body {
     margin: 0;
     text-align: center;
+    font-family: verdana;
+}
+
+p.footer {
+    font-size: 8pt;
+    font-family: verdana;
 }
 
 div.top {

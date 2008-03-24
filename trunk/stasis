@@ -33,6 +33,7 @@ use Stasis::ClassGuess;
 use Stasis::Extension;
 use Stasis::ActorPage;
 use Stasis::ChartPage;
+use Stasis::PageMaker;
 use File::Find qw();
 use File::Path qw();
 use File::Spec qw();
@@ -62,9 +63,17 @@ sub bomb($) {
 sub status($) {
     my $msg = shift;
     my $prog = $0;
-    $msg =~ s/^/$prog: /gm;
+    
+    if( $msg !~ /^[a-z]/ ) {
+        $msg =~ s/^/$prog: /gm;
+    }
+    
     chomp $msg;
-    print STDERR $msg . "\n";
+    if( $msg =~ /\.\.\s*$/ ) {
+        print STDERR $msg;
+    } else {
+        print STDERR $msg . "\n";
+    }
 }
 
 # For File::Find later
@@ -170,15 +179,30 @@ if( $action eq "print" ) {
     close STDIN;
     
     # Assign classes to %raid
-    status "Assigning classes and pets.";
+    status "Assigning classes and pets .. ";
     my $classer = Stasis::ClassGuess->new( hintsfile => $opt_hintsfile );
     $classer->read_hints() if $opt_hintsfile;
     my %raid = $classer->guess(\@log);
     
+    # Count them so the user can see what's up.
+    my $n_players = 0;
+    my $n_pets = 0;
+    while( my ($rid, $rdata) = each(%raid) ) {
+        if( $rdata->{class} ne "Pet" ) {
+            $n_players ++;
+        } else {
+            $n_pets ++;
+        }
+    }
+    
+    status "found $n_players player" . ($n_players == 1 ? "" : "s") . " and $n_pets pet" . ($n_pets == 1 ? "" : "s") . ".";
+    
     # Split the log to %splits
-    status "Splitting out boss attempts.";
-    my $splitter = Stasis::LogSplit->new( attempts => $opt_attempts );
+    status "Splitting out boss attempts .. ";
+    my $splitter = Stasis::LogSplit->new;
     my %splits = $splitter->split(\@log);
+    
+    status "found " . scalar(keys %splits) . " boss encounter" . (scalar(keys %splits) == 1 ? "" : "s") . ".";
     
     # Compute statistics.
     my @ext_names = qw(Activity Damage Death Healing Aura Cast ExtraAttack Interrupt Power Presence Index);
@@ -191,6 +215,12 @@ if( $action eq "print" ) {
         # Check minlength option.
         if( $opt_minlength && $split->{end} - $split->{start} < $opt_minlength ) {
             status sprintf "Skipping: %s (too short).", $boss, $split->{end} - $split->{start};
+            next;
+        }
+        
+        # Check attempts option.
+        if( !$opt_attempts && !$split->{kill} ) {
+            status sprintf "Skipping: %s (not a kill).", $boss, $split->{end} - $split->{start};
             next;
         }
         
@@ -235,7 +265,7 @@ if( $action eq "print" ) {
                 my $ap = Stasis::ActorPage->new( name => $boss, raid => \%raid, ext => \%exts );
                 foreach my $actor (keys %{$exts{Presence}{actors}}) {
                     my $id = lc $actor;
-                    $id =~ s/[^\w]/_/g;
+                    $id = Stasis::PageMaker->tameText($id);
 
                     open ACTORPAGE, sprintf ">$dname/actor_%s.html", $id or die;
                     print ACTORPAGE $ap->page($actor);
@@ -269,7 +299,7 @@ if( $action eq "print" ) {
     
     # Split the log to %splits
     status "Splitting out boss attempts.";
-    my $splitter = Stasis::LogSplit->new( attempts => $opt_attempts );
+    my $splitter = Stasis::LogSplit->new;
     my %splits = $splitter->split(\@log);
     
     while( my ($boss, $split) = each(%splits) ) {

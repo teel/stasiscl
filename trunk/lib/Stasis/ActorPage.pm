@@ -26,6 +26,7 @@ package Stasis::ActorPage;
 use strict;
 use warnings;
 use POSIX;
+use HTML::Entities;
 use Stasis::PageMaker;
 
 sub new {
@@ -147,7 +148,7 @@ sub page {
     ###############
     
     $PAGE .= $pm->pageHeader($self->{name}, $raidStart);
-    $PAGE .= sprintf "<h3 style=\"color: #%s\">%s</h3>", $pm->classColor( $self->{raid}{$PLAYER}{class} ), $self->{ext}{Index}->actorname($PLAYER);
+    $PAGE .= sprintf "<h3 style=\"color: #%s\">%s</h3>", $pm->classColor( $self->{raid}{$PLAYER}{class} ), HTML::Entities::encode_entities($self->{ext}{Index}->actorname($PLAYER));
     
     my $ptime = $self->{ext}{Presence}{actors}{$PLAYER}{end} - $self->{ext}{Presence}{actors}{$PLAYER}{start};
     my $presence_text = sprintf( "Presence: %02d:%02d", $ptime/60, $ptime%60 );
@@ -193,7 +194,7 @@ sub page {
         foreach my $spellkey (@spellsort) {
             # $id is for javascript
             my $id = lc $spellkey;
-            $id =~ s/[^\w]/_/g;
+            $id = Stasis::PageMaker->tameText($id);
         
             # $sdata is totals for the overall spell
             my $sdata;
@@ -284,7 +285,7 @@ sub page {
         $PAGE .= $pm->tableHeader(@healingHeader);
         foreach my $spellname (@spellnames) {
             my $id = lc $spellname;
-            $id =~ s/[^\w]/_/g;
+            $id = Stasis::PageMaker->tameText($id);
     
             my $sdata;
             $sdata = $healing_spell{$spellname};
@@ -353,7 +354,7 @@ sub page {
         # Loop through all deaths.
         foreach my $death (@{$self->{ext}{Death}{actors}{$PLAYER}}) {
             my $id = $death->{t};
-            $id =~ s/[^\w]/_/g;
+            $id = Stasis::PageMaker->tameText($id);
 
             # Get the last line of the autopsy.
             my $lastline = pop @{$death->{autopsy}};
@@ -413,7 +414,7 @@ sub page {
         $PAGE .= $pm->tableHeader(@castHeader);
         foreach my $spellid (keys %{$self->{ext}{Cast}{actors}{$PLAYER}}) {
             my $id = lc $spellid;
-            $id =~ s/[^\w]/_/g;
+            $id = Stasis::PageMaker->tameText($id);
             
             # Get a count of total casts.
             my $total_casts = 0;
@@ -466,7 +467,7 @@ sub page {
         $PAGE .= $pm->tableHeader(@powerHeader);
         foreach my $powerid (@powersort) {
             my $id = lc $powerid;
-            $id =~ s/[^\w]/_/g;
+            $id = Stasis::PageMaker->tameText($id);
 
             my $sdata;
             $sdata = $powtot{$powerid};
@@ -517,7 +518,7 @@ sub page {
         $PAGE .= $pm->tableHeader(@powerHeader) unless exists $self->{ext}{Power}{actors}{$PLAYER};
         foreach my $powerid (@powersort) {
             my $id = lc $powerid;
-            $id =~ s/[^\w]/_/g;
+            $id = Stasis::PageMaker->tameText($id);
 
             my $sdata;
             $sdata = $powtot{$powerid};
@@ -558,7 +559,7 @@ sub page {
         $PAGE .= $pm->tableHeader(@auraHeader);
         foreach my $auraid (@aurasort) {
             my $id = lc $auraid;
-            $id =~ s/[^\w]/_/g;
+            $id = Stasis::PageMaker->tameText($id);
 
             my $sdata;
             $sdata = $self->{ext}{Aura}{actors}{$PLAYER}{$auraid};
@@ -604,7 +605,7 @@ sub page {
         
         foreach my $targetid (@targetsort) {
             my $id = lc $targetid;
-            $id =~ s/[^\w]/_/g;
+            $id = Stasis::PageMaker->tameText($id);
             
             my $sdata = $damage_target{$targetid};
             my $dpstime_target = $self->{ext}{Activity}{actors}{$PLAYER}{targets}{$targetid}{time};
@@ -694,7 +695,7 @@ sub page {
 
             foreach my $sourceid (@sources) {
                 my $id = lc $sourceid;
-                $id =~ s/[^\w]/_/g;
+                $id = Stasis::PageMaker->tameText($id);
 
                 my $source_ptime = $sourceid && $self->{ext}{Presence}{actors}{$sourceid}{end} - $self->{ext}{Presence}{actors}{$sourceid}{start};
                 my $dpstime_target = $self->{ext}{Activity}{actors}{$sourceid}{targets}{$PLAYER}{time};
@@ -771,7 +772,7 @@ sub page {
             $PAGE .= $pm->tableHeader(@header);
             foreach my $targetid (@targets) {
                 my $id = lc $targetid;
-                $id =~ s/[^\w]/_/g;
+                $id = Stasis::PageMaker->tameText($id);
                 
                 $PAGE .= $pm->tableRow( 
                     header => \@header,
@@ -857,7 +858,7 @@ sub page {
             $PAGE .= $pm->tableHeader(@header);
             foreach my $sourceid (@sources) {
                 my $id = lc $sourceid;
-                $id =~ s/[^\w]/_/g;
+                $id = Stasis::PageMaker->tameText($id);
                 
                 $PAGE .= $pm->tableRow( 
                     header => \@header,

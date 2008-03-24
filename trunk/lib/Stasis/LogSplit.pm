@@ -420,8 +420,6 @@ sub new {
     my $class = shift;
     my %params = @_;
     
-    $params{attempts} ||= 0;
-    
     bless \%params, $class;
 }
 
@@ -453,7 +451,7 @@ sub split {
                     $scratch{$boss}{attempt} ++;
                     
                     my $splitname = $boss . " try " . $scratch{$boss}{attempt};
-                    $splits{$splitname} = { start => $scratch{$boss}{start}, end => $scratch{$boss}{end}, startLine => $scratch{$boss}{startLine}, endLine => $scratch{$boss}{endLine} } if $self->{attempts} && $scratch{$boss}{end} && $scratch{$boss}{start} && $scratch{$boss}{end} - $scratch{$boss}{start} > 0;
+                    $splits{$splitname} = { start => $scratch{$boss}{start}, end => $scratch{$boss}{end}, startLine => $scratch{$boss}{startLine}, endLine => $scratch{$boss}{endLine}, kill => 0 } if $scratch{$boss}{end} && $scratch{$boss}{start} && $scratch{$boss}{end} - $scratch{$boss}{start} > 0;
                     
                     # Reset the start/end times for this fingerprint.
                     $scratch{$boss}{start} = 0;
@@ -498,7 +496,7 @@ sub split {
                     
                     # End it if we decided to.
                     if( $shouldEnd ) {
-                        $splits{$boss} = { start => $scratch{$boss}{start}, end => $scratch{$boss}{end}, startLine => $scratch{$boss}{startLine}, endLine => $scratch{$boss}{endLine} };
+                        $splits{$boss} = { start => $scratch{$boss}{start}, end => $scratch{$boss}{end}, startLine => $scratch{$boss}{startLine}, endLine => $scratch{$boss}{endLine}, kill => 1 };
 
                         # Reset the start/end times for this print.
                         $scratch{$boss}{start} = 0;
@@ -525,19 +523,17 @@ sub split {
     }
     
     # End of the log file -- close up any open bosses.
-    if( $self->{attempts} ) {
-        while( my ($boss, $print) = each (%fingerprints) ) {
-            if( $scratch{$boss}{start} ) {
-                # Increment the attempt count.
-                $scratch{$boss}{attempt} ||= 0;
-                $scratch{$boss}{attempt} ++;
-                
-                # Record the attempt.
-                my $splitname = $boss . " try " . $scratch{$boss}{attempt};
-                
-                if( $scratch{$boss}{end} && $scratch{$boss}{start} && $scratch{$boss}{end} - $scratch{$boss}{start} > 0 ) {
-                    $splits{$splitname} = { start => $scratch{$boss}{start}, end => $scratch{$boss}{end}, startLine => $scratch{$boss}{startLine}, endLine => $scratch{$boss}{endLine} };
-                }
+    while( my ($boss, $print) = each (%fingerprints) ) {
+        if( $scratch{$boss}{start} ) {
+            # Increment the attempt count.
+            $scratch{$boss}{attempt} ||= 0;
+            $scratch{$boss}{attempt} ++;
+            
+            # Record the attempt.
+            my $splitname = $boss . " try " . $scratch{$boss}{attempt};
+            
+            if( $scratch{$boss}{end} && $scratch{$boss}{start} && $scratch{$boss}{end} - $scratch{$boss}{start} > 0 ) {
+                $splits{$splitname} = { start => $scratch{$boss}{start}, end => $scratch{$boss}{end}, startLine => $scratch{$boss}{startLine}, endLine => $scratch{$boss}{endLine}, kill => 0 };
             }
         }
     }

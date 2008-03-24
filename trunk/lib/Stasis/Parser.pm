@@ -104,7 +104,7 @@ sub new {
     my %params = @_;
     
     $params{logger} ||= "You";
-    $params{version} = 1 if $params{version} != 2;
+    $params{version} = 2 if !$params{version} || $params{version} != 1;
     $params{csv} = Text::CSV_XS->new({ binary => 1, eol => $/ });
     
     bless \%params, $class;
