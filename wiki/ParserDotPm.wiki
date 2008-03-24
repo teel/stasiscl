@@ -26,6 +26,8 @@ The one exception to this is that for power drains and gains, instead of storing
 ==Sample code==
 
 {{{
+use Stasis::Parser;
+
 # This prints out a human-readable version of a 2.4 log supplied over STDIN
 my $parser = Stasis::Parser->new( version => 2 );
 
