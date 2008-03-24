@@ -155,7 +155,11 @@ END
 
 # pageFooter()
 sub pageFooter {
+    my $self = shift;
+    my $timestr = asctime localtime;
+    
     return <<END;
+<p class="footer">Generated on $timestr</p>
 </div>
 </body>
 </html>
@@ -192,7 +196,7 @@ sub tameText {
     my $tamed = HTML::Entities::encode_entities(lc $text);
     $tamed =~ s/[^\w]/_/g;
     
-    return $tamed
+    return $tamed;
 }
 
 sub actorLink {
