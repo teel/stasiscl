@@ -1,8 +1,8 @@
-#summary Instructions to get you going on a Unix-like system (sorry Windows)
+#summary Instructions to get you going on a Unix-like system
 
-These instructions are heavily biased towards Unix-like systems, since I'm writing them on a Mac. I have heard reports that the code does work on Windows using [http://www.activestate.com/Products/activeperl/ ActiveState's Perl distribution] and the same general idea of the commands listed below, although the exact text you type will probably be slightly different. You may need to omit the "`./`" before the `stasis` commands and use backslashes instead of forward slashes, I'm not exactly sure since I have not done it personally. That being said here are the instructions for Unix-like systems:
+I wrote these instructions on a mostly stock Mac (the only significant modification is that I installed Xcode, which I think is where subversion came from) but they should apply to any Unix-like system assuming you have subversion and perl installed. If you're on Windows try the QuickStartWindows instructions instead.
 
-  * First you need to download the latest version of the code. There is no real release cycle at this time so you are stuck using the subversion trunk at `http://stasiscl.googlecode.com/svn/trunk/`. If you don't know how then your best shot is to open up a terminal and do the following (on a Mac this may require you to have the developer tools installed, which should have shipped with your computer or with the OS):
+  * First you need to download the latest version of the code. There is no real release cycle at this time so you are stuck using the subversion trunk at `http://stasiscl.googlecode.com/svn/trunk/`. If you don't know how then your best shot is to open up a terminal and do the following:
 
 {{{
 svn checkout http://stasiscl.googlecode.com/svn/trunk/ stasiscl
@@ -35,3 +35,5 @@ cd stasiscl
   * You can now upload the contents of your folder (`/home/jqpublic/sws`) to a web server or open the various `index.html` on your local machine.
 
   * If at some point you wish to re-run the log file (new version of the program maybe) then you need only to run the same `stasis add` command again. It will remove the old directories and write out new ones. At some point there will probably be a way to do this automatically but for now it must be done manually.
+
+  * If you wish to remove a parse, just remove the directory `sws-XXXXX` and re-run `./stasis history` command with the appropriate `-dir` option.
