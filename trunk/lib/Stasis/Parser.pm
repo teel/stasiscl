@@ -1198,7 +1198,7 @@ sub parse {
         } elsif( $result{action} eq "UNIT_DIED" || $result{action} eq "PARTY_KILL" ) {
             $result{extra} = {};
         } else {
-            $result{action} = "";
+            # Unrecognized action
             $result{extra} = {};
         }
     }
