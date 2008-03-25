@@ -26,7 +26,7 @@ perl stasis add -dir C:\stasiscl\www -ver 2 -attempt < C:\path\to\log\file
   * If you chose to create an index, when you are done adding logs you should run the following command, which will generate a data.xml inside the wws-history folder you made earlier:
 
 {{{
-perl stasis history -dir www
+perl stasis history -dir C:\stasiscl\www
 }}}
 
   * You can now upload the contents of your folder (`C:\stasiscl\www`) to a web server or open the various `index.html` on your local machine.
