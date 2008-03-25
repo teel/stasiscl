@@ -4,7 +4,7 @@ I don't have access to a Windows machine for testing, but these instructions are
 
   * First you need to download the latest version of the code. There is no real release cycle at this time so you are stuck using the subversion trunk at `http://stasiscl.googlecode.com/svn/trunk/`. If you aren't sure how to do this, try [http://tortoisesvn.net/downloads TortoiseSVN] (external link). I'm not sure how to tell TortoiseSVN to update the code from the repository when it changes, but hopefully you can figure it out.
 
-  * Windows does not come with Perl, so you will need to get a Perl distribution if you do not already have one. Try [http://www.activestate.com/Products/activeperl/ ActivePerl] if you don't have a personal favorite. You may need to install some modules if you don't have all the ones on the front page's list. If so then use the program *Perl Package Manager*.
+  * Windows does not come with Perl, so you will need to get a Perl distribution if you do not already have one. Try [http://www.activestate.com/Products/activeperl/ ActivePerl] if you don't have a personal favorite. You may need to install some modules if you don't have all the ones on the front page's list. If so then use the program "Perl Package Manager".
 
   * Create a directory on your machine that you would like to store your guild's web stats in. For purposes of the quick start I will use `C:\stasiscil\www`. Once this is done you must copy the directory `extras` from the subversion trunk into the directory you just made. This should contain a `.js` and a `.css` file which are necessary for proper display.
 
