@@ -339,11 +339,8 @@ sub process {
     # Skip entries with no action.
     return unless $entry && $entry->{action};
     
-    # Skip "Unknown"
+    # Skip "Unknown" and Environment
     return if( $entry->{actor_name} eq "Unknown" || $entry->{target_name} eq "Unknown" );
-    
-    # If this person is in our raid then record that.
-    
     
     # Check damage.
     if( ($entry->{action} eq "SPELL_MISS" || $entry->{action} eq "SPELL_DAMAGE" || $entry->{action} eq "SPELL_PERIODIC_MISS" || $entry->{action} eq "SPELL_PERIODIC_DAMAGE") && $entry->{actor_name} =~ /$rxplayer/ ) {
@@ -395,6 +392,9 @@ sub process {
     
     # Check things that signify pet <=> owner relationships.
     
+    # Skip unless actor and target are both set.
+    return unless $entry->{actor} && $entry->{target};
+    
     # Mend Pet
     if( $entry->{action} eq "SPELL_PERIODIC_HEAL" && $entry->{extra}{spellname} eq "Mend Pet" ) {
         $self->{scratch}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
@@ -441,8 +441,8 @@ sub finish {
     
     # Prepare the final results for each actor.
     while( my ($aname, $adata) = each(%{$self->{scratch}}) ) {
-        # Skip this bit if the actor has no guessed classes.
-        next unless $adata->{class};
+        # Skip this bit if the actor has no guessed classes or proper ID.
+        next unless $adata->{class} && $aname;
         
         # Check if we should assign a class.
         my %matches;
