@@ -420,125 +420,123 @@ sub new {
     my $class = shift;
     my %params = @_;
     
+    $params{scratch} = {};
+    $params{splits} = {};
+    $params{nlog} = -1;
+    
     bless \%params, $class;
 }
 
-# split
-sub split {
+sub process {
     my $self = shift;
-    my $arrayref = shift;
+    my $entry = shift;
     
-    # Splits will be stored in this hash (start/end/name)
-    my %splits;
+    $self->{nlog} ++;
+    return unless $entry->{action};
     
-    # Scratch work hash.
-    my %scratch;
-    
-    my $nlog = -1;
-    foreach my $entry (@{$arrayref}) {
-        $nlog ++;
-        next unless $entry->{action};
-        
-        # Continuously test for all fingerprints.
-        while( my ($boss, $print) = each (%fingerprints) ) {
-            # If we are currently in an encounter with this boss then see what we should do.
-            if( $scratch{$boss}{start} ) {
-                if( $entry->{t} > $scratch{$boss}{end} + $print->{timeout} ) {
-                    # This fingerprint timed out without ending.
-                    # Record it as an attempt, but disallow zero-length splits.
-                    
-                    $scratch{$boss}{attempt} ||= 0;
-                    $scratch{$boss}{attempt} ++;
-                    
-                    my $splitname = $boss . " try " . $scratch{$boss}{attempt};
-                    $splits{$splitname} = { start => $scratch{$boss}{start}, end => $scratch{$boss}{end}, startLine => $scratch{$boss}{startLine}, endLine => $scratch{$boss}{endLine}, kill => 0 } if $scratch{$boss}{end} && $scratch{$boss}{start} && $scratch{$boss}{end} - $scratch{$boss}{start} > 0;
-                    
-                    # Reset the start/end times for this fingerprint.
-                    $scratch{$boss}{start} = 0;
-                    $scratch{$boss}{end} = 0;
-                    
-                    # Maybe this is the start of a new encounter with this boss.
-                    my $shouldStart;
-                    foreach my $mobStart (@{ $print->{mobStart} }) {
-                        if( (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) && ($entry->{actor_name} eq $mobStart || $entry->{target_name} eq $mobStart) ) {
-                            $shouldStart ++;
-                        }
-                    }
-
-                    if( $shouldStart ) {
-                        $scratch{$boss}{start} = $entry->{t};
-                        $scratch{$boss}{end} = $entry->{t};
-                        $scratch{$boss}{startLine} = $nlog;
-                        $scratch{$boss}{endLine} = $nlog;
-                    }
-                } else {
-                    # This fingerprint hasn't yet timed out. Possibly continue it.
-                    my $shouldContinue;
-                    foreach my $mobContinue (@{ $print->{mobContinue} }) {
-                        if( $entry->{actor_name} eq $mobContinue || $entry->{target_name} eq $mobContinue ) {
-                            $shouldContinue ++;
-                        }
-                    }
-                    
-                    # Continue it if we decided to.
-                    if( $shouldContinue ) {
-                        $scratch{$boss}{end} = $entry->{t};
-                        $scratch{$boss}{endLine} = $nlog;
-                    }
-                    
-                    # Also possibly end it.
-                    my $shouldEnd;
-                    foreach my $mobEnd (@{ $print->{mobEnd} }) {
-                        if( $entry->{action} eq "UNIT_DIED" && $entry->{target_name} eq $mobEnd ) {
-                            $shouldEnd ++;
-                        }
-                    }
-                    
-                    # End it if we decided to.
-                    if( $shouldEnd ) {
-                        $splits{$boss} = { start => $scratch{$boss}{start}, end => $scratch{$boss}{end}, startLine => $scratch{$boss}{startLine}, endLine => $scratch{$boss}{endLine}, kill => 1 };
-
-                        # Reset the start/end times for this print.
-                        $scratch{$boss}{start} = 0;
-                        $scratch{$boss}{end} = 0;
-                    }
-                }
-            } else {
-                # We aren't currently in an encounter with this boss. Maybe we should start one.
+    # Continuously test for all fingerprints.
+    while( my ($boss, $print) = each (%fingerprints) ) {
+        # If we are currently in an encounter with this boss then see what we should do.
+        if( $self->{scratch}{$boss}{start} ) {
+            if( $entry->{t} > $self->{scratch}{$boss}{end} + $print->{timeout} ) {
+                # This fingerprint timed out without ending.
+                # Record it as an attempt, but disallow zero-length splits.
+                
+                $self->{scratch}{$boss}{attempt} ||= 0;
+                $self->{scratch}{$boss}{attempt} ++;
+                
+                my $splitname = $boss . " try " . $self->{scratch}{$boss}{attempt};
+                $self->{splits}{$splitname} = { start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 0 } if $self->{scratch}{$boss}{end} && $self->{scratch}{$boss}{start} && $self->{scratch}{$boss}{end} - $self->{scratch}{$boss}{start} > 0;
+                
+                # Reset the start/end times for this fingerprint.
+                $self->{scratch}{$boss}{start} = 0;
+                $self->{scratch}{$boss}{end} = 0;
+                
+                # Maybe this is the start of a new encounter with this boss.
                 my $shouldStart;
                 foreach my $mobStart (@{ $print->{mobStart} }) {
-                    if( ($entry->{actor_name} eq $mobStart || $entry->{target_name} eq $mobStart) && (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) ) {
+                    if( (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) && ($entry->{actor_name} eq $mobStart || $entry->{target_name} eq $mobStart) ) {
                         $shouldStart ++;
                     }
                 }
-                
+
                 if( $shouldStart ) {
-                    $scratch{$boss}{start} = $entry->{t};
-                    $scratch{$boss}{end} = $entry->{t};
-                    $scratch{$boss}{startLine} = $nlog;
-                    $scratch{$boss}{endLine} = $nlog;
+                    $self->{scratch}{$boss}{start} = $entry->{t};
+                    $self->{scratch}{$boss}{end} = $entry->{t};
+                    $self->{scratch}{$boss}{startLine} = $self->{nlog};
+                    $self->{scratch}{$boss}{endLine} = $self->{nlog};
                 }
+            } else {
+                # This fingerprint hasn't yet timed out. Possibly continue it.
+                my $shouldContinue;
+                foreach my $mobContinue (@{ $print->{mobContinue} }) {
+                    if( $entry->{actor_name} eq $mobContinue || $entry->{target_name} eq $mobContinue ) {
+                        $shouldContinue ++;
+                    }
+                }
+                
+                # Continue it if we decided to.
+                if( $shouldContinue ) {
+                    $self->{scratch}{$boss}{end} = $entry->{t};
+                    $self->{scratch}{$boss}{endLine} = $self->{nlog};
+                }
+                
+                # Also possibly end it.
+                my $shouldEnd;
+                foreach my $mobEnd (@{ $print->{mobEnd} }) {
+                    if( $entry->{action} eq "UNIT_DIED" && $entry->{target_name} eq $mobEnd ) {
+                        $shouldEnd ++;
+                    }
+                }
+                
+                # End it if we decided to.
+                if( $shouldEnd ) {
+                    $self->{splits}{$boss} = { start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 1 };
+
+                    # Reset the start/end times for this print.
+                    $self->{scratch}{$boss}{start} = 0;
+                    $self->{scratch}{$boss}{end} = 0;
+                }
+            }
+        } else {
+            # We aren't currently in an encounter with this boss. Maybe we should start one.
+            my $shouldStart;
+            foreach my $mobStart (@{ $print->{mobStart} }) {
+                if( ($entry->{actor_name} eq $mobStart || $entry->{target_name} eq $mobStart) && (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) ) {
+                    $shouldStart ++;
+                }
+            }
+            
+            if( $shouldStart ) {
+                $self->{scratch}{$boss}{start} = $entry->{t};
+                $self->{scratch}{$boss}{end} = $entry->{t};
+                $self->{scratch}{$boss}{startLine} = $self->{nlog};
+                $self->{scratch}{$boss}{endLine} = $self->{nlog};
             }
         }
     }
+}
+
+sub finish {
+    my $self = shift;
     
     # End of the log file -- close up any open bosses.
     while( my ($boss, $print) = each (%fingerprints) ) {
-        if( $scratch{$boss}{start} ) {
+        if( $self->{scratch}{$boss}{start} ) {
             # Increment the attempt count.
-            $scratch{$boss}{attempt} ||= 0;
-            $scratch{$boss}{attempt} ++;
+            $self->{scratch}{$boss}{attempt} ||= 0;
+            $self->{scratch}{$boss}{attempt} ++;
             
             # Record the attempt.
-            my $splitname = $boss . " try " . $scratch{$boss}{attempt};
+            my $splitname = $boss . " try " . $self->{scratch}{$boss}{attempt};
             
-            if( $scratch{$boss}{end} && $scratch{$boss}{start} && $scratch{$boss}{end} - $scratch{$boss}{start} > 0 ) {
-                $splits{$splitname} = { start => $scratch{$boss}{start}, end => $scratch{$boss}{end}, startLine => $scratch{$boss}{startLine}, endLine => $scratch{$boss}{endLine}, kill => 0 };
+            if( $self->{scratch}{$boss}{end} && $self->{scratch}{$boss}{start} && $self->{scratch}{$boss}{end} - $self->{scratch}{$boss}{start} > 0 ) {
+                $self->{splits}{$splitname} = { start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 0 };
             }
         }
     }
     
-    return %splits;
+    return %{$self->{splits}};
 }
 
 1;

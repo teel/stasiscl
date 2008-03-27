@@ -869,6 +869,9 @@ sub parse {
         # Split the action and rewrite "nil" as undef
         chomp $line;
         
+        # Need a fix for lines like this
+        # 3/25 20:41:58.172  SPELL_CAST_SUCCESS,0x00000000016B2F6D,"Bune",0x518,0xF130004D080028A0,""Dirty" Larry",0xa28,14287,"Arcane Shot",0x40
+        
         my @col;
         $self->{csv}->parse($line);
         @col = $self->{csv}->fields();

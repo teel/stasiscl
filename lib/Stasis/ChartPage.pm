@@ -138,7 +138,7 @@ sub page {
     }
     
     # Raid DPS
-    my $raidDPS = $raidDamage / $raidPresence;
+    my $raidDPS = $raidPresence && ($raidDamage / $raidPresence);
     
     ####################
     # PRINT TOP HEADER #
@@ -173,7 +173,7 @@ sub page {
         $raiderDamage{$b} <=> $raiderDamage{$a} || $a cmp $b
     } keys %raiderDamage;
     
-    my $mostdmg = $raiderDamage{ $damagesort[0] };
+    my $mostdmg = keys %raiderDamage && $raiderDamage{ $damagesort[0] };
     
     foreach my $actor (@damagesort) {
         my $ptime = $self->{ext}{Presence}{actors}{$actor}{end} - $self->{ext}{Presence}{actors}{$actor}{start};
@@ -218,7 +218,7 @@ sub page {
         $raiderHealing{$b} <=> $raiderHealing{$a} || $a cmp $b
     } keys %raiderHealing;
     
-    my $mostheal = $raiderHealing{ $healsort[0] };
+    my $mostheal = keys %raiderHealing && $raiderHealing{ $healsort[0] };
     
     foreach my $actor (@healsort) {
         my $ptime = $self->{ext}{Presence}{actors}{$actor}{end} - $self->{ext}{Presence}{actors}{$actor}{start};
