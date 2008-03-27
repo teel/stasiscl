@@ -323,120 +323,120 @@ sub new {
     $params{hintsfile} ||= "";
     $params{version} = 2 if !$params{version} || $params{version} != 1;
     $params{hints} ||= {};
+    $params{scratch} = {};
     
     bless \%params, $class;
 }
 
-sub guess {
+sub process {
     my $self = shift;
-    my $arrayref = shift;
+    my $entry = shift;
+    
+    # Player names look like this (no whitespace).
+    my $rxplayer = '^[^\s]+$';
+    
+    # Skip entries with no action.
+    return unless $entry && $entry->{action};
+    
+    # Skip "Unknown"
+    return if( $entry->{actor_name} eq "Unknown" || $entry->{target_name} eq "Unknown" );
+    
+    # Check damage.
+    if( ($entry->{action} eq "SPELL_MISS" || $entry->{action} eq "SPELL_DAMAGE" || $entry->{action} eq "SPELL_PERIODIC_MISS" || $entry->{action} eq "SPELL_PERIODIC_DAMAGE") && $entry->{actor_name} =~ /$rxplayer/ ) {
+        # For each class profile...
+        while( my($cname, $cdata) = each(%profiles) ) {
+            # Check if this damage matches...
+            if( grep $_ eq $entry->{extra}{spellname}, @{$cdata->{damage}} ) {
+                # And record if it does.
+                $self->{scratch}{ $entry->{actor} }{class}{ $cname }{damage}{ $entry->{extra}{spellname} } ++;
+            }
+        }
+    }
+    
+    # Check heals.
+    if( ($entry->{action} eq "SPELL_HEAL" || $entry->{action} eq "SPELL_PERIODIC_HEAL") && $entry->{actor_name} =~ /$rxplayer/ ) {
+        # For each class profile...
+        while( my($cname, $cdata) = each(%profiles) ) {
+            # Check if this heal matches...
+            if( grep $_ eq $entry->{extra}{spellname}, @{$cdata->{healing}} ) {
+                # And record if it does.
+                $self->{scratch}{ $entry->{actor} }{class}{ $cname }{healing}{ $entry->{extra}{spellname} } ++;
+            }
+        }
+    }
+    
+    # Check casts.
+    if( $entry->{action} eq "SPELL_CAST_SUCCESS" && $entry->{actor_name} =~ /$rxplayer/ ) {
+        # For each class profile...
+        while( my($cname, $cdata) = each(%profiles) ) {
+            # Check if this cast matches...
+            if( grep $_ eq $entry->{extra}{spellname}, @{$cdata->{casts}} ) {
+                # And record if it does.
+                $self->{scratch}{ $entry->{actor} }{class}{ $cname }{casts}{ $entry->{extra}{spellname} } ++;
+            }
+        }
+    }
+    
+    # Check auras.
+    if( $entry->{action} eq "SPELL_AURA_APPLIED" && $entry->{target_name} =~ /$rxplayer/ ) {
+        # For each class profile...
+        while( my($cname, $cdata) = each(%profiles) ) {
+            # Check if this aura matches...
+            if( grep $_ eq $entry->{extra}{spellname}, @{$cdata->{auras}} ) {
+                # And record if it does.
+                $self->{scratch}{ $entry->{target} }{class}{ $cname }{auras}{ $entry->{extra}{spellname} } ++;
+            }
+        }
+    }
+    
+    # Check things that signify pet <=> owner relationships.
+    
+    # Mend Pet
+    if( $entry->{action} eq "SPELL_PERIODIC_HEAL" && $entry->{extra}{spellname} eq "Mend Pet" ) {
+        $self->{scratch}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
+    }
+    
+    # Spirit Bond
+    if( $entry->{action} eq "SPELL_PERIODIC_HEAL" && $entry->{extra}{spellname} eq "Spirit Bond" ) {
+        $self->{scratch}{ $entry->{target} }{pets}{ $entry->{actor} } ++ if $entry->{target} ne $entry->{actor};
+    }
+    
+    # Feed Pet Effect
+    if( $entry->{action} =~ /^SPELL(_PERIODIC|)_ENERGIZE$/ && $entry->{extra}{spellname} eq "Feed Pet Effect" ) {
+        $self->{scratch}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
+    }
+    
+    # Go for the Throat
+    if( $entry->{action} =~ /^SPELL(_PERIODIC|)_ENERGIZE$/ && $entry->{extra}{spellname} eq "Go for the Throat" ) {
+        $self->{scratch}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
+    }
+    
+    # Improved Mend Pet
+    if( $entry->{action} eq "SPELL_CAST_SUCCESS" && $entry->{extra}{spellname} eq "Improved Mend Pet" ) {
+        $self->{scratch}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
+    }
+    
+    # Dark Pact
+    if( $entry->{action} =~ /^SPELL(_PERIODIC|)_ENERGIZE$/ && $entry->{extra}{spellname} eq "Dark Pact" ) {
+        $self->{scratch}{ $entry->{target} }{pets}{ $entry->{actor} } ++ if $entry->{target} ne $entry->{actor};
+    }
+    
+    # Demonic Sacrifice
+    if( $entry->{action} eq "SPELL_CAST_SUCCESS" && $entry->{extra}{spellname} eq "Demonic Sacrifice" ) {
+        $self->{scratch}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
+    }
+}
+
+sub finish {
+    my $self = shift;
     
     # We will eventually return this list of raid members.
     # Keys will be raid member IDs and values will be two element hashes
     # Each hash will have at least two keys: "class" (a string) and "pets" (an array of pet IDs)
     my %raid;
     
-    # Scratchpad for storing class matches per-actor.
-    my %scratch;
-    
-    # Player names look like this (no whitespace).
-    my $rxplayer = '^[^\s]+$';
-    
-    foreach my $entry (@{$arrayref}) {
-        # Skip entries with no action.
-        next unless $entry->{action};
-        
-        # Skip "Unknown"
-        next if( $entry->{actor_name} eq "Unknown" || $entry->{target_name} eq "Unknown" );
-        
-        # Check damage.
-        if( ($entry->{action} eq "SPELL_MISS" || $entry->{action} eq "SPELL_DAMAGE" || $entry->{action} eq "SPELL_PERIODIC_MISS" || $entry->{action} eq "SPELL_PERIODIC_DAMAGE") && $entry->{actor_name} =~ /$rxplayer/ ) {
-            # For each class profile...
-            while( my($cname, $cdata) = each(%profiles) ) {
-                # Check if this damage matches...
-                if( grep $_ eq $entry->{extra}{spellname}, @{$cdata->{damage}} ) {
-                    # And record if it does.
-                    $scratch{ $entry->{actor} }{class}{ $cname }{damage}{ $entry->{extra}{spellname} } ++;
-                }
-            }
-        }
-        
-        # Check heals.
-        if( ($entry->{action} eq "SPELL_HEAL" || $entry->{action} eq "SPELL_PERIODIC_HEAL") && $entry->{actor_name} =~ /$rxplayer/ ) {
-            # For each class profile...
-            while( my($cname, $cdata) = each(%profiles) ) {
-                # Check if this heal matches...
-                if( grep $_ eq $entry->{extra}{spellname}, @{$cdata->{healing}} ) {
-                    # And record if it does.
-                    $scratch{ $entry->{actor} }{class}{ $cname }{healing}{ $entry->{extra}{spellname} } ++;
-                }
-            }
-        }
-        
-        # Check casts.
-        if( $entry->{action} eq "SPELL_CAST_SUCCESS" && $entry->{actor_name} =~ /$rxplayer/ ) {
-            # For each class profile...
-            while( my($cname, $cdata) = each(%profiles) ) {
-                # Check if this cast matches...
-                if( grep $_ eq $entry->{extra}{spellname}, @{$cdata->{casts}} ) {
-                    # And record if it does.
-                    $scratch{ $entry->{actor} }{class}{ $cname }{casts}{ $entry->{extra}{spellname} } ++;
-                }
-            }
-        }
-        
-        # Check auras.
-        if( $entry->{action} eq "SPELL_AURA_APPLIED" && $entry->{target_name} =~ /$rxplayer/ ) {
-            # For each class profile...
-            while( my($cname, $cdata) = each(%profiles) ) {
-                # Check if this aura matches...
-                if( grep $_ eq $entry->{extra}{spellname}, @{$cdata->{auras}} ) {
-                    # And record if it does.
-                    $scratch{ $entry->{target} }{class}{ $cname }{auras}{ $entry->{extra}{spellname} } ++;
-                }
-            }
-        }
-        
-        # Check things that signify pet <=> owner relationships.
-        
-        # Mend Pet
-        if( $entry->{action} eq "SPELL_PERIODIC_HEAL" && $entry->{extra}{spellname} eq "Mend Pet" ) {
-            $scratch{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
-        }
-        
-        # Spirit Bond
-        if( $entry->{action} eq "SPELL_PERIODIC_HEAL" && $entry->{extra}{spellname} eq "Spirit Bond" ) {
-            $scratch{ $entry->{target} }{pets}{ $entry->{actor} } ++ if $entry->{target} ne $entry->{actor};
-        }
-        
-        # Feed Pet Effect
-        if( $entry->{action} =~ /^SPELL(_PERIODIC|)_ENERGIZE$/ && $entry->{extra}{spellname} eq "Feed Pet Effect" ) {
-            $scratch{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
-        }
-        
-        # Go for the Throat
-        if( $entry->{action} =~ /^SPELL(_PERIODIC|)_ENERGIZE$/ && $entry->{extra}{spellname} eq "Go for the Throat" ) {
-            $scratch{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
-        }
-        
-        # Improved Mend Pet
-        if( $entry->{action} eq "SPELL_CAST_SUCCESS" && $entry->{extra}{spellname} eq "Improved Mend Pet" ) {
-            $scratch{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
-        }
-        
-        # Dark Pact
-        if( $entry->{action} =~ /^SPELL(_PERIODIC|)_ENERGIZE$/ && $entry->{extra}{spellname} eq "Dark Pact" ) {
-            $scratch{ $entry->{target} }{pets}{ $entry->{actor} } ++ if $entry->{target} ne $entry->{actor};
-        }
-        
-        # Demonic Sacrifice
-        if( $entry->{action} eq "SPELL_CAST_SUCCESS" && $entry->{extra}{spellname} eq "Demonic Sacrifice" ) {
-            $scratch{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
-        }
-    }
-    
     # Prepare the final results for each actor.
-    while( my ($aname, $adata) = each(%scratch) ) {
+    while( my ($aname, $adata) = each(%{$self->{scratch}}) ) {
         # Skip this bit if the actor has no guessed classes.
         next unless $adata->{class};
         

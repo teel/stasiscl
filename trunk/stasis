@@ -97,12 +97,14 @@ my $opt_dir = ".";
 my $opt_nowrite;
 my $opt_hintsfile;
 my $opt_logger;
+my $opt_file;
 my $opt_attempts;
 
 my $rc = GetOptions(
     "version=s"     => \$opt_version,
     "logger=s"      => \$opt_logger,
     #"hintsfile=s"   => \$opt_hintsfile,
+    "file=s"        => \$opt_file,
     "dir=s"         => \$opt_dir,
     "minlength=i"   => \$opt_minlength,
     "attempts"      => \$opt_attempts,
@@ -121,10 +123,18 @@ my $parser = Stasis::Parser->new( version => $opt_version, logger => $opt_logger
 binmode(STDIN, ":utf8");
 binmode(STDOUT, ":utf8");
 
+# Figure out the filehandle to use.
+my $fh;
+if( $opt_file ) {
+    open $fh, $opt_file or bomb "could not open file: $opt_file";
+} else {
+    $fh = *STDIN;
+}
+
 # Case out the various actions.
 if( $action eq "print" ) {
     # action PRINT: used to print out actions from a log file
-    while( <STDIN> ) {
+    while( <$fh> ) {
         my %entry = $parser->parse($_);
         if( $entry{action} ) {
             my $text = $parser->toString( \%entry );
@@ -137,7 +147,7 @@ if( $action eq "print" ) {
     my $unrecognized = 0;
     my $unprinted = 0;
     
-    while( <STDIN> ) {
+    while( <$fh> ) {
         $actions ++;
         my %entry = $parser->parse($_);
         if( $entry{action} ) {
@@ -168,23 +178,51 @@ if( $action eq "print" ) {
     bomb "not a file: $opt_hintsfile" if( $opt_hintsfile && ! -f $opt_hintsfile && ! -l $opt_hintsfile );
     
     # Read the log file to @log
-    status "Reading log file.";
     my @log;
-    while( <STDIN> ) {
-        my %entry = $parser->parse($_);
-        push @log, \%entry if $entry{action};
+    
+    if( !$opt_file ) {
+        # Old STDIN behavior
+        status "Reading log file from STDIN.";
+        while( <STDIN> ) {
+            my %entry = $parser->parse($_);
+            push @log, \%entry if $entry{action};
+        }
+        
+        # Done with STDIN.
+        close STDIN;
     }
     
-    # Done with STDIN.
-    close STDIN;
+    # Assign classes to %raid and splits to %splits
+    status "Assigning classes and splitting bosses .. ";
     
-    # Assign classes to %raid
-    status "Assigning classes and pets .. ";
-    my $classer = Stasis::ClassGuess->new( hintsfile => $opt_hintsfile );
-    $classer->read_hints() if $opt_hintsfile;
-    my %raid = $classer->guess(\@log);
+    my $classer = Stasis::ClassGuess->new( version => $opt_version, hintsfile => $opt_hintsfile );
+    my $splitter = Stasis::LogSplit->new;
     
-    # Count them so the user can see what's up.
+    if( !$opt_file ) {
+        # Old STDIN behavior
+        
+        foreach my $line (@log) {
+            $classer->process($line);
+            $splitter->process($line);
+        }
+    } else {
+        # -file behavior
+        
+        while( defined( my $line = <$fh> ) ) {
+            my %pline = $parser->parse($line);
+            $classer->process(\%pline);
+            $splitter->process(\%pline);
+        }
+    }
+    
+    my %raid = $classer->finish();
+    my %splits = $splitter->finish();
+    
+    # Remove these tools.
+    undef $classer;
+    undef $splitter;
+    
+    # Count the results so the user can see what's up.
     my $n_players = 0;
     my $n_pets = 0;
     while( my ($rid, $rdata) = each(%raid) ) {
@@ -195,14 +233,10 @@ if( $action eq "print" ) {
         }
     }
     
-    status "found $n_players player" . ($n_players == 1 ? "" : "s") . " and $n_pets pet" . ($n_pets == 1 ? "" : "s") . ".";
-    
-    # Split the log to %splits
-    status "Splitting out boss attempts .. ";
-    my $splitter = Stasis::LogSplit->new;
-    my %splits = $splitter->split(\@log);
-    
-    status "found " . scalar(keys %splits) . " boss encounter" . (scalar(keys %splits) == 1 ? "" : "s") . ".";
+    status 
+            "found $n_players player" . ($n_players == 1 ? "" : "s") . 
+            ", $n_pets pet" . ($n_pets == 1 ? "" : "s") . 
+            ", and " . scalar(keys %splits) . " boss encounter" . (scalar(keys %splits) == 1 ? "" : "s") . ".";
     
     # Compute statistics.
     my @ext_names = qw(Activity Damage Death Healing Aura Cast ExtraAttack Interrupt Power Presence Index);
@@ -234,9 +268,36 @@ if( $action eq "print" ) {
         }
         
         # Process each line.
-        foreach my $entry (@log[$split->{startLine} .. $split->{endLine}]) {
-            foreach my $ext (values %exts) {
-                $ext->process($entry);
+        if( !$opt_file ) {
+            # Old STDIN behavior
+            
+            foreach my $entry (@log[$split->{startLine} .. $split->{endLine}]) {
+                foreach my $ext (values %exts) {
+                    $ext->process($entry);
+                }
+            }
+        } else {
+            # -file behavior
+            
+            # this is still pretty bad but a lot better than STDIN.
+            # really we should do this all on one pass through the file
+            # but at least this way allows for overlapping spans
+            
+            # Rewind the file.
+            seek $fh, 0, 0;
+            
+            # Keep track of what line we're on.
+            my $nlog = -1;
+            
+            while( defined( my $line = <$fh> ) ) {
+                $nlog ++;
+                if( $nlog >= $split->{startLine} && $nlog <= $split->{endLine} ) {
+                    my %pline = $parser->parse($line);
+                    
+                    foreach my $ext (values %exts) {
+                        $ext->process(\%pline);
+                    }
+                }
             }
         }
         
@@ -281,10 +342,19 @@ if( $action eq "print" ) {
             }
         }
     }
+    
+    # Close the file.
+    if( $opt_file ) {
+        close $fh;
+    }
 } elsif( $action eq "rm" ) {
     # Going to output in $opt_dir
     bomb "not a directory: $opt_dir" unless $opt_dir && -d $opt_dir;
     status "Using directory: $opt_dir";
+    
+    if( $opt_file ) {
+        bomb "operation rm does not support -file (yet)";
+    }
     
     # Read the log file to @log
     status "Reading log file.";
