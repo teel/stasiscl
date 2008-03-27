@@ -50,7 +50,7 @@ sub process {
     } elsif( grep $entry->{action} eq $_, qw(ENVIRONMENTAL_DAMAGE SWING_DAMAGE RANGE_DAMAGE SPELL_DAMAGE SPELL_PERIODIC_DAMAGE DAMAGE_SHIELD) ) {
         # If someone is taking damage we need to debit the HP.
         $self->{ohtrack}{ $entry->{target} } -= $entry->{extra}{amount};
-    } elsif( $entry->{action} eq "UNIT_DIED" ) {
+    } elsif( $entry->{action} eq "UNIT_DIED" || $entry->{action} eq "PARTY_KILL" ) {
         # Make a deaths array if it doesn't exist already.
         $self->{actors}{ $entry->{actor} } ||= [];
         
@@ -58,7 +58,7 @@ sub process {
         push @{$self->{actors}{ $entry->{target} }}, {
             "t" => $entry->{t},
             "autopsy" => $self->{dtrack}{ $entry->{target} } || [],
-        };
+        } if ($self->{dtrack}{ $entry->{target} });
         
         # Delete the death tracker log.
         delete $self->{dtrack}{ $entry->{target} };
