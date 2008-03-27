@@ -324,6 +324,7 @@ sub new {
     $params{version} = 2 if !$params{version} || $params{version} != 1;
     $params{hints} ||= {};
     $params{scratch} = {};
+    $params{raidmembers} = {};
     
     bless \%params, $class;
 }
@@ -340,6 +341,9 @@ sub process {
     
     # Skip "Unknown"
     return if( $entry->{actor_name} eq "Unknown" || $entry->{target_name} eq "Unknown" );
+    
+    # If this person is in our raid then record that.
+    
     
     # Check damage.
     if( ($entry->{action} eq "SPELL_MISS" || $entry->{action} eq "SPELL_DAMAGE" || $entry->{action} eq "SPELL_PERIODIC_MISS" || $entry->{action} eq "SPELL_PERIODIC_DAMAGE") && $entry->{actor_name} =~ /$rxplayer/ ) {

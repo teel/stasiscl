@@ -56,14 +56,23 @@ sub tableHeader {
     $result .= "<tr>";
     
     foreach my $col (@_) {
-        my $align = "";
+        my $style_text = "";
         if( $col =~ /^R-/ ) {
-            $align = " style=\"text-align: right\"";
+            $style_text = "text-align: right; ";
+        }
+        
+        if( $col =~ /-W$/ ) {
+            $style_text = "white-space: normal; ";
+        }
+        
+        if( $style_text ) {
+            $style_text = " style=\"${style_text}\"";
         }
         
         my $ncol = $col;
         $ncol =~ s/^R-//;
-        $result .= sprintf "<th${align}>%s</th>", $ncol;
+        $ncol =~ s/-W$//;
+        $result .= sprintf "<th${style_text}>%s</th>", $ncol;
     }
     
     $result .= "</tr>";
@@ -101,8 +110,20 @@ sub tableRow {
         
         my $align = "";
         if( $col =~ /^R-/ ) {
-            $align = " style=\"text-align: right\"";
+            $align = "text-align: right; ";
         }
+        
+        if( $col =~ /-W$/ ) {
+            $align = "white-space: normal; ";
+        }
+        
+        if( $align ) {
+            $align = " style=\"${align}\"";
+        }
+        
+        my $ncol = $col;
+        $ncol =~ s/^R-//;
+        $ncol =~ s/-W$//;
         
         if( $col =~ /^\s+$/ && $params{data}{$col} ) {
             $params{data}{$col} = sprintf "<div style=\"background-color: #339933; width:%dpx\">&nbsp;</span>", $params{data}{$col};

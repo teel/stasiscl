@@ -1,5 +1,5 @@
 body {
-    margin: 0;
+    margin: 0 40px;
     text-align: center;
     font-family: verdana;
 }
@@ -117,7 +117,7 @@ td {
     padding-bottom: 2px;
     padding-left: 2px;
     padding-right: 8px;
-    white-space: nowrap;
+    white-space:nowrap;
 }
 
 a.toggle {

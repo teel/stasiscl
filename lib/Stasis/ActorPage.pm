@@ -404,7 +404,7 @@ sub page {
     if( exists $self->{ext}{Cast}{actors}{$PLAYER} ) {
         my @castHeader = (
                 "Cast Name",
-                "Target",
+                "Target-W",
                 "R-Total",
                 "",
                 "",
@@ -428,7 +428,7 @@ sub page {
                 data => {
                     "Cast Name" => $self->{ext}{Index}->spellname($spellid),
                     "R-Total" => $total_casts,
-                    "Target" => join( ", ", map $pm->actorLink( $_, $self->{ext}{Index}->actorname($_), $pm->classColor( $self->{raid}{$_}{class} ) ), keys %{ $self->{ext}{Cast}{actors}{$PLAYER}{$spellid} } ),
+                    "Target-W" => join( ", ", map $pm->actorLink( $_, $self->{ext}{Index}->actorname($_), $pm->classColor( $self->{raid}{$_}{class} ) ), keys %{ $self->{ext}{Cast}{actors}{$PLAYER}{$spellid} } ),
                 },
                 type => "",
                 name => "cast_$id",
@@ -443,7 +443,7 @@ sub page {
     if( exists $self->{ext}{Power}{actors}{$PLAYER} ) {
         my @powerHeader = (
                 "Gain Name",
-                "Source",
+                "Source-W",
                 "R-Total",
                 "R-Ticks",
                 "R-Avg",
@@ -476,7 +476,7 @@ sub page {
                 data => {
                     "Gain Name" => sprintf( "%s (%s)", $self->{ext}{Index}->spellname($powerid), $sdata->{type} ),
                     "R-Total" => $sdata->{amount},
-                    "Source" => join( ", ", map $pm->actorLink( $_, $self->{ext}{Index}->actorname($_), $pm->classColor( $self->{raid}{$_}{class} ) ), keys %{ $self->{ext}{Power}{actors}{$PLAYER}{$powerid} } ),
+                    "Source-W" => join( ", ", map $pm->actorLink( $_, $self->{ext}{Index}->actorname($_), $pm->classColor( $self->{raid}{$_}{class} ) ), keys %{ $self->{ext}{Power}{actors}{$PLAYER}{$powerid} } ),
                     "R-Ticks" => $sdata->{count},
                     "R-Avg" => $sdata->{count} && sprintf( "%d", $sdata->{amount} / $sdata->{count} ),
                     "R-Per 5" => $ptime && sprintf( "%0.1f", $sdata->{amount} / $ptime * 5 ),
@@ -494,7 +494,7 @@ sub page {
     if( exists $self->{ext}{ExtraAttack}{actors}{$PLAYER} ) {
         my @powerHeader = (
                 "Gain Name",
-                "Source",
+                "Source-W",
                 "R-Total",
                 "R-Ticks",
                 "R-Avg",
@@ -527,7 +527,7 @@ sub page {
                 data => {
                     "Gain Name" => sprintf( "%s (%s)", $self->{ext}{Index}->spellname($powerid), $sdata->{type} ),
                     "R-Total" => $sdata->{amount},
-                    "Source" => join( ", ", map $pm->actorLink( $_, $self->{ext}{Index}->actorname($_), $pm->classColor( $self->{raid}{$_}{class} ) ), keys %{ $self->{ext}{ExtraAttack}{actors}{$PLAYER}{$powerid} } ),
+                    "Source-W" => join( ", ", map $pm->actorLink( $_, $self->{ext}{Index}->actorname($_), $pm->classColor( $self->{raid}{$_}{class} ) ), keys %{ $self->{ext}{ExtraAttack}{actors}{$PLAYER}{$powerid} } ),
                     "R-Ticks" => $sdata->{count},
                     "R-Avg" => $sdata->{count} && sprintf( "%d", $sdata->{amount} / $sdata->{count} ),
                     "R-Per 5" => $ptime && sprintf( "%0.1f", $sdata->{amount} / $ptime * 5 ),
