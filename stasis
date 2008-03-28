@@ -43,12 +43,45 @@ use Getopt::Long;
 
 ## SUBS ##
 
-sub usage() {
-    my $prog = $0;
-    $prog =~ s/^.*\///;
-    print STDERR "Usage: $0 command [options]\n";
-    print STDERR "See 'perldoc $prog'\n";
-    exit 1;
+sub usage {
+    my ($exitvalue) = @_;
+    $exitvalue ||= 1;
+
+    my $me = $0;
+    $me =~ s/^.*\///;
+    print STDERR <<USAGE;
+Usage:
+    $me action [options]
+
+There are 2 main actions:
+    history    Updates the wws-history/data.xml in the specified
+               directory with all accumulated data of all sws-* dirs.
+
+    add        Creates a new sws-<timestamp> directory with the parsed
+               HTML from that combat log.
+
+Options:
+    -file      Specifies the combat log to read.
+
+    -dir       Specifies in which directory the generated HTML is living
+               or will be written, depending on action.
+
+    -version   Either 1 or 2. Pre-2.4 combatlogs should be parsed with
+               version = 1, post-2.4 combatlogs with 2. Only needed on
+               the 'add' action. Default is '2' (new, post-2.4 style).
+
+    -logger    Optional argument when parsing version 1 combatlogs.
+               This value defaults to 'You' on v1 combatlogs.
+               Only needed on the 'add' action.
+
+Example for updating the wws-history/data.xml:
+    $me history -dir /var/www/swstats.domain.com
+
+Example for parsing a new log:
+    $me add -dir /var/www/swstats.domain.com -version 1 -logger Gian
+
+USAGE
+    exit $exitvalue;
 }
 
 sub bomb($) {
@@ -87,7 +120,7 @@ sub wantedDataXML {
 ## CODE ##
 
 # Get the action first.
-usage unless @ARGV;
+usage(0) unless @ARGV;
 my $action = lc shift @ARGV;
 
 # Get options.
@@ -99,6 +132,7 @@ my $opt_hintsfile;
 my $opt_logger;
 my $opt_file;
 my $opt_attempts;
+my $opt_year;
 
 my $rc = GetOptions(
     "version=s"     => \$opt_version,
@@ -109,6 +143,7 @@ my $rc = GetOptions(
     "minlength=i"   => \$opt_minlength,
     "attempts"      => \$opt_attempts,
     "nowrite"       => \$opt_nowrite,
+    "year=i"        => \$opt_year,
 	);
 
 # Clean up opt_dir
