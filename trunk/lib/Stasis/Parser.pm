@@ -31,10 +31,10 @@ Stasis::Parser - parse a log file into a list of combat actions.
 
     use Stasis::Parser;
     
-    my $parser = Stasis::Parser->new( version => 2 );
+    my $parser = Stasis::Parser->new( version => 2, year => 2008 );
     while( <STDIN> ) {
         $action = $parser->parse( $_ );
-        print $action->toString() . "\n";
+        print $parser->toString( $action ) . "\n";
     }
 
 =head1 METHODS
@@ -89,13 +89,35 @@ use constant {
 
 =head3 new
 
-Takes two optional parameters, "logger" (the name of the logger) and "version" (either
-"1" or "2" for pre-2.4 and post-2.4 logs respectively). Call it like:
+Takes three parameters.
 
-    $parser = Stasis::Parser->new( logger => "Gian", version => 1 )
+=over 4
 
-version defaults to 1 and logger defaults to "You". The name of the logger is not required
-for version 2 logs (since they contain the logger's real name).
+=item logger
+
+The name of the logger. This value defaults to "You". The name of 
+the logger is not required for version 2 logs (since they contain
+the logger's real name).
+
+=item version
+
+"1" or "2" for pre-2.4 and post-2.4 logs respectively. The version
+defaults to 2.
+
+=item year
+
+This optional argument can be used to specify a different year. The
+year defaults to the current year.
+
+=back
+
+=head3 EXAMPLE
+
+    $parser = Stasis::Parser->new ( 
+            logger => "Gian",
+            version => 1,
+            year => 2008,
+        );
 
 =cut
 
@@ -103,6 +125,7 @@ sub new {
     my $class = shift;
     my %params = @_;
     
+    $params{year} ||= strftime "%Y", localtime;
     $params{logger} ||= "You";
     $params{version} = 2 if !$params{version} || $params{version} != 1;
     $params{csv} = Text::CSV_XS->new({ binary => 1, eol => $/ });
@@ -1264,13 +1287,19 @@ sub _parseMods {
     return \%result;
 }
 
+=head3 _stampTime
+
+This function returns a complete timestamp instead of the shortened Blizzard
+version.
+
+=cut
+
 sub _stampTime {
     my ($self, $stamp) = @_;
     
     my $time = 0;
     if( $stamp =~ /^([0-9]+)\/([0-9]+) ([0-9]+)\:([0-9]+):([0-9]+)\.([0-9]+)$/ ) {
-        my $year = strftime "%Y", localtime;
-        $time = mktime( $5, $4, $3, $2, $1-1, $year - 1900 );
+        $time = mktime( $5, $4, $3, $2, $1-1, $self->{year} - 1900 );
         $time += "0.$6";
     }
     
