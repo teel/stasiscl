@@ -26,6 +26,7 @@ package Stasis::ClassGuess;
 use strict;
 use warnings;
 use POSIX;
+use Math::BigInt;
 use Carp;
 
 # Fingerprints of various classes.
@@ -316,6 +317,39 @@ my %profiles = (
 
 );
 
+# Spell IDs for 2.4
+my %profiles2 = (
+    # Chain Heal
+    "1064" => "Shaman",
+    "10622" => "Shaman",
+    "10623" => "Shaman",
+    "25422" => "Shaman",
+    "25423" => "Shaman",
+    
+    # Healing Wave
+    "331" => "Shaman",
+    "332" => "Shaman",
+    "547" => "Shaman",
+    "913" => "Shaman",
+    "939" => "Shaman",
+    "959" => "Shaman",
+    "8005" => "Shaman",
+    "10395" => "Shaman",
+    "10396" => "Shaman",
+    "25357" => "Shaman",
+    "25391" => "Shaman",
+    "25396" => "Shaman",
+    
+    # Lesser Healing Wave
+    "8004" => "Shaman",
+    "8008" => "Shaman",
+    "8010" => "Shaman",
+    "10466" => "Shaman",
+    "10467" => "Shaman",
+    "10468" => "Shaman",
+    "25420" => "Shaman",
+);
+
 sub new {
     my $class = shift;
     my %params = @_;
@@ -324,7 +358,7 @@ sub new {
     $params{version} = 2 if !$params{version} || $params{version} != 1;
     $params{hints} ||= {};
     $params{scratch} = {};
-    $params{raidmembers} = {};
+    $params{totems} = {};
     
     bless \%params, $class;
 }
@@ -394,6 +428,32 @@ sub process {
     
     # Skip unless actor and target are both set.
     return unless $entry->{actor} && $entry->{target};
+    
+    # Summons
+    if( $entry->{action} eq "SPELL_SUMMON" ) {
+        $self->{scratch}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
+    }
+    
+    # Shaman elemental totems (Earth and Fire)
+    # 2.4 only, and using some really questionable guesswork.
+    if( $self->{version} eq "2" ) {
+        if( $entry->{action} eq "SPELL_SUMMON" && ( $entry->{extra}{spellid} eq "2894" || $entry->{extra}{spellid} eq "2062" ) ) {
+            $self->{totems}{ $entry->{target} } = $entry->{actor};
+        }
+
+        if( $entry->{actor_name} eq "Greater Fire Elemental" || $entry->{actor_name} eq "Greater Earth Elemental" ) {
+            while( my ($totemid, $shamanid) = each(%{$self->{totems}}) ) {
+                my $totemid_big = Math::BigInt->new($totemid);
+                my $actor_big = Math::BigInt->new($entry->{actor});
+                $totemid_big->band(0xFFFFFF);
+                $actor_big->band(0xFFFFFF);
+                $totemid_big->badd(1);
+                if( $totemid_big->bcmp( $actor_big ) == 0 ) {
+                    $self->{scratch}{ $shamanid }{pets}{ $entry->{actor} } ++;
+                }
+            }
+        }
+    }
     
     # Mend Pet
     if( $entry->{action} eq "SPELL_PERIODIC_HEAL" && $entry->{extra}{spellname} eq "Mend Pet" ) {

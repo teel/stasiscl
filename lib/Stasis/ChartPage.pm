@@ -35,6 +35,7 @@ sub new {
     $params{ext} ||= {};
     $params{raid} ||= {};
     $params{name} ||= "Untitled";
+    $params{short} ||= $params{name};
     
     bless \%params, $class;
 }
@@ -118,21 +119,45 @@ sub page {
     my $raidHealingTotal = 0;
     foreach my $actor (keys %{$self->{ext}{Presence}{actors}}) {
         # Only show raiders
-        next unless $self->{raid}{$actor}{class} && $self->{raid}{$actor}{class} ne "Pet";
+        next unless $self->{raid}{$actor}{class};
         
-        # Start it at zero.
-        $raiderHealing{$actor} ||= 0;
-        $raiderHealingTotal{$actor} ||= 0;
+        if( $self->{raid}{$actor}{class} eq "Pet" ) {
+            # Pet.
+            # Add healing to the raider.
+            
+            foreach my $spell (keys %{$self->{ext}{Healing}{actors}{$actor}}) {
+                foreach my $target (keys %{$self->{ext}{Healing}{actors}{$actor}{$spell}}) {
+                    # Skip non-friendlies
+                    next unless $self->{raid}{$target}{class};
+                    
+                    # Find the raider to add this Healing to.
+                    foreach my $raider (keys %{$self->{raid}}) {
+                        next unless $self->{raid}{$raider}{pets} && grep $actor eq $_, @{$self->{raid}{$raider}{pets}};
+                        
+                        $raiderHealing{$raider} += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{effective};
+                        $raidHealing += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{effective};
+                        $raiderHealingTotal{$raider} += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{total};
+                        $raidHealingTotal += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{total};
+                        last;
+                    }
+                }
+            }
+        } else {
+            # Raider.
+            # Start it at zero.
+            $raiderHealing{$actor} ||= 0;
+            $raiderHealingTotal{$actor} ||= 0;
 
-        foreach my $spell (keys %{$self->{ext}{Healing}{actors}{$actor}}) {
-            foreach my $target (keys %{$self->{ext}{Healing}{actors}{$actor}{$spell}}) {
-                # Skip non-friendlies
-                next unless $self->{raid}{$target}{class};
-                
-                $raiderHealing{$actor} += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{effective};
-                $raidHealing += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{effective};
-                $raiderHealingTotal{$actor} += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{total};
-                $raidHealingTotal += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{total};
+            foreach my $spell (keys %{$self->{ext}{Healing}{actors}{$actor}}) {
+                foreach my $target (keys %{$self->{ext}{Healing}{actors}{$actor}{$spell}}) {
+                    # Skip friendlies
+                    next unless $self->{raid}{$target}{class};
+
+                    $raiderHealing{$actor} += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{effective};
+                    $raidHealing += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{effective};
+                    $raiderHealingTotal{$actor} += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{total};
+                    $raidHealingTotal += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{total};
+                }
             }
         }
     }
@@ -293,7 +318,7 @@ sub page {
                 $raidDPS,
                 $self->{name},
                 $raidPresence*60000,
-                sprintf( "sws-%d", floor($raidStart) ),
+                sprintf( "sws-%s-%d", $self->{short}, floor($raidStart) ),
             );
     
     #########################

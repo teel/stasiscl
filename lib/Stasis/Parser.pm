@@ -1223,6 +1223,12 @@ sub parse {
             }
         } elsif( $result{action} eq "UNIT_DIED" || $result{action} eq "PARTY_KILL" ) {
             $result{extra} = {};
+        } elsif( $result{action} eq "SPELL_SUMMON" ) {
+            $result{extra} = {
+                spellid => shift @col,
+                spellname => shift @col,
+                spellschool => hex shift @col,
+            }
         } else {
             # Unrecognized action
             $result{extra} = {};

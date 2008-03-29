@@ -62,7 +62,7 @@ sub tableHeader {
         }
         
         if( $col =~ /-W$/ ) {
-            $style_text = "white-space: normal; ";
+            $style_text = "white-space: normal; width: 300px;";
         }
         
         if( $style_text ) {
@@ -114,7 +114,7 @@ sub tableRow {
         }
         
         if( $col =~ /-W$/ ) {
-            $align = "white-space: normal; ";
+            $align = "white-space: normal; width: 300px;";
         }
         
         if( $align ) {
@@ -181,6 +181,7 @@ sub pageFooter {
     
     return <<END;
 <p class="footer">Generated on $timestr</p>
+<p class="footer">stasiscl available at <a href="http://code.google.com/p/stasiscl/">http://code.google.com/p/stasiscl/</a></p>
 </div>
 </body>
 </html>
@@ -230,9 +231,23 @@ sub actorLink {
     $color ||= "464646";
     
     if( $id ) {
-        return sprintf "<a href=\"actor_%s.html\" class=\"actor\" style=\"color: #%s\">%s</a>", $self->tameText($id), $color, HTML::Entities::encode_entities($name);;
+        return sprintf "<a href=\"actor_%s.html\" class=\"actor\" style=\"color: #%s\">%s</a>", $self->tameText($id), $color, HTML::Entities::encode_entities($name);
     } else {
-        return $name;
+        return HTML::Entities::encode_entities($name);
+    }
+}
+
+sub spellLink {
+    my $self = shift;
+    my $id = shift;
+    my $name = shift;
+    
+    $name ||= "";
+    
+    if( $id && $id =~ /^[0-9]+$/ ) {
+        return sprintf "<a href=\"http://www.wowhead.com/?spell=%s\" target=\"swswh_%s\" class=\"spell\">%s <span> wh &#187;</span></a>", $id, $id, HTML::Entities::encode_entities($name);
+    } else {
+        return HTML::Entities::encode_entities($name);
     }
 }
 
