@@ -37,6 +37,7 @@ use Stasis::PageMaker;
 use File::Find qw();
 use File::Path qw();
 use File::Spec qw();
+use File::Copy qw(copy);
 use POSIX;
 use HTML::Entities;
 use Getopt::Long;
@@ -57,8 +58,8 @@ There are 2 main actions:
     history    Updates the wws-history/data.xml in the specified
                directory with all accumulated data of all sws-* dirs.
 
-    add        Creates a new sws-<timestamp> directory with the parsed
-               HTML from that combat log.
+    add        Read a combat log and write out parsed HTML corresponding
+               to the encounters found within in.
 
 Options:
     -file      Specifies the combat log to read.
@@ -112,7 +113,7 @@ sub status($) {
 # For File::Find later
 my @dataxmls;
 sub wantedDataXML {
-    if( -f $_ && $File::Find::name =~ /\/sws-[0-9]+\/data.xml$/ ) {
+    if( -f $_ && ( $File::Find::name =~ /\/sws-[0-9]+\/data.xml$/ || $File::Find::name =~ /\/sws-[\w]+-[0-9]+\/data.xml$/ ) ) {
         push @dataxmls, $File::Find::name;
     }
 }
@@ -294,8 +295,9 @@ if( $action eq "print" ) {
         }
         
         # Run statistics for this boss.
-        my $dname = sprintf "%s/sws-%d", $opt_dir, floor($split->{start});
-        status sprintf "Processing: %s (sws-%d).", $boss, floor($split->{start});
+        my $dname = sprintf "%s/sws-%s-%d", $opt_dir, $split->{short}, floor($split->{start});
+        my $dname_old = sprintf "%s/sws-%d", $opt_dir, floor($split->{start});
+        status sprintf "Processing: %s (sws-%s-%d).", $boss, $split->{short}, floor($split->{start});
         
         # Start all the extensions.
         foreach my $ext (values %exts) {
@@ -346,19 +348,20 @@ if( $action eq "print" ) {
             eval {
                 # Remove the directory if it exists.
                 File::Path::rmtree($dname) if -d $dname;
+                File::Path::rmtree($dname_old) if -d $dname_old;
 
                 # Create the directory.
                 mkdir $dname or die $!;
 
                 # Write the index.
-                my $charter = Stasis::ChartPage->new( name => $boss, raid => \%raid, ext => \%exts );
+                my $charter = Stasis::ChartPage->new( name => $boss, short => $split->{short}, raid => \%raid, ext => \%exts );
                 my ($chart_xml, $chart_html) = $charter->page;
                 open CHARTPAGE, ">$dname/index.html" or die;
                 print CHARTPAGE $chart_html;
                 close CHARTPAGE;
 
                 # Write the actor files.
-                my $ap = Stasis::ActorPage->new( name => $boss, raid => \%raid, ext => \%exts );
+                my $ap = Stasis::ActorPage->new( name => $boss, short => $split->{short}, raid => \%raid, ext => \%exts );
                 foreach my $actor (keys %{$exts{Presence}{actors}}) {
                     my $id = lc $actor;
                     $id = Stasis::PageMaker->tameText($id);
@@ -412,11 +415,17 @@ if( $action eq "print" ) {
         unless( $opt_nowrite ) {
             eval {
                 # Remove the directory if it exists.
-                my $dname = sprintf "%s/sws-%d", $opt_dir, floor($split->{start});
+                my $dname_old = sprintf "%s/sws-%d", $opt_dir, floor($split->{start});
+                my $dname = sprintf "%s/sws-%s-%d", $opt_dir, $split->{short}, floor($split->{start});
                 
                 if( -d $dname ) {
-                    status sprintf "Removing: %s (sws-%d).", $boss, floor($split->{start});
+                    status sprintf "Removing: %s (sws-%s-%d).", $boss, $split->{short}, floor($split->{start});
                     File::Path::rmtree($dname);
+                }
+                
+                if( -d $dname_old ) {
+                    status sprintf "Removing: %s (sws-%d).", $boss, floor($split->{start});
+                    File::Path::rmtree($dname_old);
                 }
             }; if( $@ ) {
                 bomb $@;
@@ -435,7 +444,7 @@ if( $action eq "print" ) {
     @dataxmls = ();
     File::Find::find( \&wantedDataXML, ($opt_dir) );
     
-    status "Found " . (scalar @dataxmls) . " subdirectories.";
+    status "Reading from " . (scalar @dataxmls) . " subdirectories.";
     
     foreach my $dataxml (@dataxmls) {
         open DXML, $dataxml or die "Could not open a subdirectory for reading.";
@@ -450,7 +459,7 @@ if( $action eq "print" ) {
     
     # Create wws-history directory if it doesn't exist.
     if( ! -d $opt_dir . "/wws-history" ) {
-        mkdir $opt_dir . "/wws-history";
+        mkdir $opt_dir . "/wws-history" or bomb "Could not create extras directory";
     }
     
     open DXML, ">$opt_dir/wws-history/data.xml" or die "Could not open data.xml for writing";
@@ -458,6 +467,29 @@ if( $action eq "print" ) {
     close DXML;
     
     status "Wrote: $opt_dir/wws-history/data.xml";
+    
+    # Copy JS and CSS
+    my $prog = $0;
+    $prog =~ s/\/[^\/]*$//;
+    my $extra_path = File::Spec->catdir( File::Spec->rel2abs($prog), "extras" );
+    
+    if( -d $extra_path && -f "$extra_path/sws.js" && -f "$extra_path/sws.css" ) {
+        status "Copying extras from: $extra_path";
+        
+        # Create extras directory if it doesn't exist
+        if( ! -d $opt_dir . "/extras" ) {
+            mkdir $opt_dir . "/extras" or die;
+        }
+        
+        # Copy JS and CSS
+        copy( "$extra_path/sws.js", "$opt_dir/extras/sws.js" ) or die;
+        status "Wrote: $opt_dir/extras/sws.js";
+        
+        copy( "$extra_path/sws.css", "$opt_dir/extras/sws.css" ) or die;
+        status "Wrote: $opt_dir/extras/sws.css";
+    } else {
+        bomb "Could not find extras dir: checked $extra_path";
+    }
 } else {
     bomb "bad action: $action";
 }

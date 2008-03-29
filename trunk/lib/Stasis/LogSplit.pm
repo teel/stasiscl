@@ -86,6 +86,7 @@ our %fingerprints = (
 },
 
 "The Curator" => {
+    short => "curator",
     mobStart => [ "The Curator" ],
     mobContinue => [ "The Curator" ],
     mobEnd => [ "The Curator" ],
@@ -100,17 +101,11 @@ our %fingerprints = (
 },
 
 "Terestian Illhoof" => {
+    short => "illhoof",
     mobStart => [ "Terestian Illhoof" ],
     mobContinue => [ "Terestian Illhoof" ],
     mobEnd => [ "Terestian Illhoof" ],
     timeout => 20,
-},
-
-"Netherspite" => {
-    mobStart => [ "Netherspite" ],
-    mobContinue => [ "Netherspite" ],
-    mobEnd => [ "Netherspite" ],
-    timeout => 30,
 },
 
 "Netherspite" => {
@@ -160,6 +155,7 @@ our %fingerprints = (
 },
 
 "Hex Lord Malacrass" => {
+    short => "hexlord",
     mobStart => [ "Hex Lord Malacrass" ],
     mobContinue => [ "Hex Lord Malacrass" ],
     mobEnd => [ "Hex Lord Malacrass" ],
@@ -178,6 +174,7 @@ our %fingerprints = (
 #################
 
 "High King Maulgar" => {
+    short => "maulgar",
     mobStart => [ "High King Maulgar", "Kiggler the Crazed", "Krosh Firehand", "Olm the Summoner", "Blindeye the Seer" ],
     mobContinue => [ "High King Maulgar", "Kiggler the Crazed", "Krosh Firehand", "Olm the Summoner", "Blindeye the Seer" ],
     mobEnd => [ "High King Maulgar" ],
@@ -185,6 +182,7 @@ our %fingerprints = (
 },
 
 "Gruul the Dragonkiller" => {
+    short => "gruul",
     mobStart => [ "Gruul the Dragonkiller" ],
     mobContinue => [ "Gruul the Dragonkiller" ],
     mobEnd => [ "Gruul the Dragonkiller" ],
@@ -192,6 +190,7 @@ our %fingerprints = (
 },
 
 "Magtheridon" => {
+    short => "mag",
     mobStart => [ "Hellfire Channeler" ],
     mobContinue => [ "Magtheridon", "Hellfire Channeler" ],
     mobEnd => [ "Magtheridon" ],
@@ -210,6 +209,7 @@ our %fingerprints = (
 },
 
 "The Lurker Below" => {
+    short => "lurker",
     mobStart => [ "The Lurker Below" ],
     mobContinue => [ "The Lurker Below" ],
     mobEnd => [ "The Lurker Below" ],
@@ -217,6 +217,7 @@ our %fingerprints = (
 },
 
 "Leotheras the Blind" => {
+    short => "leo",
     mobStart => [ "Greyheart Spellbinder" ],
     mobContinue => [ "Greyheart Spellbinder", "Leotheras the Blind" ],
     mobEnd => [ "Leotheras the Blind" ],
@@ -224,6 +225,7 @@ our %fingerprints = (
 },
 
 "Fathom-Lord Karathress" => {
+    short => "flk",
     mobStart => [ "Fathom-Lord Karathress", "Fathom-Guard Caribdis", "Fathom-Guard Sharkkis", "Fathom-Guard Tidalvess" ],
     mobContinue => [ "Fathom-Lord Karathress", "Fathom-Guard Caribdis", "Fathom-Guard Sharkkis", "Fathom-Guard Tidalvess" ],
     mobEnd => [ "Fathom-Lord Karathress" ],
@@ -231,6 +233,7 @@ our %fingerprints = (
 },
 
 "Morogrim Tidewalker" => {
+    short => "tidewalker",
     mobStart => [ "Morogrim Tidewalker" ],
     mobContinue => [ "Morogrim Tidewalker" ],
     mobEnd => [ "Morogrim Tidewalker" ],
@@ -238,6 +241,7 @@ our %fingerprints = (
 },
 
 "Lady Vashj" => {
+    short => "vashj",
     mobStart => [ "Lady Vashj" ],
     mobContinue => [ "Lady Vashj", "Enchanted Elemental", "Tainted Elemental", "Coilfang Strider", "Coilfang Elite" ],
     mobEnd => [ "Lady Vashj" ],
@@ -256,6 +260,7 @@ our %fingerprints = (
 },
 
 "Void Reaver" => {
+    short => "vr",
     mobStart => [ "Void Reaver" ],
     mobContinue => [ "Void Reaver" ],
     mobEnd => [ "Void Reaver" ],
@@ -263,6 +268,7 @@ our %fingerprints = (
 },
 
 "High Astromancer Solarian" => {
+    short => "solarian",
     mobStart => [ "High Astromancer Solarian" ],
     mobContinue => [ "High Astromancer Solarian", "Solarium Priest", "Solarium Agent" ],
     mobEnd => [ "High Astromancer Solarian" ],
@@ -270,6 +276,7 @@ our %fingerprints = (
 },
 
 "Kael'thas Sunstrider" => {
+    short => "kael",
     mobStart => [ "Warp Slicer", "Phaseshift Bulwark", "Devastation", "Netherstrand Longbow", "Staff of Disintegration", "Infinity Blades", "Cosmic Infuser" ],
     mobContinue => [ "Warp Slicer", "Phaseshift Bulwark", "Devastation", "Netherstrand Longbow", "Staff of Disintegration", "Infinity Blades", "Cosmic Infuser", "Kael'thas Sunstrider", "Phoenix", "Phoenix Egg", "Master Engineer Telonicus", "Grand Astromancer Capernian", "Thaladred the Darkener", "Lord Sanguinar" ],
     mobEnd => [ "Kael'thas Sunstrider" ],
@@ -320,6 +327,7 @@ our %fingerprints = (
 ################
 
 "High Warlord Naj'entus" => {
+    short => "najentus",
     mobStart => [ "High Warlord Naj'entus" ],
     mobContinue => [ "High Warlord Naj'entus" ],
     mobEnd => [ "High Warlord Naj'entus" ],
@@ -334,6 +342,7 @@ our %fingerprints = (
 },
 
 "Shade of Akama" => {
+    short => "akama",
     mobStart => [ "Ashtongue Channeler", "Ashtongue Spiritbinder", "Ashtongue Elementalist", "Ashtongue Rogue" ],
     mobContinue => [ "Ashtongue Channeler", "Ashtongue Defender", "Ashtongue Spiritbinder", "Ashtongue Elementalist", "Ashtongue Rogue", "Shade of Akama", "Akama" ],
     mobEnd => [ "Shade of Akama" ],
@@ -348,6 +357,7 @@ our %fingerprints = (
 },
 
 "Gurtogg Bloodboil" => {
+    short => "bloodboil",
     mobStart => [ "Gurtogg Bloodboil" ],
     mobContinue => [ "Gurtogg Bloodboil" ],
     mobEnd => [ "Gurtogg Bloodboil" ],
@@ -355,6 +365,7 @@ our %fingerprints = (
 },
 
 "Reliquary of Souls" => {
+    short => "ros",
     mobStart => [ "Essence of Suffering" ],
     mobContinue => [ "Essence of Suffering", "Essence of Desire", "Essence of Anger", "Enslaved Soul" ],
     mobEnd => [ "Essence of Anger" ],
@@ -362,6 +373,7 @@ our %fingerprints = (
 },
 
 "Mother Shahraz" => {
+    short => "shahraz",
     mobStart => [ "Mother Shahraz" ],
     mobContinue => [ "Mother Shahraz" ],
     mobEnd => [ "Mother Shahraz" ],
@@ -369,6 +381,7 @@ our %fingerprints = (
 },
 
 "Illidari Council" => {
+    short => "council",
     mobStart => [ "High Nethermancer Zerevor", "Veras Darkshadow", "Lady Malande", "Gathios the Shatterer" ],
     mobContinue => [ "High Nethermancer Zerevor", "Veras Darkshadow", "Lady Malande", "Gathios the Shatterer" ],
     mobEnd => [ "The Illidari Council" ],
@@ -446,7 +459,13 @@ sub process {
                 $self->{scratch}{$boss}{attempt} ++;
                 
                 my $splitname = $boss . " try " . $self->{scratch}{$boss}{attempt};
-                $self->{splits}{$splitname} = { start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 0 } if $self->{scratch}{$boss}{end} && $self->{scratch}{$boss}{start} && $self->{scratch}{$boss}{end} - $self->{scratch}{$boss}{start} > 0;
+                
+                # Figure out short name.
+                my $short = $print->{short} || lc $boss;
+                $short =~ s/\s+.*$//;
+                $short =~ s/[^\w]//g;
+                
+                $self->{splits}{$splitname} = { short => $short, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 0 } if $self->{scratch}{$boss}{end} && $self->{scratch}{$boss}{start} && $self->{scratch}{$boss}{end} - $self->{scratch}{$boss}{start} > 0;
                 
                 # Reset the start/end times for this fingerprint.
                 $self->{scratch}{$boss}{start} = 0;
@@ -491,7 +510,12 @@ sub process {
                 
                 # End it if we decided to.
                 if( $shouldEnd ) {
-                    $self->{splits}{$boss} = { start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 1 };
+                    # Figure out short name.
+                    my $short = $print->{short} || lc $boss;
+                    $short =~ s/\s+.*$//;
+                    $short =~ s/[^\w]//g;
+                    
+                    $self->{splits}{$boss} = { short => $short, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 1 };
 
                     # Reset the start/end times for this print.
                     $self->{scratch}{$boss}{start} = 0;
@@ -530,8 +554,14 @@ sub finish {
             # Record the attempt.
             my $splitname = $boss . " try " . $self->{scratch}{$boss}{attempt};
             
+            # Figure out short name.
+            my $short = $print->{short} || lc $boss;
+            $short =~ s/\s+.*$//;
+            $short =~ s/[^\w]//g;
+            
             if( $self->{scratch}{$boss}{end} && $self->{scratch}{$boss}{start} && $self->{scratch}{$boss}{end} - $self->{scratch}{$boss}{start} > 0 ) {
-                $self->{splits}{$splitname} = { start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 0 };
+                
+                $self->{splits}{$splitname} = { short => $short, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 0 };
             }
         }
     }
