@@ -281,10 +281,24 @@ if( $action eq "print" ) {
         $exts{$_} = Stasis::Extension->factory($_);
     }
     
-    while( my ($boss, $split) = each(%splits) ) {
+    foreach my $boss (sort keys %splits) {
+        my $split = $splits{$boss};
+        
+        # Check zero length.
+        if( $split->{endLine} - $split->{startLine} <= 0 ) {
+            status sprintf "Skipping: %s (zero length).", $boss;
+            next;
+        }
+        
+        # Check negative time.
+        if( $split->{end} - $split->{start} <= 0 ) {
+            status sprintf "Skipping: %s (zero length).", $boss;
+            next;
+        }
+        
         # Check minlength option.
         if( $opt_minlength && $split->{end} - $split->{start} < $opt_minlength ) {
-            status sprintf "Skipping: %s (too short).", $boss, $split->{end} - $split->{start};
+            status sprintf "Skipping: %s (too short).", $boss;
             next;
         }
         
