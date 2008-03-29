@@ -415,7 +415,7 @@ our %fingerprints = (
 
 "Felmyst" => {
     mobStart => [ "Felmyst" ],
-    mobContinue => [ "Felmyst" ],
+    mobContinue => [ "Felmyst", "Unyielding Dead" ],
     mobEnd => [ "Felmyst" ],
     timeout => 30,
 },
@@ -465,7 +465,7 @@ sub process {
                 $short =~ s/\s+.*$//;
                 $short =~ s/[^\w]//g;
                 
-                $self->{splits}{$splitname} = { short => $short, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 0 } if $self->{scratch}{$boss}{end} && $self->{scratch}{$boss}{start} && $self->{scratch}{$boss}{end} - $self->{scratch}{$boss}{start} > 0;
+                $self->{splits}{$splitname} = { short => $short, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 0 } if $self->{scratch}{$boss}{end} && $self->{scratch}{$boss}{start};
                 
                 # Reset the start/end times for this fingerprint.
                 $self->{scratch}{$boss}{start} = 0;
@@ -559,8 +559,7 @@ sub finish {
             $short =~ s/\s+.*$//;
             $short =~ s/[^\w]//g;
             
-            if( $self->{scratch}{$boss}{end} && $self->{scratch}{$boss}{start} && $self->{scratch}{$boss}{end} - $self->{scratch}{$boss}{start} > 0 ) {
-                
+            if( $self->{scratch}{$boss}{end} && $self->{scratch}{$boss}{start} ) {
                 $self->{splits}{$splitname} = { short => $short, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 0 };
             }
         }
