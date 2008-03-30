@@ -21,13 +21,13 @@ cd stasiscl
 
 {{{
 # Pre-2.4 log (a.k.a. v1) -- note the name of the logger is needed:
-./stasis add -dir /home/jqpublic/sws -ver 1 -log Gian < /path/to/log/file
+./stasis add -dir /home/jqpublic/sws -ver 1 -log Gian -file /path/to/log/file
 
 # 2.4 log (a.k.a v2) -- name of logger is not needed:
-./stasis add -dir /home/jqpublic/sws -ver 2 < /path/to/log/file
+./stasis add -dir /home/jqpublic/sws -ver 2 -file /path/to/log/file
 
 # Normally boss attempts are discarded and only kills are recorded. If you wish to preserve all attempts, add "-attempt", for example:
-./stasis add -dir /home/jqpublic/sws -ver 2 -attempt < /path/to/log/file
+./stasis add -dir /home/jqpublic/sws -ver 2 -attempt -file /path/to/log/file
 }}}
 
   * If you chose to create an index, when you are done adding logs you should run the following command, which will generate a data.xml inside the wws-history folder you made earlier:
