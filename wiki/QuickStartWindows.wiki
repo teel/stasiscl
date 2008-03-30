@@ -14,13 +14,13 @@ I don't have access to a Windows machine for testing, but these instructions are
 
 {{{
 # Pre-2.4 log (a.k.a. v1) -- note the name of the logger is needed:
-perl stasis add -dir C:\stasiscl\www -ver 1 -log Gian < C:\path\to\log\file
+perl stasis add -dir C:\stasiscl\www -ver 1 -log Gian -file C:\path\to\log\file
 
 # 2.4 log (a.k.a v2) -- name of logger is not needed:
-perl stasis add -dir C:\stasiscl\www -ver 2 < C:\path\to\log\file
+perl stasis add -dir C:\stasiscl\www -ver 2 -file C:\path\to\log\file
 
 # Normally boss attempts are discarded and only kills are recorded. If you wish to preserve all attempts, add "-attempt", for example:
-perl stasis add -dir C:\stasiscl\www -ver 2 -attempt < C:\path\to\log\file
+perl stasis add -dir C:\stasiscl\www -ver 2 -attempt -file C:\path\to\log\file
 }}}
 
   * If you chose to create an index, when you are done adding logs you should run the following command, which will generate a data.xml inside the wws-history folder you made earlier:
