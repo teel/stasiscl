@@ -153,7 +153,7 @@ if( $opt_dir ) {
 }
 
 # Create a parser.
-my $parser = Stasis::Parser->new( version => $opt_version, logger => $opt_logger );
+my $parser = Stasis::Parser->new( version => $opt_version, logger => $opt_logger, year => $opt_year );
 
 # Set encoding of STDIN and STDOUT to UTF-8 (which Blizzard uses for combat logs)
 binmode(STDIN, ":utf8");
