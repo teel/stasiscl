@@ -44,6 +44,7 @@ Stasis::Parser - parse a log file into a list of combat actions.
 use strict;
 use warnings;
 use POSIX;
+use Encode;
 use Text::CSV_XS;
 use Carp;
 
@@ -897,6 +898,7 @@ sub parse {
         my @col;
         $self->{csv}->parse($line);
         @col = $self->{csv}->fields();
+        @col = map { decode_utf8($_) } @col;
         @col = map { $_ ne "nil" ? $_ : undef } @col;
         
         # Common processing
