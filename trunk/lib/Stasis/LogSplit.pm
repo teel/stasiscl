@@ -58,7 +58,7 @@ our %fingerprints = (
 
 "Opera (Wizard of Oz)" => {
     mobStart => [ "Dorothee", "Tito", "Strawman", "Tinhead", "Roar" ],
-    mobContinue => [ "Dorothee", "Tito", "Strawman", "Tinhead", "Roar" ],
+    mobContinue => [ "Dorothee", "Tito", "Strawman", "Tinhead", "Roar", "The Crone" ],
     mobEnd => [ "The Crone" ],
     timeout => 20,
 },

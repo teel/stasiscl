@@ -47,7 +47,7 @@ sub process {
     
         # Account for overhealing, if it happened, by removing the excess.
         $self->{ohtrack}{ $entry->{target} } = 0 if( $self->{ohtrack}{ $entry->{target} } > 0 );
-    } elsif( grep $entry->{action} eq $_, qw(ENVIRONMENTAL_DAMAGE SWING_DAMAGE RANGE_DAMAGE SPELL_DAMAGE SPELL_PERIODIC_DAMAGE DAMAGE_SHIELD) ) {
+    } elsif( grep $entry->{action} eq $_, qw(ENVIRONMENTAL_DAMAGE SWING_DAMAGE RANGE_DAMAGE SPELL_DAMAGE DAMAGE_SPLIT SPELL_PERIODIC_DAMAGE DAMAGE_SHIELD) ) {
         # If someone is taking damage we need to debit the HP.
         $self->{ohtrack}{ $entry->{target} } -= $entry->{extra}{amount};
     } elsif( $entry->{action} eq "UNIT_DIED" || $entry->{action} eq "PARTY_KILL" ) {

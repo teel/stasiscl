@@ -313,10 +313,9 @@ sub parse {
             $result{extra}{spellname} = $result{extra}{spellid};
         } elsif( $line =~ /^(?:(You)r|(.+?)\s*'s) (.+) causes (.+) ([0-9]+) damage\.\w*(.*?)$/ ) {
             # CAUSED DAMAGE (e.g. SOUL LINK)
-            # THIS ACTION IS A GUESS! Is it correct?
             
             %result = $self->_legacyAction(
-                "SPELL_DAMAGE",
+                "DAMAGE_SPLIT",
                 $1 ? $1 : $2,
                 $4,
                 {
@@ -1523,9 +1522,24 @@ sub toString {
     } elsif( $entry->{action} eq "SPELL_CAST_FAILED" ) {
 
     } elsif( $entry->{action} eq "DAMAGE_SHIELD" ) {
-
+        $text = sprintf "[%s] %sreflect %s [%s] %d",
+            $actor,
+            $entry->{extra}{spellname},
+            $entry->{extra}{critical} ? "crit " : "",
+            $target,
+            $entry->{extra}{amount};
+        
+        $text .= sprintf " (%d resisted)", $entry->{extra}{resisted} if $entry->{extra}{resisted};
+        $text .= sprintf " (%d blocked)", $entry->{extra}{blocked} if $entry->{extra}{blocked};
+        $text .= sprintf " (%d absorbed)", $entry->{extra}{absorbed} if $entry->{extra}{absorbed};
+        $text .= " (crushing)" if $entry->{extra}{crushing};
+        $text .= " (glancing)" if $entry->{extra}{glancing};
     } elsif( $entry->{action} eq "DAMAGE_SHIELD_MISSED" ) {
-
+        $text = sprintf "[%s] %s [%s] %s",
+            $actor,
+            $entry->{extra}{spellname},
+            $target,
+            lc( $entry->{extra}{misstype} );
     } elsif( $entry->{action} eq "ENCHANT_APPLIED" ) {
 
     } elsif( $entry->{action} eq "ENCHANT_REMOVED" ) {
@@ -1533,7 +1547,18 @@ sub toString {
     } elsif( $entry->{action} eq "ENVIRONMENTAL_DAMAGE" ) {
 
     } elsif( $entry->{action} eq "DAMAGE_SPLIT" ) {
-
+        $text = sprintf "[%s] %s %s [%s] %d (split)",
+            $actor,
+            $entry->{extra}{spellname},
+            $entry->{extra}{critical} ? "crit" : "hit",
+            $target,
+            $entry->{extra}{amount};
+        
+        $text .= sprintf " (%d resisted)", $entry->{extra}{resisted} if $entry->{extra}{resisted};
+        $text .= sprintf " (%d blocked)", $entry->{extra}{blocked} if $entry->{extra}{blocked};
+        $text .= sprintf " (%d absorbed)", $entry->{extra}{absorbed} if $entry->{extra}{absorbed};
+        $text .= " (crushing)" if $entry->{extra}{crushing};
+        $text .= " (glancing)" if $entry->{extra}{glancing};
     } elsif( $entry->{action} eq "UNIT_DIED" ) {
         $text = sprintf "[%s] dies",
             $target;
