@@ -489,6 +489,21 @@ sub process {
     if( $entry->{action} eq "SPELL_CAST_SUCCESS" && $entry->{extra}{spellname} eq "Demonic Sacrifice" ) {
         $self->{scratch}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
     }
+    
+    # Soul Link
+    if( $entry->{action} eq "DAMAGE_SPLIT" && $entry->{extra}{spellname} eq "Soul Link" ) {
+        $self->{scratch}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
+    }
+    
+    # Soul Link
+    if( $entry->{action} eq "DAMAGE_SPLIT" && $entry->{extra}{spellname} eq "Soul Link" ) {
+        $self->{scratch}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
+    }
+
+    # Mana Feed
+    if( $entry->{action} eq "SPELL_ENERGIZE" && $entry->{extra}{spellname} eq "Life Tap" ) {
+        $self->{scratch}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
+    }
 }
 
 sub finish {

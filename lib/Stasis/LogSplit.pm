@@ -402,7 +402,7 @@ our %fingerprints = (
 "Kalecgos" => {
     mobStart => [ "Kalecgos" ],
     mobContinue => [ "Kalecgos", "Sathrovarr the Corruptor" ],
-    mobEnd => [ "Kalecgos" ],
+    mobEnd => [ "Sathrovarr the Corruptor" ],
     timeout => 30,
 },
 

@@ -1524,7 +1524,7 @@ sub toString {
     } elsif( $entry->{action} eq "SPELL_CAST_FAILED" ) {
 
     } elsif( $entry->{action} eq "DAMAGE_SHIELD" ) {
-        $text = sprintf "[%s] %sreflect %s [%s] %d",
+        $text = sprintf "[%s] %s reflect %s [%s] %d",
             $actor,
             $entry->{extra}{spellname},
             $entry->{extra}{critical} ? "crit " : "",
