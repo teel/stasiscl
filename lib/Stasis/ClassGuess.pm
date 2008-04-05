@@ -485,6 +485,11 @@ sub process {
         $self->{scratch}{ $entry->{target} }{pets}{ $entry->{actor} } ++ if $entry->{target} ne $entry->{actor};
     }
     
+    # Also Dark Pact
+    if( $entry->{action} eq "SPELL_LEECH" && $entry->{extra}{spellname} eq "Dark Pact" ) {
+        $self->{scratch}{ $entry->{target} }{pets}{ $entry->{actor} } ++ if $entry->{target} ne $entry->{actor};
+    }
+    
     # Demonic Sacrifice
     if( $entry->{action} eq "SPELL_CAST_SUCCESS" && $entry->{extra}{spellname} eq "Demonic Sacrifice" ) {
         $self->{scratch}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
