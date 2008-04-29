@@ -152,8 +152,9 @@ sub process {
             $ddata->{count} += 1;
             $ddata->{ lc( $entry->{extra}{misstype} ) . "Count" }++;
         } else {
-            my $txtline = Stasis::Parser->toString($entry) || "(unprintable)";
-            carp( "Unrecognized potential damage event: $txtline\n" );
+            # Ignore this warning.
+            #my $txtline = Stasis::Parser->toString($entry) || "(unprintable)";
+            #carp( "Unrecognized potential damage event: $txtline\n" );
         }
     }
 }

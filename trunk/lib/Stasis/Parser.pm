@@ -1222,7 +1222,7 @@ sub parse {
                 glancing => shift @col,
                 crushing => shift @col,
             }
-        } elsif( $result{action} eq "UNIT_DIED" || $result{action} eq "PARTY_KILL" ) {
+        } elsif( $result{action} eq "UNIT_DIED" || $result{action} eq "PARTY_KILL" || $result{action} eq "UNIT_DESTROYED" ) {
             $result{extra} = {};
         } elsif( $result{action} eq "SPELL_SUMMON" ) {
             $result{extra} = {
@@ -1232,6 +1232,7 @@ sub parse {
             }
         } else {
             # Unrecognized action
+            #carp( "Unrecognized action: " . $result{action} );
             $result{extra} = {};
         }
     }

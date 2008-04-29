@@ -211,7 +211,7 @@ our %fingerprints = (
 "The Lurker Below" => {
     short => "lurker",
     mobStart => [ "The Lurker Below" ],
-    mobContinue => [ "The Lurker Below" ],
+    mobContinue => [ "The Lurker Below", "Coilfang Ambusher", "Coilfang Guardian" ],
     mobEnd => [ "The Lurker Below" ],
     timeout => 15,
 },
