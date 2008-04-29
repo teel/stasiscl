@@ -127,6 +127,7 @@ my $action = lc shift @ARGV;
 # Get options.
 my $opt_version = 2;
 my $opt_minlength = 30;
+my $opt_db;
 my $opt_dir = ".";
 my $opt_nowrite;
 my $opt_hintsfile;
@@ -145,6 +146,7 @@ my $rc = GetOptions(
     "attempts"      => \$opt_attempts,
     "nowrite"       => \$opt_nowrite,
     "year=i"        => \$opt_year,
+    "db=s"          => \$opt_db,
 	);
 
 # Clean up opt_dir
