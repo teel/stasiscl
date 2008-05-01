@@ -26,10 +26,12 @@ package Stasis::ClassGuess;
 use strict;
 use warnings;
 use POSIX;
-use Math::BigInt;
+use Stasis::MobUtil;
+use Stasis::SpellUtil;
+use Data::Dumper;
 use Carp;
 
-# Fingerprints of various classes.
+# Fingerprints of various classes (pre 2.4 only)
 my %profiles = (
 
 "Shaman" => {
@@ -64,7 +66,7 @@ my %profiles = (
     ],
     
     "auras" => [
-    
+        
     ],
 },
 
@@ -317,39 +319,6 @@ my %profiles = (
 
 );
 
-# Spell IDs for 2.4
-my %profiles2 = (
-    # Chain Heal
-    "1064" => "Shaman",
-    "10622" => "Shaman",
-    "10623" => "Shaman",
-    "25422" => "Shaman",
-    "25423" => "Shaman",
-    
-    # Healing Wave
-    "331" => "Shaman",
-    "332" => "Shaman",
-    "547" => "Shaman",
-    "913" => "Shaman",
-    "939" => "Shaman",
-    "959" => "Shaman",
-    "8005" => "Shaman",
-    "10395" => "Shaman",
-    "10396" => "Shaman",
-    "25357" => "Shaman",
-    "25391" => "Shaman",
-    "25396" => "Shaman",
-    
-    # Lesser Healing Wave
-    "8004" => "Shaman",
-    "8008" => "Shaman",
-    "8010" => "Shaman",
-    "10466" => "Shaman",
-    "10467" => "Shaman",
-    "10468" => "Shaman",
-    "25420" => "Shaman",
-);
-
 sub new {
     my $class = shift;
     my %params = @_;
@@ -357,13 +326,23 @@ sub new {
     $params{hintsfile} ||= "";
     $params{version} = 2 if !$params{version} || $params{version} != 1;
     $params{hints} ||= {};
-    $params{scratch} = {};
+    $params{scratch1} = {};
     $params{totems} = {};
     
     bless \%params, $class;
 }
 
 sub process {
+    my $self = shift;
+    return $self->{version} == 1 ? $self->process1(@_) : $self->process2(@_);
+}
+
+sub finish {
+    my $self = shift;
+    return $self->{version} == 1 ? $self->finish1(@_) : $self->finish2(@_);
+}
+
+sub process1 {
     my $self = shift;
     my $entry = shift;
     
@@ -373,7 +352,7 @@ sub process {
     # Skip entries with no action.
     return unless $entry && $entry->{action};
     
-    # Skip "Unknown" and Environment
+    # Skip "Unknown"
     return if( $entry->{actor_name} eq "Unknown" || $entry->{target_name} eq "Unknown" );
     
     # Check damage.
@@ -383,7 +362,7 @@ sub process {
             # Check if this damage matches...
             if( grep $_ eq $entry->{extra}{spellname}, @{$cdata->{damage}} ) {
                 # And record if it does.
-                $self->{scratch}{ $entry->{actor} }{class}{ $cname }{damage}{ $entry->{extra}{spellname} } ++;
+                $self->{scratch1}{ $entry->{actor} }{class}{ $cname }{damage}{ $entry->{extra}{spellname} } ++;
             }
         }
     }
@@ -395,7 +374,7 @@ sub process {
             # Check if this heal matches...
             if( grep $_ eq $entry->{extra}{spellname}, @{$cdata->{healing}} ) {
                 # And record if it does.
-                $self->{scratch}{ $entry->{actor} }{class}{ $cname }{healing}{ $entry->{extra}{spellname} } ++;
+                $self->{scratch1}{ $entry->{actor} }{class}{ $cname }{healing}{ $entry->{extra}{spellname} } ++;
             }
         }
     }
@@ -407,7 +386,7 @@ sub process {
             # Check if this cast matches...
             if( grep $_ eq $entry->{extra}{spellname}, @{$cdata->{casts}} ) {
                 # And record if it does.
-                $self->{scratch}{ $entry->{actor} }{class}{ $cname }{casts}{ $entry->{extra}{spellname} } ++;
+                $self->{scratch1}{ $entry->{actor} }{class}{ $cname }{casts}{ $entry->{extra}{spellname} } ++;
             }
         }
     }
@@ -419,7 +398,7 @@ sub process {
             # Check if this aura matches...
             if( grep $_ eq $entry->{extra}{spellname}, @{$cdata->{auras}} ) {
                 # And record if it does.
-                $self->{scratch}{ $entry->{target} }{class}{ $cname }{auras}{ $entry->{extra}{spellname} } ++;
+                $self->{scratch1}{ $entry->{target} }{class}{ $cname }{auras}{ $entry->{extra}{spellname} } ++;
             }
         }
     }
@@ -431,82 +410,151 @@ sub process {
     
     # Summons
     if( $entry->{action} eq "SPELL_SUMMON" ) {
-        $self->{scratch}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
-    }
-    
-    # Shaman elemental totems (Earth and Fire)
-    # 2.4 only, and using some really questionable guesswork.
-    if( $self->{version} eq "2" ) {
-        if( $entry->{action} eq "SPELL_SUMMON" && ( $entry->{extra}{spellid} eq "2894" || $entry->{extra}{spellid} eq "2062" ) ) {
-            $self->{totems}{ $entry->{target} } = $entry->{actor};
-        }
-
-        if( $entry->{actor_name} eq "Greater Fire Elemental" || $entry->{actor_name} eq "Greater Earth Elemental" ) {
-            while( my ($totemid, $shamanid) = each(%{$self->{totems}}) ) {
-                my $totemid_big = Math::BigInt->new($totemid);
-                my $actor_big = Math::BigInt->new($entry->{actor});
-                $totemid_big->band(0xFFFFFF);
-                $actor_big->band(0xFFFFFF);
-                $totemid_big->badd(1);
-                if( $totemid_big->bcmp( $actor_big ) == 0 ) {
-                    $self->{scratch}{ $shamanid }{pets}{ $entry->{actor} } ++;
-                }
-            }
-        }
+        $self->{scratch1}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
     }
     
     # Mend Pet
     if( $entry->{action} eq "SPELL_PERIODIC_HEAL" && $entry->{extra}{spellname} eq "Mend Pet" ) {
-        $self->{scratch}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
+        $self->{scratch1}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
     }
     
     # Spirit Bond
     if( $entry->{action} eq "SPELL_PERIODIC_HEAL" && $entry->{extra}{spellname} eq "Spirit Bond" ) {
-        $self->{scratch}{ $entry->{target} }{pets}{ $entry->{actor} } ++ if $entry->{target} ne $entry->{actor};
+        $self->{scratch1}{ $entry->{target} }{pets}{ $entry->{actor} } ++ if $entry->{target} ne $entry->{actor};
     }
     
     # Feed Pet Effect
     if( $entry->{action} =~ /^SPELL(_PERIODIC|)_ENERGIZE$/ && $entry->{extra}{spellname} eq "Feed Pet Effect" ) {
-        $self->{scratch}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
+        $self->{scratch1}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
     }
     
     # Go for the Throat
     if( $entry->{action} =~ /^SPELL(_PERIODIC|)_ENERGIZE$/ && $entry->{extra}{spellname} eq "Go for the Throat" ) {
-        $self->{scratch}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
+        $self->{scratch1}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
     }
     
     # Improved Mend Pet
     if( $entry->{action} eq "SPELL_CAST_SUCCESS" && $entry->{extra}{spellname} eq "Improved Mend Pet" ) {
-        $self->{scratch}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
+        $self->{scratch1}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
     }
     
     # Dark Pact
     if( $entry->{action} =~ /^SPELL(_PERIODIC|)_ENERGIZE$/ && $entry->{extra}{spellname} eq "Dark Pact" ) {
-        $self->{scratch}{ $entry->{target} }{pets}{ $entry->{actor} } ++ if $entry->{target} ne $entry->{actor};
+        $self->{scratch1}{ $entry->{target} }{pets}{ $entry->{actor} } ++ if $entry->{target} ne $entry->{actor};
     }
     
     # Also Dark Pact
     if( $entry->{action} eq "SPELL_LEECH" && $entry->{extra}{spellname} eq "Dark Pact" ) {
-        $self->{scratch}{ $entry->{target} }{pets}{ $entry->{actor} } ++ if $entry->{target} ne $entry->{actor};
+        $self->{scratch1}{ $entry->{target} }{pets}{ $entry->{actor} } ++ if $entry->{target} ne $entry->{actor};
     }
     
     # Demonic Sacrifice
     if( $entry->{action} eq "SPELL_CAST_SUCCESS" && $entry->{extra}{spellname} eq "Demonic Sacrifice" ) {
-        $self->{scratch}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
+        $self->{scratch1}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
     }
     
     # Soul Link
     if( $entry->{action} eq "DAMAGE_SPLIT" && $entry->{extra}{spellname} eq "Soul Link" ) {
-        $self->{scratch}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
+        $self->{scratch1}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
     }
 
     # Mana Feed
     if( $entry->{action} eq "SPELL_ENERGIZE" && $entry->{extra}{spellname} eq "Life Tap" ) {
-        $self->{scratch}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
+        $self->{scratch1}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
     }
 }
 
-sub finish {
+sub process2 {
+    my $self = shift;
+    my $entry = shift;
+    
+    # Skip if actor is not set.
+    return unless $entry->{actor};
+    
+    # Look closely at the actor and target.
+    my ($atype, $anpc, $aspawn ) = Stasis::MobUtil->splitguid( $entry->{actor} );
+    my ($ttype, $tnpc, $tspawn ) = Stasis::MobUtil->splitguid( $entry->{target} );
+    
+    # Check things that a player can do, if:
+    # 1) the actor looks like a player based on type
+    # 2) we haven't already classified the actor
+    if( $entry->{actor} && ($atype & 0x00F0) == 0 && !$self->{scratch2}{class}{ $entry->{actor} } && ($entry->{action} eq "SPELL_MISS" || $entry->{action} eq "SPELL_DAMAGE" || $entry->{action} eq "SPELL_PERIODIC_MISS" || $entry->{action} eq "SPELL_PERIODIC_DAMAGE" || $entry->{action} eq "SPELL_HEAL" || $entry->{action} eq "SPELL_PERIODIC_HEAL" || $entry->{action} eq "SPELL_CAST_SUCCESS") )
+    {
+        my $spell = Stasis::SpellUtil->spell( $entry->{extra}{spellid} );
+        if( $spell && $spell->{class} ) {
+            $self->{scratch2}{class}{ $entry->{actor} } = $spell->{class};
+        }
+    }
+    
+    # Check things that signify pet <=> owner relationships.
+    # Skip unless target is set, and different from actor.
+    return unless $entry->{target} && $entry->{target} ne $entry->{actor};
+    
+    # Summons
+    if( $entry->{action} eq "SPELL_SUMMON" ) {
+        $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+    }
+    
+    # Mend Pet
+    if( $entry->{action} eq "SPELL_PERIODIC_HEAL" && $entry->{extra}{spellid} == 27046 ) {
+        $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+    }
+    
+    # Spirit Bond
+    if( $entry->{action} eq "SPELL_PERIODIC_HEAL" && $entry->{extra}{spellid} == 24529 ) {
+        $self->{scratch2}{pets}{ $entry->{target} }{ $entry->{actor} } ++;
+    }
+    
+    # Feed Pet Effect
+    if( $entry->{action} =~ /^SPELL(_PERIODIC|)_ENERGIZE$/ && $entry->{extra}{spellid} == 1539 ) {
+        $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+    }
+    
+    # Go for the Throat
+    if( $entry->{action} =~ /^SPELL(_PERIODIC|)_ENERGIZE$/ && $entry->{extra}{spellid} == 34953 ) {
+        $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+    }
+    
+    # Dark Pact
+    if( $entry->{action} eq "SPELL_LEECH" && $entry->{extra}{spellid} == 27265 ) {
+        $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+    }
+    
+    # Demonic Sacrifice
+    if( $entry->{action} eq "SPELL_INSTAKILL" && $entry->{extra}{spellid} == 18788 ) {
+        $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+    }
+    
+    # Soul Link
+    if( $entry->{action} eq "DAMAGE_SPLIT" && $entry->{extra}{spellid} == 25228 ) {
+        $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+    }
+    
+    # Mana Feed
+    if( $entry->{action} eq "SPELL_ENERGIZE" && $entry->{extra}{spellid} == 32553 ) {
+        $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+    }
+    
+    # Shaman elemental totems (Fire and Earth respectively)
+    # Using some really questionable guesswork but it seems to do the right thing.
+    if( $entry->{action} eq "SPELL_SUMMON" && ( $entry->{extra}{spellid} == 2894 || $entry->{extra}{spellid} == 2062 ) ) {
+        # Associate totem with shaman by SPELL_SUMMON event.
+        $self->{scratch2}{totems}{ $entry->{target} } = $entry->{actor};
+    }
+    
+    if( $anpc == 15438 || $anpc == 15352 ) {
+        while( my ($totemid, $shamanid) = each(%{$self->{scratch2}{totems}}) ) {
+            # Associate totem with this elemental by consecutive spawncount.
+            my @totem = Stasis::MobUtil->splitguid( $totemid );
+            my @elemental = Stasis::MobUtil->splitguid( $entry->{actor} );
+            if( $totem[2] + 1 == $elemental[2] ) {
+                $self->{scratch2}{pets}{ $shamanid }{ $entry->{actor} } ++;
+            }
+        }
+    }
+}
+
+sub finish1 {
     my $self = shift;
     
     # We will eventually return this list of raid members.
@@ -515,7 +563,7 @@ sub finish {
     my %raid;
     
     # Prepare the final results for each actor.
-    while( my ($aname, $adata) = each(%{$self->{scratch}}) ) {
+    while( my ($aname, $adata) = each(%{$self->{scratch1}}) ) {
         # Skip this bit if the actor has no guessed classes or proper ID.
         next unless $adata->{class} && $aname;
         
@@ -560,26 +608,33 @@ sub finish {
     return %raid;
 }
 
-sub read_hints {
+sub finish2 {
     my $self = shift;
     
-    if( $self->{hintsfile} ) {
-        open HINTS, $self->{hintsfile};
-        
-        while( <HINTS> ) {
-            if( /^(\w+):\s*(\w+)\s*$/ ) {
-                $self->{hints}{$1}{class} = $2;
-            } elsif( /^(\w+):\s*(\w+)\s*\(([\w\s]+)\)\s*$/ ) {
-                $self->{hints}{$1}{class} = $2;
-                
-                my $petstr = $3;
-                my @pets = split /\s+/, $petstr;
-                $self->{hints}{$1}{pets} = \@pets;
-            }
-        }
-        
-        close HINTS;
+    # We will eventually return this list of raid members.
+    # Keys will be raid member IDs and values will be two element hashes
+    # Each hash will have at least two keys: "class" (a string) and "pets" (an array of pet IDs)
+    my %raid;
+    
+    while( my ($actorid, $actorclass) = each (%{$self->{scratch2}{class}})) {
+        $raid{$actorid} = {
+            class => $actorclass,
+            pets => [],
+        };
     }
+    
+    while( my ($actorid, $pethash) = each (%{$self->{scratch2}{pets}})) {
+        if( exists $raid{$actorid} ) {
+            push @{$raid{$actorid}{pets}}, keys %$pethash;
+            
+            foreach my $petid (keys %$pethash) {
+                $raid{$petid}{class} = "Pet";
+            }
+            
+        }
+    }
+    
+    return %raid;
 }
 
 1;
