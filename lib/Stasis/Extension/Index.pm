@@ -25,40 +25,9 @@ package Stasis::Extension::Index;
 
 use strict;
 use warnings;
+use Stasis::SpellUtil;
 
 our @ISA = "Stasis::Extension";
-
-our %rank = (
-    # Chain Heal
-    "1064" => 1,
-    "10622" => 2,
-    "10623" => 3,
-    "25422" => 4,
-    "25423" => 5,
-    
-    # Healing Wave
-    "331" => 1,
-    "332" => 2,
-    "547" => 3,
-    "913" => 4,
-    "939" => 5,
-    "959" => 6,
-    "8005" => 7,
-    "10395" => 8,
-    "10396" => 9,
-    "25357" => 10,
-    "25391" => 11,
-    "25396" => 12,
-    
-    # Lesser Healing Wave
-    "8004" => 1,
-    "8008" => 2,
-    "8010" => 3,
-    "10466" => 4,
-    "10467" => 5,
-    "10468" => 6,
-    "25420" => 7,
-);
 
 sub start {
     my $self = shift;
@@ -97,8 +66,14 @@ sub spellname {
     if( $spell ) {
         
         if( $self->{spells}{$spell} ) {
-            my $r = $rank{$spell};
-            return $self->{spells}{$spell} . ($r ? " $r" : "");
+            my $sd = Stasis::SpellUtil->spell($spell);
+            my $r = $sd && $sd->{rank};
+            
+            if( $r && $r =~ /^[0-9]+$/ ) {
+                $r = "r$r";
+            }
+            
+            return $self->{spells}{$spell} . ($r ? " ($r)" : "");
         } else {
             return $spell;
         }

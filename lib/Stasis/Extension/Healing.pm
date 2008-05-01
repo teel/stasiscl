@@ -30,12 +30,34 @@ our @ISA = "Stasis::Extension";
 
 sub start {
     my $self = shift;
+    my %params = @_;
+    
     $self->{actors} = {};
     $self->{ohtrack} = {};
+    $self->{eshield} = {};
+    $self->{__eshield} = $params{eshield} || 0;
 }
 
 sub process {
     my ($self, $entry) = @_;
+    
+    #########################
+    # EARTH SHIELD TRACKING #
+    #########################
+    
+    if( $entry->{action} eq "SPELL_CAST_SUCCESS" && $entry->{extra}{spellid} eq "32594" ) {
+        # Earth Shield applied
+        $self->{eshield}{ $entry->{target} } = $entry->{actor};
+    }
+    
+    if( $entry->{action} eq "SPELL_AURA_REMOVED" && $entry->{extra}{spellid} eq "32594" ) {
+        # Earth Shield applied
+        delete $self->{eshield}{ $entry->{target} };
+    }
+    
+    ################
+    # NORMAL LOGIC #
+    ################
     
     if( $entry->{action} eq "SPELL_HEAL" || $entry->{action} eq "SPELL_PERIODIC_HEAL" ) {
         # This was a heal. Create an empty hash if it does not exist yet.
@@ -56,7 +78,31 @@ sub process {
             }
         }
         
-        my $hdata = $self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} };
+        my $hdata;
+        
+        # Earth shield reassignment
+        if( $self->{__eshield} && $entry->{extra}{spellid} eq "379" && $self->{eshield}{ $entry->{target} } ) {
+            if( !exists( $self->{actors}{ $self->{eshield}{ $entry->{target} } }{ $entry->{extra}{spellid} }{ $entry->{target} } ) ) {
+                $self->{actors}{ $self->{eshield}{ $entry->{target} } }{ $entry->{extra}{spellid} }{ $entry->{target} } = {
+                    count => 0,
+                    total => 0,
+                    effective => 0,
+                    hitCount => 0,
+                    hitTotal => 0,
+                    hitEffective => 0,
+                    critCount => 0,
+                    critTotal => 0,
+                    critEffective => 0,
+                    tickCount => 0,
+                    tickTotal => 0,
+                    tickEffective => 0,
+                }
+            }
+            
+            $hdata = $self->{actors}{ $self->{eshield}{ $entry->{target} } }{ $entry->{extra}{spellid} }{ $entry->{target} };
+        } else {
+            $hdata = $self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} };
+        }
         
         # Add the HP to the target for overheal-tracking purposes.
         $self->{ohtrack}{ $entry->{target} } += $entry->{extra}{amount};

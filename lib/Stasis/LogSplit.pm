@@ -36,89 +36,89 @@ our %fingerprints = (
 ############
 
 "Attumen the Huntsman" => {
-    mobStart => [ "Midnight" ],
-    mobContinue => [ "Attumen the Huntsman", "Midnight" ],
-    mobEnd => [ "Attumen the Huntsman" ],
+    mobStart => [ "16151", "Midnight" ],
+    mobContinue => [ "15550", "16151", "Attumen the Huntsman", "Midnight" ],
+    mobEnd => [ "15550", "Attumen the Huntsman" ],
     timeout => 15,
 },
 
 "Moroes" => {
-    mobStart => [ "Moroes" ],
-    mobContinue => [ "Moroes" ],
-    mobEnd => [ "Moroes" ],
+    mobStart => [ "15687", "Moroes" ],
+    mobContinue => [ "15687", "Moroes" ],
+    mobEnd => [ "15687", "Moroes" ],
     timeout => 20,
 },
 
 "Maiden of Virtue" => {
-    mobStart => [ "Maiden of Virtue" ],
-    mobContinue => [ "Maiden of Virtue" ],
-    mobEnd => [ "Maiden of Virtue" ],
+    mobStart => [ "16457", "Maiden of Virtue" ],
+    mobContinue => [ "16457", "Maiden of Virtue" ],
+    mobEnd => [ "16457", "Maiden of Virtue" ],
     timeout => 20,
 },
 
 "Opera (Wizard of Oz)" => {
-    mobStart => [ "Dorothee", "Tito", "Strawman", "Tinhead", "Roar" ],
-    mobContinue => [ "Dorothee", "Tito", "Strawman", "Tinhead", "Roar", "The Crone" ],
-    mobEnd => [ "The Crone" ],
+    mobStart => [ "17535", "17548", "17543", "17547", "17546", "Dorothee", "Tito", "Strawman", "Tinhead", "Roar" ],
+    mobContinue => [ "17535", "17548", "17543", "17547", "17546", "18168", "Dorothee", "Tito", "Strawman", "Tinhead", "Roar", "The Crone" ],
+    mobEnd => [ "18168", "The Crone" ],
     timeout => 20,
 },
 
 # FIXME: Encounter doesn't end properly
 "Opera (Romulo and Julianne)" => {
-    mobStart => [ "Julianne" ],
-    mobContinue => [ "Romulo", "Julianne" ],
+    mobStart => [ "17534", "Julianne" ],
+    mobContinue => [ "17533", "17534", "Romulo", "Julianne" ],
     mobEnd => [],
     timeout => 20,
 },
 
 "Opera (Red Riding Hood)" => {
-    mobStart => [ "The Big Bad Wolf" ],
-    mobContinue => [ "The Big Bad Wolf" ],
-    mobEnd => [ "The Big Bad Wolf" ],
+    mobStart => [ "17521", "The Big Bad Wolf" ],
+    mobContinue => [ "17521", "The Big Bad Wolf" ],
+    mobEnd => [ "17521", "The Big Bad Wolf" ],
     timeout => 20,
 },
 
 "Nightbane" => {
-    mobStart => [ "Nightbane" ],
-    mobContinue => [ "Nightbane", "Restless Skeleton" ],
-    mobEnd => [ "Nightbane" ],
+    mobStart => [ "17225", "Nightbane" ],
+    mobContinue => [ "17225", "17261", "Nightbane", "Restless Skeleton" ],
+    mobEnd => [ "17225", "Nightbane" ],
     timeout => 30,
 },
 
 "The Curator" => {
     short => "curator",
-    mobStart => [ "The Curator" ],
-    mobContinue => [ "The Curator" ],
-    mobEnd => [ "The Curator" ],
+    mobStart => [ "15691", "The Curator" ],
+    mobContinue => [ "15691", "The Curator" ],
+    mobEnd => [ "15691", "The Curator" ],
     timeout => 20,
 },
 
 "Shade of Aran" => {
-    mobStart => [ "Shade of Aran" ],
-    mobContinue => [ "Shade of Aran" ],
-    mobEnd => [ "Shade of Aran" ],
+    mobStart => [ "16524", "Shade of Aran" ],
+    mobContinue => [ "16524", "Shade of Aran" ],
+    mobEnd => [ "16524", "Shade of Aran" ],
     timeout => 20,
 },
 
 "Terestian Illhoof" => {
     short => "illhoof",
-    mobStart => [ "Terestian Illhoof" ],
-    mobContinue => [ "Terestian Illhoof" ],
-    mobEnd => [ "Terestian Illhoof" ],
+    mobStart => [ "15688", "Terestian Illhoof" ],
+    mobContinue => [ "15688", "Terestian Illhoof" ],
+    mobEnd => [ "15688", "Terestian Illhoof" ],
     timeout => 20,
 },
 
 "Netherspite" => {
-    mobStart => [ "Netherspite" ],
-    mobContinue => [ "Netherspite" ],
-    mobEnd => [ "Netherspite" ],
+    mobStart => [ "15689", "Netherspite" ],
+    mobContinue => [ "15689", "Netherspite" ],
+    mobEnd => [ "15689", "Netherspite" ],
     timeout => 45,
 },
 
 "Prince Malchezaar" => {
-    mobStart => [ "Prince Malchezaar" ],
-    mobContinue => [ "Prince Malchezaar" ],
-    mobEnd => [ "Prince Malchezaar" ],
+    mobStart => [ "15690", "Prince Malchezaar" ],
+    mobContinue => [ "15690", "Prince Malchezaar" ],
+    mobEnd => [ "15690", "Prince Malchezaar" ],
     timeout => 20,
 },
 
@@ -127,45 +127,45 @@ our %fingerprints = (
 ############
 
 "Nalorakk" => {
-    mobStart => [ "Nalorakk" ],
-    mobContinue => [ "Nalorakk" ],
-    mobEnd => [ "Nalorakk" ],
+    mobStart => [ "23576", "Nalorakk" ],
+    mobContinue => [ "23576", "Nalorakk" ],
+    mobEnd => [ "23576", "Nalorakk" ],
     timeout => 15,
 },
 
 "Jan'alai" => {
-    mobStart => [ "Jan'alai" ],
-    mobContinue => [ "Jan'alai" ],
-    mobEnd => [ "Jan'alai" ],
+    mobStart => [ "23578", "Jan'alai" ],
+    mobContinue => [ "23578", "Jan'alai" ],
+    mobEnd => [ "23578", "Jan'alai" ],
     timeout => 15,
 },
 
 "Akil'zon" => {
-    mobStart => [ "Akil'zon" ],
-    mobContinue => [ "Akil'zon" ],
-    mobEnd => [ "Akil'zon" ],
+    mobStart => [ "23574", "Akil'zon" ],
+    mobContinue => [ "23574", "Akil'zon" ],
+    mobEnd => [ "23574", "Akil'zon" ],
     timeout => 15,
 },
 
 "Halazzi" => {
-    mobStart => [ "Halazzi" ],
-    mobContinue => [ "Halazzi" ],
-    mobEnd => [ "Halazzi" ],
+    mobStart => [ "23577", "Halazzi" ],
+    mobContinue => [ "23577", "Halazzi" ],
+    mobEnd => [ "23577", "Halazzi" ],
     timeout => 15,
 },
 
 "Hex Lord Malacrass" => {
     short => "hexlord",
-    mobStart => [ "Hex Lord Malacrass" ],
-    mobContinue => [ "Hex Lord Malacrass" ],
-    mobEnd => [ "Hex Lord Malacrass" ],
+    mobStart => [ "24239", "Hex Lord Malacrass" ],
+    mobContinue => [ "24239", "Hex Lord Malacrass" ],
+    mobEnd => [ "24239", "Hex Lord Malacrass" ],
     timeout => 15,
 },
 
 "Zul'jin" => {
-    mobStart => [ "Zul'jin" ],
-    mobContinue => [ "Zul'jin" ],
-    mobEnd => [ "Zul'jin" ],
+    mobStart => [ "23863", "Zul'jin" ],
+    mobContinue => [ "23863", "Zul'jin" ],
+    mobEnd => [ "23863", "Zul'jin" ],
     timeout => 30,
 },
 
@@ -175,25 +175,25 @@ our %fingerprints = (
 
 "High King Maulgar" => {
     short => "maulgar",
-    mobStart => [ "High King Maulgar", "Kiggler the Crazed", "Krosh Firehand", "Olm the Summoner", "Blindeye the Seer" ],
-    mobContinue => [ "High King Maulgar", "Kiggler the Crazed", "Krosh Firehand", "Olm the Summoner", "Blindeye the Seer" ],
-    mobEnd => [ "High King Maulgar" ],
+    mobStart => [ "18831", "High King Maulgar", "Kiggler the Crazed", "Krosh Firehand", "Olm the Summoner", "Blindeye the Seer" ],
+    mobContinue => [ "18831", "High King Maulgar", "Kiggler the Crazed", "Krosh Firehand", "Olm the Summoner", "Blindeye the Seer" ],
+    mobEnd => [ "18831", "High King Maulgar" ],
     timeout => 15,
 },
 
 "Gruul the Dragonkiller" => {
     short => "gruul",
-    mobStart => [ "Gruul the Dragonkiller" ],
-    mobContinue => [ "Gruul the Dragonkiller" ],
-    mobEnd => [ "Gruul the Dragonkiller" ],
+    mobStart => [ "19044", "Gruul the Dragonkiller" ],
+    mobContinue => [ "19044", "Gruul the Dragonkiller" ],
+    mobEnd => [ "19044", "Gruul the Dragonkiller" ],
     timeout => 15,
 },
 
 "Magtheridon" => {
     short => "mag",
-    mobStart => [ "Hellfire Channeler" ],
-    mobContinue => [ "Magtheridon", "Hellfire Channeler" ],
-    mobEnd => [ "Magtheridon" ],
+    mobStart => [ "17257", "Hellfire Channeler" ],
+    mobContinue => [ "17256", "17257", "Magtheridon", "Hellfire Channeler" ],
+    mobEnd => [ "17257". "Magtheridon" ],
     timeout => 15,
 },
 
@@ -202,49 +202,49 @@ our %fingerprints = (
 ########################
 
 "Hydross the Unstable" => {
-    mobStart => [ "Hydross the Unstable" ],
-    mobContinue => [ "Hydross the Unstable" ],
-    mobEnd => [ "Hydross the Unstable" ],
+    mobStart => [ "21216", "Hydross the Unstable" ],
+    mobContinue => [ "21216", "Hydross the Unstable" ],
+    mobEnd => [ "21216", "Hydross the Unstable" ],
     timeout => 15,
 },
 
 "The Lurker Below" => {
     short => "lurker",
-    mobStart => [ "The Lurker Below" ],
-    mobContinue => [ "The Lurker Below", "Coilfang Ambusher", "Coilfang Guardian" ],
-    mobEnd => [ "The Lurker Below" ],
+    mobStart => [ "21217", "The Lurker Below" ],
+    mobContinue => [ "21217", "21865", "21873", "The Lurker Below", "Coilfang Ambusher", "Coilfang Guardian" ],
+    mobEnd => [ "21217", "The Lurker Below" ],
     timeout => 15,
 },
 
 "Leotheras the Blind" => {
     short => "leo",
-    mobStart => [ "Greyheart Spellbinder" ],
-    mobContinue => [ "Greyheart Spellbinder", "Leotheras the Blind" ],
-    mobEnd => [ "Leotheras the Blind" ],
+    mobStart => [ "21806", "Greyheart Spellbinder" ],
+    mobContinue => [ "21806", "21215", "Greyheart Spellbinder", "Leotheras the Blind" ],
+    mobEnd => [ "21215", "Leotheras the Blind" ],
     timeout => 15,
 },
 
 "Fathom-Lord Karathress" => {
     short => "flk",
-    mobStart => [ "Fathom-Lord Karathress", "Fathom-Guard Caribdis", "Fathom-Guard Sharkkis", "Fathom-Guard Tidalvess" ],
+    mobStart => [ "21214", "Fathom-Lord Karathress", "Fathom-Guard Caribdis", "Fathom-Guard Sharkkis", "Fathom-Guard Tidalvess" ],
     mobContinue => [ "Fathom-Lord Karathress", "Fathom-Guard Caribdis", "Fathom-Guard Sharkkis", "Fathom-Guard Tidalvess" ],
-    mobEnd => [ "Fathom-Lord Karathress" ],
+    mobEnd => [ "21214", "Fathom-Lord Karathress" ],
     timeout => 15,
 },
 
 "Morogrim Tidewalker" => {
     short => "tidewalker",
-    mobStart => [ "Morogrim Tidewalker" ],
-    mobContinue => [ "Morogrim Tidewalker" ],
-    mobEnd => [ "Morogrim Tidewalker" ],
+    mobStart => [ "21213", "Morogrim Tidewalker" ],
+    mobContinue => [ "21213", "Morogrim Tidewalker" ],
+    mobEnd => [ "21213", "Morogrim Tidewalker" ],
     timeout => 15,
 },
 
 "Lady Vashj" => {
     short => "vashj",
-    mobStart => [ "Lady Vashj" ],
-    mobContinue => [ "Lady Vashj", "Enchanted Elemental", "Tainted Elemental", "Coilfang Strider", "Coilfang Elite" ],
-    mobEnd => [ "Lady Vashj" ],
+    mobStart => [ "21212", "Lady Vashj" ],
+    mobContinue => [ "21212", "21958", "22056", "22055", "22009", "Lady Vashj", "Enchanted Elemental", "Tainted Elemental", "Coilfang Strider", "Coilfang Elite" ],
+    mobEnd => [ "21212", "Lady Vashj" ],
     timeout => 15,
 },
 
@@ -253,33 +253,33 @@ our %fingerprints = (
 ################
 
 "Al'ar" => {
-    mobStart => [ "Al'ar" ],
-    mobContinue => [ "Al'ar" ],
-    mobEnd => [ "Al'ar" ],
+    mobStart => [ "19514", "Al'ar" ],
+    mobContinue => [ "19514", "Al'ar" ],
+    mobEnd => [ "19514", "Al'ar" ],
     timeout => 30,
 },
 
 "Void Reaver" => {
     short => "vr",
-    mobStart => [ "Void Reaver" ],
-    mobContinue => [ "Void Reaver" ],
-    mobEnd => [ "Void Reaver" ],
+    mobStart => [ "19516", "Void Reaver" ],
+    mobContinue => [ "19516", "Void Reaver" ],
+    mobEnd => [ "19516", "Void Reaver" ],
     timeout => 15,
 },
 
 "High Astromancer Solarian" => {
     short => "solarian",
-    mobStart => [ "High Astromancer Solarian" ],
-    mobContinue => [ "High Astromancer Solarian", "Solarium Priest", "Solarium Agent" ],
-    mobEnd => [ "High Astromancer Solarian" ],
+    mobStart => [ "18805", "High Astromancer Solarian" ],
+    mobContinue => [ "18805", "18806", "18925", "High Astromancer Solarian", "Solarium Priest", "Solarium Agent" ],
+    mobEnd => [ "18805", "High Astromancer Solarian" ],
     timeout => 15,
 },
 
 "Kael'thas Sunstrider" => {
     short => "kael",
-    mobStart => [ "Warp Slicer", "Phaseshift Bulwark", "Devastation", "Netherstrand Longbow", "Staff of Disintegration", "Infinity Blades", "Cosmic Infuser" ],
-    mobContinue => [ "Warp Slicer", "Phaseshift Bulwark", "Devastation", "Netherstrand Longbow", "Staff of Disintegration", "Infinity Blades", "Cosmic Infuser", "Kael'thas Sunstrider", "Phoenix", "Phoenix Egg", "Master Engineer Telonicus", "Grand Astromancer Capernian", "Thaladred the Darkener", "Lord Sanguinar" ],
-    mobEnd => [ "Kael'thas Sunstrider" ],
+    mobStart => [ "21272", "21273", "21269", "21268", "21274", "21271", "21270", "Warp Slicer", "Phaseshift Bulwark", "Devastation", "Netherstrand Longbow", "Staff of Disintegration", "Infinity Blades", "Cosmic Infuser" ],
+    mobContinue => [ "19622", "21272", "21273", "21269", "21268", "21274", "21271", "21270", "20063", "20062", "20064", "20060", "Warp Slicer", "Phaseshift Bulwark", "Devastation", "Netherstrand Longbow", "Staff of Disintegration", "Infinity Blades", "Cosmic Infuser", "Kael'thas Sunstrider", "Phoenix", "Phoenix Egg", "Master Engineer Telonicus", "Grand Astromancer Capernian", "Thaladred the Darkener", "Lord Sanguinar" ],
+    mobEnd => [ "19622", "Kael'thas Sunstrider" ],
     timeout => 15,
 },
 
@@ -288,37 +288,37 @@ our %fingerprints = (
 #########
 
 "Rage Winterchill" => {
-    mobStart => [ "Rage Winterchill" ],
-    mobContinue => [ "Rage Winterchill" ],
-    mobEnd => [ "Rage Winterchill" ],
+    mobStart => [ "17767", "Rage Winterchill" ],
+    mobContinue => [ "17767", "Rage Winterchill" ],
+    mobEnd => [ "17767", "Rage Winterchill" ],
     timeout => 10,
 },
 
 "Anetheron" => {
-    mobStart => [ "Anetheron" ],
-    mobContinue => [ "Anetheron" ],
-    mobEnd => [ "Anetheron" ],
+    mobStart => [ "17808", "Anetheron" ],
+    mobContinue => [ "17808", "Anetheron" ],
+    mobEnd => [ "17808", "Anetheron" ],
     timeout => 10,
 },
 
 "Kaz'rogal" => {
-    mobStart => [ "Kaz'rogal" ],
-    mobContinue => [ "Kaz'rogal" ],
-    mobEnd => [ "Kaz'rogal" ],
+    mobStart => [ "17888", "Kaz'rogal" ],
+    mobContinue => [ "17888", "Kaz'rogal" ],
+    mobEnd => [ "17888", "Kaz'rogal" ],
     timeout => 10,
 },
 
 "Azgalor" => {
-    mobStart => [ "Azgalor" ],
-    mobContinue => [ "Azgalor" ],
-    mobEnd => [ "Azgalor" ],
+    mobStart => [ "17842", "Azgalor" ],
+    mobContinue => [ "17842", "Azgalor" ],
+    mobEnd => [ "17842", "Azgalor" ],
     timeout => 10,
 },
 
 "Archimonde" => {
-    mobStart => [ "Archimonde" ],
-    mobContinue => [ "Archimonde" ],
-    mobEnd => [ "Archimonde" ],
+    mobStart => [ "17968", "Archimonde" ],
+    mobContinue => [ "17968", "Archimonde" ],
+    mobEnd => [ "17968", "Archimonde" ],
     timeout => 30,
 },
 
@@ -328,70 +328,70 @@ our %fingerprints = (
 
 "High Warlord Naj'entus" => {
     short => "najentus",
-    mobStart => [ "High Warlord Naj'entus" ],
-    mobContinue => [ "High Warlord Naj'entus" ],
-    mobEnd => [ "High Warlord Naj'entus" ],
+    mobStart => [ "22887", "High Warlord Naj'entus" ],
+    mobContinue => [ "22887", "High Warlord Naj'entus" ],
+    mobEnd => [ "22887", "High Warlord Naj'entus" ],
     timeout => 15,
 },
 
 "Supremus" => {
-    mobStart => [ "Supremus" ],
-    mobContinue => [ "Supremus" ],
-    mobEnd => [ "Supremus" ],
+    mobStart => [ "22898", "Supremus" ],
+    mobContinue => [ "22898", "Supremus" ],
+    mobEnd => [ "22898", "Supremus" ],
     timeout => 15,
 },
 
 "Shade of Akama" => {
     short => "akama",
-    mobStart => [ "Ashtongue Channeler", "Ashtongue Spiritbinder", "Ashtongue Elementalist", "Ashtongue Rogue" ],
-    mobContinue => [ "Ashtongue Channeler", "Ashtongue Defender", "Ashtongue Spiritbinder", "Ashtongue Elementalist", "Ashtongue Rogue", "Shade of Akama", "Akama" ],
-    mobEnd => [ "Shade of Akama" ],
+    mobStart => [ "23421", "23524", "23523", "23318", "Ashtongue Channeler", "Ashtongue Spiritbinder", "Ashtongue Elementalist", "Ashtongue Rogue" ],
+    mobContinue => [ "23421", "23524", "23523", "23318", "22841", "Ashtongue Channeler", "Ashtongue Defender", "Ashtongue Spiritbinder", "Ashtongue Elementalist", "Ashtongue Rogue", "Shade of Akama" ],
+    mobEnd => [ "22841", "Shade of Akama" ],
     timeout => 15,
 },
 
 "Teron Gorefiend" => {
-    mobStart => [ "Teron Gorefiend" ],
-    mobContinue => [ "Teron Gorefiend" ],
-    mobEnd => [ "Teron Gorefiend" ],
+    mobStart => [ "22871", "Teron Gorefiend" ],
+    mobContinue => [ "22871", "Teron Gorefiend" ],
+    mobEnd => [ "22871", "Teron Gorefiend" ],
     timeout => 15,
 },
 
 "Gurtogg Bloodboil" => {
     short => "bloodboil",
-    mobStart => [ "Gurtogg Bloodboil" ],
-    mobContinue => [ "Gurtogg Bloodboil" ],
-    mobEnd => [ "Gurtogg Bloodboil" ],
+    mobStart => [ "22948", "Gurtogg Bloodboil" ],
+    mobContinue => [ "22948", "Gurtogg Bloodboil" ],
+    mobEnd => [ "22948", "Gurtogg Bloodboil" ],
     timeout => 15,
 },
 
 "Reliquary of Souls" => {
     short => "ros",
-    mobStart => [ "Essence of Suffering" ],
-    mobContinue => [ "Essence of Suffering", "Essence of Desire", "Essence of Anger", "Enslaved Soul" ],
-    mobEnd => [ "Essence of Anger" ],
+    mobStart => [ "23418", "Essence of Suffering" ],
+    mobContinue => [ "23418", "23419", "23420", "Essence of Suffering", "Essence of Desire", "Essence of Anger", "Enslaved Soul" ],
+    mobEnd => [ "23420", "Essence of Anger" ],
     timeout => 30,
 },
 
 "Mother Shahraz" => {
     short => "shahraz",
-    mobStart => [ "Mother Shahraz" ],
-    mobContinue => [ "Mother Shahraz" ],
-    mobEnd => [ "Mother Shahraz" ],
+    mobStart => [ "22947", "Mother Shahraz" ],
+    mobContinue => [ "22947", "Mother Shahraz" ],
+    mobEnd => [ "22947", "Mother Shahraz" ],
     timeout => 15,
 },
 
 "Illidari Council" => {
     short => "council",
-    mobStart => [ "High Nethermancer Zerevor", "Veras Darkshadow", "Lady Malande", "Gathios the Shatterer" ],
-    mobContinue => [ "High Nethermancer Zerevor", "Veras Darkshadow", "Lady Malande", "Gathios the Shatterer" ],
-    mobEnd => [ "The Illidari Council" ],
+    mobStart => [ "22950", "22952", "22951", "22949", "High Nethermancer Zerevor", "Veras Darkshadow", "Lady Malande", "Gathios the Shatterer" ],
+    mobContinue => [ "22950", "22952", "22951", "22949", "High Nethermancer Zerevor", "Veras Darkshadow", "Lady Malande", "Gathios the Shatterer" ],
+    mobEnd => [ "23426", "The Illidari Council" ],
     timeout => 30,
 },
 
 "Illidan Stormrage" => {
-    mobStart => [ "Illidan Stormrage" ],
-    mobContinue => [ "Illidan Stormrage", "Flame of Azzinoth" ],
-    mobEnd => [ "Illidan Stormrage" ],
+    mobStart => [ "22917", "Illidan Stormrage" ],
+    mobContinue => [ "22917", "22997", "Illidan Stormrage", "Flame of Azzinoth" ],
+    mobEnd => [ "22917", "Illidan Stormrage" ],
     timeout => 45,
 },
 
@@ -400,30 +400,39 @@ our %fingerprints = (
 ###########
 
 "Kalecgos" => {
-    mobStart => [ "Kalecgos" ],
-    mobContinue => [ "Kalecgos", "Sathrovarr the Corruptor" ],
-    mobEnd => [ "Sathrovarr the Corruptor" ],
+    mobStart => [ "24850" ],
+    mobContinue => [ "24850", "24892" ],
+    mobEnd => [ "24892" ],
     timeout => 30,
 },
 
 "Brutallus" => {
-    mobStart => [ "Brutallus" ],
-    mobContinue => [ "Brutallus" ],
-    mobEnd => [ "Brutallus" ],
+    mobStart => [ "24882" ],
+    mobContinue => [ "24882" ],
+    mobEnd => [ "24882" ],
     timeout => 30,
 },
 
 "Felmyst" => {
-    mobStart => [ "Felmyst" ],
-    mobContinue => [ "Felmyst", "Unyielding Dead" ],
-    mobEnd => [ "Felmyst" ],
+    mobStart => [ "25038" ],
+    mobContinue => [ "25038", "25268" ],
+    mobEnd => [ "25038" ],
     timeout => 30,
 },
 
+# FIXME: encounter never ends
+"Eredar Twins" => {
+    mobStart => [ "25166", "25165" ],
+    mobContinue => [ "25166", "25165" ],
+    mobEnd => [],
+    timeout => 30,
+},
+
+# FIXME: encounter never ends
 "M'uru" => {
-    mobStart => [ "M'uru" ],
-    mobContinue => [ "M'uru", "Entropius" ],
-    mobEnd => [ "M'uru" ],
+    mobStart => [ "25741" ],
+    mobContinue => [ "25741", "25840" ],
+    mobEnd => [],
     timeout => 30,
 }
 
@@ -446,6 +455,15 @@ sub process {
     
     $self->{nlog} ++;
     return unless $entry->{action};
+    
+    # Figure out what to use for the actor and target identifiers.
+    # This will be either the name (version 1) or the NPC part of the ID (version 2)
+    
+    my ($atype, $anpc, $aspawn ) = Stasis::MobUtil->splitguid( $entry->{actor} );
+    my ($ttype, $tnpc, $tspawn ) = Stasis::MobUtil->splitguid( $entry->{target} );
+    
+    my $actor_id = $anpc || $entry->{actor};
+    my $target_id = $tnpc || $entry->{target};
     
     # Continuously test for all fingerprints.
     while( my ($boss, $print) = each (%fingerprints) ) {
@@ -474,7 +492,7 @@ sub process {
                 # Maybe this is the start of a new encounter with this boss.
                 my $shouldStart;
                 foreach my $mobStart (@{ $print->{mobStart} }) {
-                    if( (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) && ($entry->{actor_name} eq $mobStart || $entry->{target_name} eq $mobStart) ) {
+                    if( (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) && ($actor_id eq $mobStart || $target_id eq $mobStart) ) {
                         $shouldStart ++;
                     }
                 }
@@ -489,7 +507,7 @@ sub process {
                 # This fingerprint hasn't yet timed out. Possibly continue it.
                 my $shouldContinue;
                 foreach my $mobContinue (@{ $print->{mobContinue} }) {
-                    if( $entry->{actor_name} eq $mobContinue || $entry->{target_name} eq $mobContinue ) {
+                    if( $actor_id eq $mobContinue || $target_id eq $mobContinue ) {
                         $shouldContinue ++;
                     }
                 }
@@ -503,7 +521,7 @@ sub process {
                 # Also possibly end it.
                 my $shouldEnd;
                 foreach my $mobEnd (@{ $print->{mobEnd} }) {
-                    if( $entry->{action} eq "UNIT_DIED" && $entry->{target_name} eq $mobEnd ) {
+                    if( $entry->{action} eq "UNIT_DIED" && $target_id eq $mobEnd ) {
                         $shouldEnd ++;
                     }
                 }
@@ -526,7 +544,7 @@ sub process {
             # We aren't currently in an encounter with this boss. Maybe we should start one.
             my $shouldStart;
             foreach my $mobStart (@{ $print->{mobStart} }) {
-                if( ($entry->{actor_name} eq $mobStart || $entry->{target_name} eq $mobStart) && (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) ) {
+                if( ($actor_id eq $mobStart || $target_id eq $mobStart) && (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) ) {
                     $shouldStart ++;
                 }
             }

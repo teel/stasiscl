@@ -90,6 +90,11 @@ sub page {
         $dmg_to_mobs/$self->{ext}{Activity}{actors}{$PLAYER}{all}{time} ) 
             if $ptime && $dmg_to_mobs && $self->{ext}{Activity}{actors}{$PLAYER} && $self->{ext}{Activity}{actors}{$PLAYER}{all}{time};
     
+    my ($atype, $anpc, $aspawn ) = Stasis::MobUtil->splitguid( $PLAYER );
+    if( ($atype & 0x00F0) == 0x30 ) {
+        $presence_text .= sprintf( "<br />Wowhead: <a href=\"http://www.wowhead.com/?npc=%s\" target=\"swswhnpc_%s\">%s</a>", $anpc, $anpc, HTML::Entities::encode_entities($self->{ext}{Index}->actorname($PLAYER)) );
+    }
+    
     $PAGE .= $pm->textBox( $presence_text, "Actor Information" );
     
     $PAGE .= "<br />";
