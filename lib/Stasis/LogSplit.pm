@@ -27,6 +27,7 @@ use strict;
 use warnings;
 use POSIX;
 use Carp;
+use Stasis::MobUtil;
 
 # Fingerprints of various boss encounters.
 our %fingerprints = (
