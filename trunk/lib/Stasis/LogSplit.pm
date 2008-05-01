@@ -367,7 +367,7 @@ our %fingerprints = (
 "Reliquary of Souls" => {
     short => "ros",
     mobStart => [ "23418", "Essence of Suffering" ],
-    mobContinue => [ "23418", "23419", "23420", "Essence of Suffering", "Essence of Desire", "Essence of Anger", "Enslaved Soul" ],
+    mobContinue => [ "23418", "23419", "23420", "23469", "Essence of Suffering", "Essence of Desire", "Essence of Anger", "Enslaved Soul" ],
     mobEnd => [ "23420", "Essence of Anger" ],
     timeout => 30,
 },
@@ -483,7 +483,7 @@ sub process {
                 $short =~ s/\s+.*$//;
                 $short =~ s/[^\w]//g;
                 
-                $self->{splits}{$splitname} = { short => $short, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 0 } if $self->{scratch}{$boss}{end} && $self->{scratch}{$boss}{start};
+                $self->{splits}{$splitname} = { short => $short, long => $splitname, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 0 } if $self->{scratch}{$boss}{end} && $self->{scratch}{$boss}{start};
                 
                 # Reset the start/end times for this fingerprint.
                 $self->{scratch}{$boss}{start} = 0;
@@ -533,7 +533,7 @@ sub process {
                     $short =~ s/\s+.*$//;
                     $short =~ s/[^\w]//g;
                     
-                    $self->{splits}{$boss} = { short => $short, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 1 };
+                    $self->{splits}{$boss} = { short => $short, long => $boss, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 1 };
 
                     # Reset the start/end times for this print.
                     $self->{scratch}{$boss}{start} = 0;
@@ -578,12 +578,53 @@ sub finish {
             $short =~ s/[^\w]//g;
             
             if( $self->{scratch}{$boss}{end} && $self->{scratch}{$boss}{start} ) {
-                $self->{splits}{$splitname} = { short => $short, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 0 };
+                $self->{splits}{$splitname} = { short => $short, long => $splitname, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 0 };
             }
         }
     }
     
-    return %{$self->{splits}};
+    # Remove smaller splits that intersect with larger ones.
+    foreach my $split1 (values %{$self->{splits}}) {
+        foreach my $split2 (values %{$self->{splits}}) {
+            # Don't process identical splits
+            next if $split1->{long} eq $split2->{long};
+            
+            # Don't process splits already marked for deletion.
+            next if $split1->{delete} || $split2->{delete};
+            
+            # If split2 is smaller than split1 and intersects, remove it.
+            my $size1 = $split1->{endLine} - $split1->{startLine};
+            my $size2 = $split2->{endLine} - $split2->{startLine};
+            if( 
+                $size1 >= $size2 && 
+                (
+                    (
+                        $split2->{startLine} <= $split1->{endLine} && 
+                        $split2->{startLine} >= $split1->{startLine}
+                    ) ||
+                    (
+                        $split2->{endLine} <= $split1->{endLine} && 
+                        $split2->{endLine} >= $split1->{startLine}
+                    )
+                )
+            )
+            {
+                $split2->{delete} = 1;
+            }
+        }
+    }
+    
+    my @splitret;
+    foreach my $split (values %{$self->{splits}}) {
+        if( !$split->{delete} ) {
+            push @splitret, $split;
+        }
+    }
+    
+    # Sort the splits chronologically.
+    return sort {
+        $a->{startLine} <=> $b->{startLine}
+    } @splitret;
 }
 
 1;
