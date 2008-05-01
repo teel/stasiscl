@@ -65,21 +65,21 @@ Options:
     -file      Specifies the combat log to read.
 
     -dir       Specifies in which directory the generated HTML is living
-               or will be written, depending on action.
+               or will be written, depending on action. Default is the
+               current directory.
 
     -version   Either 1 or 2. Pre-2.4 combatlogs should be parsed with
-               version = 1, post-2.4 combatlogs with 2. Only needed on
-               the 'add' action. Default is '2' (new, post-2.4 style).
+               version = 1, post-2.4 combatlogs with 2. Default is '2',
+               the new post-2.4 style.
 
-    -logger    Optional argument when parsing version 1 combatlogs.
-               This value defaults to 'You' on v1 combatlogs.
-               Only needed on the 'add' action.
+    -logger    Name of the logger, optional argument only used when parsing
+               version 1 combat logs. Default is 'You'.
+
+Example for parsing a new log:
+    $me add -dir /var/www/swstats.domain.com -file WoWCombatLog.txt
 
 Example for updating the wws-history/data.xml:
     $me history -dir /var/www/swstats.domain.com
-
-Example for parsing a new log:
-    $me add -dir /var/www/swstats.domain.com -version 1 -logger Gian
 
 USAGE
     exit $exitvalue;
@@ -123,6 +123,7 @@ sub wantedDataXML {
 # Get the action first.
 usage(0) unless @ARGV;
 my $action = lc shift @ARGV;
+usage(0) if $action eq "-h" || $action eq "help" || $action eq "-help" || $action eq "--help";
 
 # Get options.
 my $opt_version = 2;
@@ -147,7 +148,7 @@ my $rc = GetOptions(
     "nowrite"       => \$opt_nowrite,
     "year=i"        => \$opt_year,
     "db=s"          => \$opt_db,
-	);
+);
 
 # Clean up opt_dir
 if( $opt_dir ) {
@@ -157,8 +158,7 @@ if( $opt_dir ) {
 # Create a parser.
 my $parser = Stasis::Parser->new( version => $opt_version, logger => $opt_logger, year => $opt_year );
 
-# Set encoding of STDIN and STDOUT to UTF-8 (which Blizzard uses for combat logs)
-binmode(STDIN, ":utf8");
+# Set encoding of STDOUT to UTF-8 (which Blizzard uses for combat logs)
 binmode(STDOUT, ":utf8");
 
 # Figure out the filehandle to use.
@@ -166,7 +166,7 @@ my $fh;
 if( $opt_file ) {
     open $fh, $opt_file or bomb "could not open file: $opt_file";
 } else {
-    $fh = *STDIN;
+    bomb "STDIN is no longer supported, please use -file (see 'stasis help' for more details)";
 }
 
 # Case out the various actions.
@@ -179,34 +179,6 @@ if( $action eq "print" ) {
             print "$text\n" if $text;
         }
     }
-} elsif( $action eq "check" ) {
-    # action CHECK: see how many unrecognizable and unprintable actions there are.
-    my $actions = 0;
-    my $unrecognized = 0;
-    my $unprinted = 0;
-    
-    while( <$fh> ) {
-        $actions ++;
-        my %entry = $parser->parse($_);
-        if( $entry{action} ) {
-            my $text = $parser->toString( \%entry );
-            
-            if( !$text ) {
-                $unprinted ++;
-                #print STDERR "noprint: $_";
-            }
-        } else {
-            print STDERR "noparse: $_";
-            $unrecognized ++;
-        }
-    }
-    
-    print STDERR sprintf "%d total actions: %d (%0.1f%%) recognized, %d (%0.1f%%) printable\n", 
-        $actions, 
-        $actions - $unrecognized, 
-        $actions ? floor( ($actions-$unrecognized) / $actions * 1000 )/10 : 0, 
-        $actions - $unrecognized - $unprinted, 
-        $actions ? floor( ($actions-$unrecognized-$unprinted) / $actions * 1000 )/10 : 0;
 } elsif( $action eq "add" ) {
     # Going to output in $opt_dir
     bomb "not a directory: $opt_dir" unless $opt_dir && -d $opt_dir;
@@ -215,46 +187,20 @@ if( $action eq "print" ) {
     # Check if $opt_hints (hints file) exists
     bomb "not a file: $opt_hintsfile" if( $opt_hintsfile && ! -f $opt_hintsfile && ! -l $opt_hintsfile );
     
-    # Read the log file to @log
-    my @log;
-    
-    if( !$opt_file ) {
-        # Old STDIN behavior
-        status "Reading log file from STDIN.";
-        while( <STDIN> ) {
-            my %entry = $parser->parse($_);
-            push @log, \%entry if $entry{action};
-        }
-        
-        # Done with STDIN.
-        close STDIN;
-    }
-    
-    # Assign classes to %raid and splits to %splits
+    # Assign classes to %raid and splits to @splits
     status "Assigning classes and splitting bosses .. ";
     
     my $classer = Stasis::ClassGuess->new( version => $opt_version, hintsfile => $opt_hintsfile );
     my $splitter = Stasis::LogSplit->new;
     
-    if( !$opt_file ) {
-        # Old STDIN behavior
-        
-        foreach my $line (@log) {
-            $classer->process($line);
-            $splitter->process($line);
-        }
-    } else {
-        # -file behavior
-        
-        while( defined( my $line = <$fh> ) ) {
-            my %pline = $parser->parse($line);
-            $classer->process(\%pline);
-            $splitter->process(\%pline);
-        }
+    while( defined( my $line = <$fh> ) ) {
+        my %pline = $parser->parse($line);
+        $classer->process(\%pline);
+        $splitter->process(\%pline);
     }
     
     my %raid = $classer->finish();
-    my %splits = $splitter->finish();
+    my @splits = $splitter->finish();
     
     # Remove these tools.
     undef $classer;
@@ -274,17 +220,24 @@ if( $action eq "print" ) {
     status 
             "found $n_players player" . ($n_players == 1 ? "" : "s") . 
             ", $n_pets pet" . ($n_pets == 1 ? "" : "s") . 
-            ", and " . scalar(keys %splits) . " boss encounter" . (scalar(keys %splits) == 1 ? "" : "s") . ".";
+            ", and " . scalar(@splits) . " boss encounter" . (scalar(@splits) == 1 ? "" : "s") . ".";
     
-    # Compute statistics.
+    # Rewind the file.
+    seek $fh, 0, 0;
+    
+    # Keep track of what line we're on.
+    my $nlog = -1;
+    
+    # Create extensions.
     my @ext_names = qw(Activity Damage Death Healing Aura Cast ExtraAttack Interrupt Power Presence Index);
     my %exts;
     foreach (@ext_names) {
         $exts{$_} = Stasis::Extension->factory($_);
     }
     
-    foreach my $boss (sort keys %splits) {
-        my $split = $splits{$boss};
+    # Process the splits, one at a time.
+    foreach my $split (@splits) {
+        my $boss = $split->{long};
         
         # Check zero length.
         if( $split->{endLine} - $split->{startLine} <= 0 ) {
@@ -320,37 +273,23 @@ if( $action eq "print" ) {
             $ext->start();
         }
         
-        # Process each line.
-        if( !$opt_file ) {
-            # Old STDIN behavior
+        # Process the file.
+        while( defined( my $line = <$fh> ) ) {
+            # Log lines are indexed starting from zero.
+            $nlog ++;
             
-            foreach my $entry (@log[$split->{startLine} .. $split->{endLine}]) {
+            # Seek to the first line.
+            if( $nlog >= $split->{startLine} ) {
+                my %pline = $parser->parse($line);
+                
                 foreach my $ext (values %exts) {
-                    $ext->process($entry);
+                    $ext->process(\%pline);
                 }
             }
-        } else {
-            # -file behavior
             
-            # this is still pretty bad but a lot better than STDIN.
-            # really we should do this all on one pass through the file
-            # but at least this way allows for overlapping spans
-            
-            # Rewind the file.
-            seek $fh, 0, 0;
-            
-            # Keep track of what line we're on.
-            my $nlog = -1;
-            
-            while( defined( my $line = <$fh> ) ) {
-                $nlog ++;
-                if( $nlog >= $split->{startLine} && $nlog <= $split->{endLine} ) {
-                    my %pline = $parser->parse($line);
-                    
-                    foreach my $ext (values %exts) {
-                        $ext->process(\%pline);
-                    }
-                }
+            # Stop at the last line.
+            if( $nlog >= $split->{endLine} ) {
+                last;
             }
         }
         
@@ -400,53 +339,6 @@ if( $action eq "print" ) {
     # Close the file.
     if( $opt_file ) {
         close $fh;
-    }
-} elsif( $action eq "rm" ) {
-    # Going to output in $opt_dir
-    bomb "not a directory: $opt_dir" unless $opt_dir && -d $opt_dir;
-    status "Using directory: $opt_dir";
-    
-    if( $opt_file ) {
-        bomb "operation rm does not support -file (yet)";
-    }
-    
-    # Read the log file to @log
-    status "Reading log file.";
-    my @log;
-    while( <STDIN> ) {
-        my %entry = $parser->parse($_);
-        push @log, \%entry if $entry{action};
-    }
-    
-    # Done with STDIN.
-    close STDIN;
-    
-    # Split the log to %splits
-    status "Splitting out boss attempts.";
-    my $splitter = Stasis::LogSplit->new;
-    my %splits = $splitter->split(\@log);
-    
-    while( my ($boss, $split) = each(%splits) ) {
-        # Remove the directories.
-        unless( $opt_nowrite ) {
-            eval {
-                # Remove the directory if it exists.
-                my $dname_old = sprintf "%s/sws-%d", $opt_dir, floor($split->{start});
-                my $dname = sprintf "%s/sws-%s-%d", $opt_dir, $split->{short}, floor($split->{start});
-                
-                if( -d $dname ) {
-                    status sprintf "Removing: %s (sws-%s-%d).", $boss, $split->{short}, floor($split->{start});
-                    File::Path::rmtree($dname);
-                }
-                
-                if( -d $dname_old ) {
-                    status sprintf "Removing: %s (sws-%d).", $boss, floor($split->{start});
-                    File::Path::rmtree($dname_old);
-                }
-            }; if( $@ ) {
-                bomb $@;
-            }
-        }
     }
 } elsif( $action eq "history" ) {
     # Going to output in $opt_dir

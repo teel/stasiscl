@@ -1230,9 +1230,15 @@ sub parse {
                 spellname => shift @col,
                 spellschool => hex shift @col,
             }
+        } elsif( $result{action} eq "SPELL_CREATE" ) {
+            $result{extra} = {
+                spellid => shift @col,
+                spellname => shift @col,
+                spellschool => hex shift @col,
+            }
         } else {
             # Unrecognized action
-            #carp( "Unrecognized action: " . $result{action} );
+            carp( "Unrecognized action: " . $result{action} );
             $result{extra} = {};
         }
     }
