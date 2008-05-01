@@ -25,7 +25,6 @@ package Stasis::MobUtil;
 
 use strict;
 use warnings;
-use POSIX;
 use Carp;
 
 # returns (type, npc, spawncount)
