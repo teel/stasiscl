@@ -161,16 +161,16 @@ my $parser = Stasis::Parser->new( version => $opt_version, logger => $opt_logger
 # Set encoding of STDOUT to UTF-8 (which Blizzard uses for combat logs)
 binmode(STDOUT, ":utf8");
 
-# Figure out the filehandle to use.
-my $fh;
-if( $opt_file ) {
-    open $fh, $opt_file or bomb "could not open file: $opt_file";
-} else {
-    bomb "STDIN is no longer supported, please use -file (see 'stasis help' for more details)";
-}
-
 # Case out the various actions.
 if( $action eq "print" ) {
+    # Figure out the filehandle to use.
+    my $fh;
+    if( $opt_file ) {
+        open $fh, $opt_file or bomb "could not open file: $opt_file";
+    } else {
+        bomb "STDIN is no longer supported, please use -file (see 'stasis help' for more details)";
+    }
+    
     # action PRINT: used to print out actions from a log file
     while( <$fh> ) {
         my %entry = $parser->parse($_);
@@ -180,6 +180,14 @@ if( $action eq "print" ) {
         }
     }
 } elsif( $action eq "add" ) {
+    # Figure out the filehandle to use.
+    my $fh;
+    if( $opt_file ) {
+        open $fh, $opt_file or bomb "could not open file: $opt_file";
+    } else {
+        bomb "STDIN is no longer supported, please use -file (see 'stasis help' for more details)";
+    }
+    
     # Going to output in $opt_dir
     bomb "not a directory: $opt_dir" unless $opt_dir && -d $opt_dir;
     status "Using directory: $opt_dir";
