@@ -126,7 +126,7 @@ sub tableRow {
         $ncol =~ s/-W$//;
         
         if( $col =~ /^\s+$/ && $params{data}{$col} ) {
-            $params{data}{$col} = sprintf "<div style=\"background-color: #339933; width:%dpx\">&nbsp;</span>", $params{data}{$col};
+            $params{data}{$col} = sprintf "<div class=\"chartbar\" style=\"width:%dpx\">&nbsp;</span>", $params{data}{$col};
         }
         
         if( !$firstflag && $params{type} eq "master" ) {
@@ -163,10 +163,12 @@ sub pageHeader {
 <html>
 <head>
 <title>$boss</title>
-<link rel="stylesheet" type="text/css" href="../extras/sws.css" />
+<link rel="stylesheet" type="text/css" href="../extras/sws2.css" />
 <script type="text/javascript" src="../extras/sws.js"></script>
+<script src="http://www.wowhead.com/widgets/power.js"></script>
 </head>
 <body>
+<div class="swsmaster">
 <div class="top">
 <h2>$boss: $starttxt</h2>
 <b><a href="index.html#damage">Damage</a> &ndash; <a href="index.html#healing">Healing</a> &ndash; <a href="index.html#actors">Raid &amp; Mobs</a></b>
@@ -228,10 +230,10 @@ sub actorLink {
     my $color = shift;
     
     $name ||= "";
-    $color ||= "464646";
+    $color ||= "Mob";
     
     if( $id ) {
-        return sprintf "<a href=\"actor_%s.html\" class=\"actor\" style=\"color: #%s\">%s</a>", $self->tameText($id), $color, HTML::Entities::encode_entities($name);
+        return sprintf "<a href=\"actor_%s.html\" class=\"actor color%s\">%s</a>", $self->tameText($id), $color, HTML::Entities::encode_entities($name);
     } else {
         return HTML::Entities::encode_entities($name);
     }
@@ -249,25 +251,6 @@ sub spellLink {
     } else {
         return HTML::Entities::encode_entities($name);
     }
-}
-
-sub classColor {
-    my $self = shift;
-    my $class = shift;
-    
-    my %colors = (
-            "Warrior" => "b06515",
-            "Druid" => "e26f09",
-            "Rogue" => "9e9300",
-            "Mage" => "0083b2",
-            "Warlock" => "6039d6",
-            "Hunter" => "639918",
-            "Priest" => "898989",
-            "Paladin" => "f53589",
-            "Shaman" => "00806c",
-        );
-    
-    return $class && $colors{$class} ? $colors{$class} : "464646";
 }
 
 1;

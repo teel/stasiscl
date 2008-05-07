@@ -389,7 +389,7 @@ if( $action eq "print" ) {
     $prog =~ s/\/[^\/]*$//;
     my $extra_path = File::Spec->catdir( File::Spec->rel2abs($prog), "extras" );
     
-    if( -d $extra_path && -f "$extra_path/sws.js" && -f "$extra_path/sws.css" ) {
+    if( -d $extra_path && -f "$extra_path/sws.js" && -f "$extra_path/sws2.css" ) {
         status "Copying extras from: $extra_path";
         
         # Create extras directory if it doesn't exist
@@ -401,8 +401,8 @@ if( $action eq "print" ) {
         copy( "$extra_path/sws.js", "$opt_dir/extras/sws.js" ) or die;
         status "Wrote: $opt_dir/extras/sws.js";
         
-        copy( "$extra_path/sws.css", "$opt_dir/extras/sws.css" ) or die;
-        status "Wrote: $opt_dir/extras/sws.css";
+        copy( "$extra_path/sws2.css", "$opt_dir/extras/sws2.css" ) or die;
+        status "Wrote: $opt_dir/extras/sws2.css";
     } else {
         bomb "Could not find extras dir: checked $extra_path";
     }

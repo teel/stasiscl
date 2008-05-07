@@ -206,7 +206,7 @@ sub page {
         $PAGE .= $pm->tableRow( 
             header => \@damageHeader,
             data => {
-                "Player" => $pm->actorLink( $actor, $self->{ext}{Index}->actorname($actor), $pm->classColor( $self->{raid}{$actor}{class} ) ),
+                "Player" => $pm->actorLink( $actor, $self->{ext}{Index}->actorname($actor), $self->{raid}{$actor}{class} ),
                 "Presence" => sprintf( "%02d:%02d", $ptime/60, $ptime%60 ),
                 "R-Dam. %" => $raiderDamage{$actor} && $raidDamage && sprintf( "%d%%", ceil($raiderDamage{$actor} / $raidDamage * 100) ),
                 "R-Dam. Out" => $raiderDamage{$actor},
@@ -251,7 +251,7 @@ sub page {
         $PAGE .= $pm->tableRow( 
             header => \@healingHeader,
             data => {
-                "Player" => $pm->actorLink( $actor, $self->{ext}{Index}->actorname($actor), $pm->classColor( $self->{raid}{$actor}{class} ) ),
+                "Player" => $pm->actorLink( $actor, $self->{ext}{Index}->actorname($actor), $self->{raid}{$actor}{class} ),
                 "Presence" => sprintf( "%02d:%02d", $ptime/60, $ptime%60 ),
                 "R-Eff. Heal" => $raiderHealing{$actor},
                 "R-%" => $raiderHealing{$actor} && $raidHealing && sprintf( "%d%%", ceil($raiderHealing{$actor} / $raidHealing * 100) ),
@@ -291,7 +291,7 @@ sub page {
         $PAGE .= $pm->tableRow( 
             header => \@actorHeader,
             data => {
-                "Actor" => $pm->actorLink( $actor,  $self->{ext}{Index}->actorname($actor), $pm->classColor( $self->{raid}{$actor}{class} ) ),
+                "Actor" => $pm->actorLink( $actor,  $self->{ext}{Index}->actorname($actor), $self->{raid}{$actor}{class} ),
                 "Class" => $self->{raid}{$actor}{class} || "Mob",
                 "Presence" => sprintf( "%02d:%02d", $ptime/60, $ptime%60 ),
                 "R-Presence %" => $raidPresence && sprintf( "%d%%", ceil($ptime/$raidPresence*100) ),
