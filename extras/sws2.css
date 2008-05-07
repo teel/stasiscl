@@ -1,0 +1,194 @@
+body {
+    text-align: center;
+    font-family: verdana;
+    margin: 0;
+}
+
+.swsmaster p.footer {
+    font-size: 8pt;
+    font-family: verdana;
+}
+
+.swsmaster div.top {
+    text-align: center;
+    width: 100%;
+    font-family: verdana;
+    font-size: 12px;
+    padding-top: 8px;
+    padding-bottom: 12px;
+    margin-bottom: 8px;
+    background-color: #d9f7e2;
+}
+
+.swsmaster h2 {
+    font-family: verdana;
+    text-align: center;
+    font-size: 18px;
+}
+
+.swsmaster h3 {
+    font-family: verdana;
+    text-align: center;
+    font-size: 16px;
+}
+
+.swsmaster a {
+    text-decoration: underline;
+    color: #22e;
+}
+
+.swsmaster a.actor {
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.swsmaster a.actor:hover {
+    text-decoration: underline;
+}
+
+.swsmaster a.spell {
+    text-decoration: none;
+    color: #000;
+}
+
+.swsmaster a.spell span {
+    visibility: hidden;
+    text-decoration: none;
+    font-weight: normal;
+    font-size: 9px;
+    color: #22e;
+}
+
+.swsmaster a.spell:hover span {
+    visibility: visible;
+}
+
+.swsmaster table.text {
+    padding:0;
+    margin:0;
+    border: 1px solid #ccc;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.swsmaster table.stat {
+    padding:0;
+    margin:0;
+    border: 1px solid #ccc;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.swsmaster table.chart {
+    padding:0;
+    margin:0;
+    border: 1px solid #ccc;
+    width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.swsmaster table.text td {
+    font-size: 11px;
+    text-align: center;
+    padding: 8px;
+}
+
+.swsmaster th {
+    text-align: left;
+    font-family: verdana;
+    font-size: 11px;
+    background-color: #947db2;
+    color: #fff;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    padding-left: 2px;
+    padding-right: 8px;
+    white-space: nowrap;
+}
+
+.swsmaster tr.sectionSlave td {
+    color: #222;
+    background-color: #f7f7f7;
+}
+
+.swsmaster tr.sectionMaster td {
+    background-color: #eee;
+}
+
+.swsmaster tr.sectionMaster td.first {
+    font-weight: bold;
+}
+
+.swsmaster td.first {
+    width: 220px;
+}
+
+.swsmaster td {
+    vertical-align: top;
+    text-align:left;
+    font-family: verdana;
+    font-size: 10px;
+    background-color: #eee;
+    margin: 0;
+    padding-top: 3px;
+    padding-bottom: 2px;
+    padding-left: 2px;
+    padding-right: 8px;
+    white-space:nowrap;
+}
+
+.swsmaster div.chartbar {
+    background-color: #339933;
+}
+
+.swsmaster a.toggle {
+    font-family: monospace;
+    font-weight: bold;
+    text-decoration: none;
+    padding: 1px 3px;
+}
+
+.swsmaster .colorWarrior {
+    color: #b06515;
+}   
+
+.swsmaster .colorDruid {
+    color: #e26f09;
+}
+
+.swsmaster .colorRogue {
+    color: #9e9300;
+}
+
+.swsmaster .colorMage {
+    color: #0083b2;
+}
+
+.swsmaster .colorWarlock {
+    color: #6039d6;
+}
+
+.swsmaster .colorHunter {
+    color: #639918;
+}
+
+.swsmaster .colorPriest {
+    color: #898989;
+}
+
+.swsmaster .colorPaladin {
+    color: #f53589;
+}
+
+.swsmaster .colorShaman {
+    color: #00806c;
+}
+
+.swsmaster .colorPet {
+    color: #404040;
+}
+
+.swsmaster .colorMob {
+    color: #464646;
+}
