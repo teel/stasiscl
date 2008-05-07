@@ -79,7 +79,7 @@ sub page {
     ###############
     
     $PAGE .= $pm->pageHeader($self->{name}, $raidStart);
-    $PAGE .= sprintf "<h3 style=\"color: #%s\">%s</h3>", $pm->classColor( $self->{raid}{$PLAYER}{class} ), HTML::Entities::encode_entities($self->{ext}{Index}->actorname($PLAYER));
+    $PAGE .= sprintf "<h3 class=\"color%s\">%s</h3>", $self->{raid}{$PLAYER}{class} || "Mob", HTML::Entities::encode_entities($self->{ext}{Index}->actorname($PLAYER));
     
     my $ptime = $self->{ext}{Presence}{actors}{$PLAYER}{end} - $self->{ext}{Presence}{actors}{$PLAYER}{start};
     my $presence_text = sprintf( "Presence: %02d:%02d", $ptime/60, $ptime%60 );
@@ -172,7 +172,7 @@ sub page {
                 $PAGE .= $pm->tableRow( 
                     header => \@damageHeader,
                     data => {
-                        "Damaging Ability" => $pm->actorLink( $target, $self->{ext}{Index}->actorname($target), $pm->classColor( $self->{raid}{$target}{class} ) ),
+                        "Damaging Ability" => $pm->actorLink( $target, $self->{ext}{Index}->actorname($target), $self->{raid}{$target}{class} ),
                         "R-Total" => $sdata->{total},
                         "R-Hits" => $sdata->{hitCount} && sprintf( "%d", $sdata->{hitCount} ),
                         "R-Avg Hit" => $sdata->{hitCount} && $sdata->{hitTotal} && sprintf( "%d (%d&ndash;%d)", $sdata->{hitTotal} / $sdata->{hitCount}, $sdata->{hitMin}, $sdata->{hitMax} ),
@@ -258,7 +258,7 @@ sub page {
                 $PAGE .= $pm->tableRow( 
                     header => \@healingHeader,
                     data => {
-                        "Healing Ability" => $pm->actorLink( $target, $self->{ext}{Index}->actorname($target), $pm->classColor( $self->{raid}{$target}{class} ) ),
+                        "Healing Ability" => $pm->actorLink( $target, $self->{ext}{Index}->actorname($target), $self->{raid}{$target}{class} ),
                         "R-Eff. Heal" => $sdata->{effective},
                         "R-Overheal %" => $sdata->{total} ? sprintf "%0.1f%%", ($sdata->{total} - $sdata->{effective} ) / $sdata->{total} * 100 : "",
                         "R-Hits" => $sdata->{hitCount} ? sprintf "%d", $sdata->{hitCount} : "",
@@ -372,7 +372,7 @@ sub page {
                 data => {
                     "Cast Name" => $pm->spellLink( $spellid, $self->{ext}{Index}->spellname($spellid) ),
                     "R-Total" => $total_casts,
-                    "Target-W" => join( ", ", map $pm->actorLink( $_, $self->{ext}{Index}->actorname($_), $pm->classColor( $self->{raid}{$_}{class} ) ), keys %{ $self->{ext}{Cast}{actors}{$PLAYER}{$spellid} } ),
+                    "Target-W" => join( ", ", map $pm->actorLink( $_, $self->{ext}{Index}->actorname($_), $self->{raid}{$_}{class} ), keys %{ $self->{ext}{Cast}{actors}{$PLAYER}{$spellid} } ),
                 },
                 type => "",
                 name => "cast_$id",
@@ -420,7 +420,7 @@ sub page {
                 data => {
                     "Gain Name" => $pm->spellLink( $powerid, sprintf( "%s (%s)", $self->{ext}{Index}->spellname($powerid), $sdata->{type} ) ),
                     "R-Total" => $sdata->{amount},
-                    "Source-W" => join( ", ", map $pm->actorLink( $_, $self->{ext}{Index}->actorname($_), $pm->classColor( $self->{raid}{$_}{class} ) ), keys %{ $self->{ext}{Power}{actors}{$PLAYER}{$powerid} } ),
+                    "Source-W" => join( ", ", map $pm->actorLink( $_, $self->{ext}{Index}->actorname($_), $self->{raid}{$_}{class} ), keys %{ $self->{ext}{Power}{actors}{$PLAYER}{$powerid} } ),
                     "R-Ticks" => $sdata->{count},
                     "R-Avg" => $sdata->{count} && sprintf( "%d", $sdata->{amount} / $sdata->{count} ),
                     "R-Per 5" => $ptime && sprintf( "%0.1f", $sdata->{amount} / $ptime * 5 ),
@@ -471,7 +471,7 @@ sub page {
                 data => {
                     "Gain Name" => $pm->spellLink( $powerid, sprintf( "%s (%s)", $self->{ext}{Index}->spellname($powerid), $sdata->{type} ) ),
                     "R-Total" => $sdata->{amount},
-                    "Source-W" => join( ", ", map $pm->actorLink( $_, $self->{ext}{Index}->actorname($_), $pm->classColor( $self->{raid}{$_}{class} ) ), keys %{ $self->{ext}{ExtraAttack}{actors}{$PLAYER}{$powerid} } ),
+                    "Source-W" => join( ", ", map $pm->actorLink( $_, $self->{ext}{Index}->actorname($_), $self->{raid}{$_}{class} ), keys %{ $self->{ext}{ExtraAttack}{actors}{$PLAYER}{$powerid} } ),
                     "R-Ticks" => $sdata->{count},
                     "R-Avg" => $sdata->{count} && sprintf( "%d", $sdata->{amount} / $sdata->{count} ),
                     "R-Per 5" => $ptime && sprintf( "%0.1f", $sdata->{amount} / $ptime * 5 ),
@@ -557,7 +557,7 @@ sub page {
             $PAGE .= $pm->tableRow( 
                 header => \@header,
                 data => {
-                    "Damage Out" => $pm->actorLink( $targetid, $self->{ext}{Index}->actorname($targetid), $pm->classColor( $self->{raid}{$targetid}{class} ) ),
+                    "Damage Out" => $pm->actorLink( $targetid, $self->{ext}{Index}->actorname($targetid), $self->{raid}{$targetid}{class} ),
                     "R-Total" => $sdata->{total},
                     "R-DPS" => $dpstime_target && sprintf( "%d", $damage_target{$targetid}{total} / $dpstime_target ),
                     "Time" => $dpstime_target && sprintf( "%02d:%02d", $dpstime_target/60, $dpstime_target%60 ),
@@ -647,7 +647,7 @@ sub page {
                 $PAGE .= $pm->tableRow( 
                     header => \@header,
                     data => {
-                        "Damage In" => $pm->actorLink( $sourceid, $self->{ext}{Index}->actorname($sourceid), $pm->classColor( $self->{raid}{$sourceid}{class} ) ),
+                        "Damage In" => $pm->actorLink( $sourceid, $self->{ext}{Index}->actorname($sourceid), $self->{raid}{$sourceid}{class} ),
                         "R-Total" => $sourcedmg{$sourceid},
                         "R-DPS" => $dpstime_target && sprintf( "%d", $sourcedmg{$sourceid} / $dpstime_target ),
                         "Time" => $dpstime_target && sprintf( "%02d:%02d", $dpstime_target/60, $dpstime_target%60 ),
@@ -708,7 +708,7 @@ sub page {
                 $PAGE .= $pm->tableRow( 
                     header => \@header,
                     data => {
-                        "Heals Out" => $pm->actorLink( $targetid, $self->{ext}{Index}->actorname($targetid), $pm->classColor( $self->{raid}{$targetid}{class} ) ),
+                        "Heals Out" => $pm->actorLink( $targetid, $self->{ext}{Index}->actorname($targetid), $self->{raid}{$targetid}{class} ),
                         "R-Eff. Heal" => $sdata->{effective},
                         "R-Hits" => $sdata->{hitCount} + $sdata->{critCount} + $sdata->{tickCount},
                         "R-Overheal %" => $sdata->{total} && $sdata->{effective} && sprintf( "%0.1f%%", ( $sdata->{total} - $sdata->{effective} ) / $sdata->{total} * 100 ),
@@ -810,7 +810,7 @@ sub page {
                 $PAGE .= $pm->tableRow( 
                     header => \@header,
                     data => {
-                        "Heals In" => $pm->actorLink( $sourceid, $self->{ext}{Index}->actorname($sourceid), $pm->classColor( $self->{raid}{$sourceid}{class} ) ),
+                        "Heals In" => $pm->actorLink( $sourceid, $self->{ext}{Index}->actorname($sourceid), $self->{raid}{$sourceid}{class} ),
                         "R-Eff. Heal" => $healin_actors{$sourceid}{healing_target}{$PLAYER}{effective},
                         "R-Hits" => $healin_actors{$sourceid}{healing_target}{$PLAYER}{hits},
                         "R-Overheal %" => $healin_actors{$sourceid}{healing_target}{$PLAYER}{total} && sprintf( "%0.1f%%", ( $healin_actors{$sourceid}{healing_target}{$PLAYER}{total} - $healin_actors{$sourceid}{healing_target}{$PLAYER}{effective} ) / $healin_actors{$sourceid}{healing_target}{$PLAYER}{total} * 100 ),
@@ -978,7 +978,7 @@ sub _decodespell {
 
     if( $encoded_spellid =~ /^([A-Za-z0-9]+): (.+)$/ ) {
         $spellactor = $1;
-        $spellname = sprintf( "%s: %s", $pm->actorLink( $1, $self->{ext}{Index}->actorname($1), $pm->classColor( $self->{raid}{$1}{class} ) ), $pm->spellLink( $2, $self->{ext}{Index}->spellname($2) ) );
+        $spellname = sprintf( "%s: %s", $pm->actorLink( $1, $self->{ext}{Index}->actorname($1), $self->{raid}{$1}{class} ), $pm->spellLink( $2, $self->{ext}{Index}->spellname($2) ) );
         $spellid = $2;
     } else {
         $spellactor = $PLAYER;

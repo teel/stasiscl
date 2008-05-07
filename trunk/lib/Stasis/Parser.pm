@@ -896,7 +896,23 @@ sub parse {
         # 3/25 20:41:58.172  SPELL_CAST_SUCCESS,0x00000000016B2F6D,"Bune",0x518,0xF130004D080028A0,""Dirty" Larry",0xa28,14287,"Arcane Shot",0x40
         
         my @col;
-        $self->{csv}->parse($line);
+        my $cstat = $self->{csv}->parse($line);
+        
+        if( !$cstat ) {
+            # CSV Parsing error
+            warn "Warning: parse error: " . $self->{csv}->error_diag();
+            return (
+                action => "",
+                actor => 0,
+                actor_name => "",
+                actor_relationship => 0,
+                target => 0,
+                target_name => "",
+                target_relationship => 0,
+                extra => {},
+            );
+        }
+        
         @col = $self->{csv}->fields();
         @col = map { decode_utf8($_) } @col;
         @col = map { $_ ne "nil" ? $_ : undef } @col;
