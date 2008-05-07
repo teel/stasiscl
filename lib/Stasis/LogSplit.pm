@@ -228,7 +228,7 @@ our %fingerprints = (
 "Fathom-Lord Karathress" => {
     short => "flk",
     mobStart => [ "21214", "Fathom-Lord Karathress", "Fathom-Guard Caribdis", "Fathom-Guard Sharkkis", "Fathom-Guard Tidalvess" ],
-    mobContinue => [ "Fathom-Lord Karathress", "Fathom-Guard Caribdis", "Fathom-Guard Sharkkis", "Fathom-Guard Tidalvess" ],
+    mobContinue => [ "21214", "Fathom-Lord Karathress", "Fathom-Guard Caribdis", "Fathom-Guard Sharkkis", "Fathom-Guard Tidalvess" ],
     mobEnd => [ "21214", "Fathom-Lord Karathress" ],
     timeout => 15,
 },
