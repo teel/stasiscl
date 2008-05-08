@@ -194,7 +194,7 @@ our %fingerprints = (
     short => "mag",
     mobStart => [ "17257", "Hellfire Channeler" ],
     mobContinue => [ "17256", "17257", "Magtheridon", "Hellfire Channeler" ],
-    mobEnd => [ "17257". "Magtheridon" ],
+    mobEnd => [ "17257", "Magtheridon" ],
     timeout => 15,
 },
 
