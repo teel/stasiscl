@@ -28,7 +28,6 @@ use warnings;
 use POSIX;
 use Stasis::MobUtil;
 use Stasis::SpellUtil;
-use Data::Dumper;
 use Carp;
 
 # Fingerprints of various classes (pre 2.4 only)

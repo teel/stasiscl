@@ -886,9 +886,18 @@ sub _processDamageAndHealing {
     
     my $alldmg = 0;
     my $dmg_to_mobs = 0;
+    
+    my %pet_cache = ();
+    
+    if( exists $self->{raid}{$PLAYER} ) {
+        foreach (@{$self->{raid}{$PLAYER}{pets}}) {
+            $pet_cache{$_} = 1;
+        }
+    }
+    
     foreach my $dmg_actor ( keys %{$self->{ext}{Damage}{actors}} ) {
         # Look at the $PLAYER and pets.
-        next unless $dmg_actor eq $PLAYER || ( exists $self->{raid}{$PLAYER} && grep $_ eq $dmg_actor, @{$self->{raid}{$PLAYER}{pets}} );
+        next unless $dmg_actor eq $PLAYER || $pet_cache{$dmg_actor};
         
         foreach my $spell (keys %{$self->{ext}{Damage}{actors}{$dmg_actor}}) {;
             # Encode pet damage like this.
@@ -942,7 +951,7 @@ sub _processDamageAndHealing {
     
     foreach my $heal_actor ( keys %{$self->{ext}{Healing}{actors}} ) {
         # Look at the $PLAYER and pets.
-        next unless $heal_actor eq $PLAYER || ( exists $self->{raid}{$PLAYER} && grep $_ eq $heal_actor, @{$self->{raid}{$PLAYER}{pets}} );
+        next unless $heal_actor eq $PLAYER || $pet_cache{$heal_actor};
         
         foreach my $spell (keys %{$self->{ext}{Healing}{actors}{$heal_actor}}) {;
             # Encode pet healing like this.
