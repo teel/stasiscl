@@ -45,7 +45,6 @@ use strict;
 use warnings;
 use POSIX;
 use Encode;
-use Text::CSV_XS;
 use Carp;
 
 # Constants from the 2.4 combat log
@@ -129,7 +128,7 @@ sub new {
     $params{year} ||= strftime "%Y", localtime;
     $params{logger} ||= "You";
     $params{version} = 2 if !$params{version} || $params{version} != 1;
-    $params{csv} = Text::CSV_XS->new({ binary => 1, eol => $/ });
+    # $params{csv} = Text::CSV_XS->new({ binary => 1, eol => $/ });
     
     bless \%params, $class;
 }
@@ -144,20 +143,15 @@ sub parse {
     my ($self, $line) = @_;
     
     # Timestamps look like this.
-    my $stamp = '[0-9]+\/[0-9]+ [0-9]+\:[0-9]+:[0-9]+\.[0-9]+';
-    
-    # Trim the line.
-    $line =~ s/^\s+//;
-    $line =~ s/\s+$//;
-    $line = "$line\n";
+    my $stamp = '[0-9]+\/[0-9]+\s[0-9]+\:[0-9]+:[0-9]+\.[0-9]+';
     
     # Pull the stamp out.
-    my $pulled_stamp;
     my $t;
-    if( $line =~ /^($stamp)  / ) {
+    if( $line =~ /($stamp)  (.+?)\s*$/ ) {
         $t = $self->_stampTime($1);
-        $pulled_stamp = $1;
-        $line =~ s/^$stamp  //;
+        $line = "$2\n";
+    } else {
+        carp "bad line: $line"; 
     }
     
     my %result;
@@ -895,27 +889,28 @@ sub parse {
         # Need a fix for lines like this
         # 3/25 20:41:58.172  SPELL_CAST_SUCCESS,0x00000000016B2F6D,"Bune",0x518,0xF130004D080028A0,""Dirty" Larry",0xa28,14287,"Arcane Shot",0x40
         
-        my @col;
-        my $cstat = $self->{csv}->parse($line);
-        
-        if( !$cstat ) {
-            # CSV Parsing error
-            warn "Warning: parse error: " . $self->{csv}->error_diag();
-            return (
-                action => "",
-                actor => 0,
-                actor_name => "",
-                actor_relationship => 0,
-                target => 0,
-                target_name => "",
-                target_relationship => 0,
-                extra => {},
-            );
-        }
-        
-        @col = $self->{csv}->fields();
-        @col = map { decode_utf8($_) } @col;
-        @col = map { $_ ne "nil" ? $_ : undef } @col;
+        my @col = map { $_ eq "nil" ? undef : $_ } split /"?,"?/, $line;
+        # my @col;
+        # my $cstat = $self->{csv}->parse($line);
+        # 
+        # if( !$cstat ) {
+        #     # CSV Parsing error
+        #     warn "Warning: parse error: " . $self->{csv}->error_diag();
+        #     return (
+        #         action => "",
+        #         actor => 0,
+        #         actor_name => "",
+        #         actor_relationship => 0,
+        #         target => 0,
+        #         target_name => "",
+        #         target_relationship => 0,
+        #         extra => {},
+        #     );
+        # }
+        # 
+        # @col = $self->{csv}->fields();
+        # @col = map { decode_utf8($_) } @col;
+        # @col = map { $_ ne "nil" ? $_ : undef } @col;
         
         # Common processing
         $result{action} = shift @col;
@@ -1329,11 +1324,10 @@ sub _stampTime {
     
     my $time = 0;
     if( $stamp =~ /^([0-9]+)\/([0-9]+) ([0-9]+)\:([0-9]+):([0-9]+)\.([0-9]+)$/ ) {
-        $time = mktime( $5, $4, $3, $2, $1-1, $self->{year} - 1900 );
-        $time += "0.$6";
+        return mktime( $5, $4, $3, $2, $1-1, $self->{year} - 1900 ) + $6 / 1000;
     }
     
-    return $time;
+    return 0;
 }
 
 sub _powerName {

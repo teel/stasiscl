@@ -29,6 +29,21 @@ use Carp;
 
 our @ISA = "Stasis::Extension";
 
+our %damage_actions = (
+    ENVIRONMENTAL_DAMAGE => 1,
+    SWING_DAMAGE => 1,
+    SWING_MISSED => 1,
+    RANGE_DAMAGE => 1,
+    RANGE_MISSED => 1,
+    SPELL_DAMAGE => 1,
+    DAMAGE_SPLIT => 1,
+    SPELL_MISSED => 1,
+    SPELL_PERIODIC_DAMAGE => 1,
+    SPELL_PERIODIC_MISSED => 1,
+    DAMAGE_SHIELD => 1,
+    DAMAGE_SHIELD_MISSED => 1,
+);
+
 sub start {
     my $self = shift;
     $self->{actors} = {};
@@ -37,7 +52,7 @@ sub start {
 sub process {
     my ($self, $entry) = @_;
     
-    if( grep $entry->{action} eq $_, qw(ENVIRONMENTAL_DAMAGE SWING_DAMAGE SWING_MISSED RANGE_DAMAGE RANGE_MISSED SPELL_DAMAGE DAMAGE_SPLIT SPELL_MISSED SPELL_PERIODIC_DAMAGE SPELL_PERIODIC_MISSED DAMAGE_SHIELD DAMAGE_SHIELD_MISSED) ) {
+    if( $damage_actions{ $entry->{action} } ) {
         # This was a damage event, or an attempted damage event.
         
         # We are going to take some liberties with environmental damage and white damage in order to get them
