@@ -408,6 +408,8 @@ if( $action eq "print" ) {
         bomb "Could not find extras dir: checked $extra_path";
     }
 } elsif( $action eq "convert" ) {
+    status "WARNING: SQLite mode is experimental, and the file format is subject to change!";
+    
     # Figure out the filehandle to use.
     my $fh;
     if( $opt_file ) {
