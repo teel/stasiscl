@@ -886,10 +886,12 @@ sub parse {
         # Split the action and rewrite "nil" as undef
         chomp $line;
         
-        # Need a fix for lines like this
+        # Make sure the CSV parser can handle lines like:
         # 3/25 20:41:58.172  SPELL_CAST_SUCCESS,0x00000000016B2F6D,"Bune",0x518,0xF130004D080028A0,""Dirty" Larry",0xa28,14287,"Arcane Shot",0x40
+        # 5/4 20:01:04.574  SPELL_CAST_SUCCESS,0xF130004600000512,"Alliance Knight",0xa18,0x0000000000000000,nil,0x80000000,32123,"Choose Target (Not Flying, 50 yd)",0x1
         
-        my @col = map { $_ eq "nil" ? undef : $_ } split /"?,"?/, $line;
+        my @col = map { $_ eq "nil" ? undef : $_ } split /"?,(?=".*?"(?:,|$)|[^",]+(?:,|$))"?/, $line;
+        
         # my @col;
         # my $cstat = $self->{csv}->parse($line);
         # 
@@ -1277,7 +1279,11 @@ sub parse {
         }
     }
     
-	return %result;
+    if( $self->{ref} ) {
+        return \%result;
+    } else {
+        return %result;
+    }
 }
 
 sub _parseMods {
@@ -1537,7 +1543,10 @@ sub toString {
     } elsif( $entry->{action} eq "SPELL_CAST_START" ) {
 
     } elsif( $entry->{action} eq "SPELL_CAST_SUCCESS" ) {
-
+        $text = sprintf "[%s] cast %s [%s]",
+            $actor,
+            $entry->{extra}{spellname},
+            $target;
     } elsif( $entry->{action} eq "SPELL_CAST_FAILED" ) {
 
     } elsif( $entry->{action} eq "DAMAGE_SHIELD" ) {
