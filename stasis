@@ -76,8 +76,28 @@ Options:
     -logger    Name of the logger, optional argument only used when parsing
                version 1 combat logs. Default is 'You'.
 
-Example for parsing a new log:
-    $me add -dir /var/www/swstats.domain.com -file WoWCombatLog.txt
+    -minlength Exclude encounters less than this amount of seconds in length.
+               Defaults to 30 seconds.
+               
+    -attempts  Include a parse for boss attempts (not just kills).
+                   
+    -trash     Include a parse for trash mobs (all sections of the log that
+               were not part of a boss encounter).
+               
+    -overall   Include a separate parse that rolls up everything else that 
+               was parsed. For example, if this option is specified alone
+               (without -trash or -attempt) this will include a parse that
+               rolls up all boss kills. If you specify -attempt and -overall
+               but not -trash, this will include a parse that rolls up all
+               boss kills and attempts. If you specify -trash, -attempt, 
+               and -overall this will include a parse that rolls up every
+               action in the log file.
+
+Example for parsing boss kills only:
+    $me add -dir /var/www/sws -file WoWCombatLog.txt
+
+Example for parsing every single line in a log:
+    $me add -dir /var/www/sws -file WoWCombatLog.txt -attempt -trash -overall
 
 Example for updating the wws-history/data.xml:
     $me history -dir /var/www/swstats.domain.com
@@ -111,6 +131,40 @@ sub status($) {
     }
 }
 
+sub writedir($$$$$$) {
+    my ($dname, $dname_old, $long, $short, $raid, $exts) = @_;
+    
+    # Remove the directory if it exists.
+    File::Path::rmtree($dname) if -d $dname;
+    File::Path::rmtree($dname_old) if -d $dname_old;
+
+    # Create the directory.
+    mkdir $dname or die $!;
+
+    # Write the index.
+    my $charter = Stasis::ChartPage->new( name => $long, short => $short, raid => $raid, ext => $exts );
+    my ($chart_xml, $chart_html) = $charter->page;
+    open CHARTPAGE, ">$dname/index.html" or die;
+    print CHARTPAGE $chart_html;
+    close CHARTPAGE;
+
+    # Write the actor files.
+    my $ap = Stasis::ActorPage->new( name => $long, short => $short, raid => $raid, ext => $exts );
+    foreach my $actor (keys %{$exts->{Presence}{actors}}) {
+        my $id = lc $actor;
+        $id = Stasis::PageMaker->tameText($id);
+
+        open ACTORPAGE, sprintf ">$dname/actor_%s.html", $id or die;
+        print ACTORPAGE $ap->page($actor);
+        close ACTORPAGE;
+    }
+
+    # Write the data.xml file.
+    open DATAXML, ">$dname/data.xml" or die;
+    print DATAXML $chart_xml;
+    close DATAXML;
+}
+
 # For File::Find later
 my @dataxmls;
 sub wantedDataXML {
@@ -137,6 +191,8 @@ my $opt_logger;
 my $opt_file;
 my $opt_attempts;
 my $opt_year;
+my $opt_trash;
+my $opt_overall;
 
 my $rc = GetOptions(
     "version=s"     => \$opt_version,
@@ -148,7 +204,9 @@ my $rc = GetOptions(
     "attempts"      => \$opt_attempts,
     "nowrite"       => \$opt_nowrite,
     "year=i"        => \$opt_year,
-    "sfile=s"          => \$opt_sfile,
+    "sfile=s"       => \$opt_sfile,
+    "trash"         => \$opt_trash,
+    "overall"       => \$opt_overall,
 );
 
 # Clean up opt_dir
@@ -157,7 +215,7 @@ if( $opt_dir ) {
 }
 
 # Create a parser.
-my $parser = Stasis::Parser->new( version => $opt_version, logger => $opt_logger, year => $opt_year );
+my $parser = Stasis::Parser->new( ref => 1, version => $opt_version, logger => $opt_logger, year => $opt_year );
 
 # Set encoding of STDOUT to UTF-8 (which Blizzard uses for combat logs)
 binmode(STDOUT, ":utf8");
@@ -174,9 +232,9 @@ if( $action eq "print" ) {
     
     # action PRINT: used to print out actions from a log file
     while( <$fh> ) {
-        my %entry = $parser->parse($_);
-        if( $entry{action} ) {
-            my $text = $parser->toString( \%entry );
+        my $entry = $parser->parse($_);
+        if( $entry->{action} ) {
+            my $text = $parser->toString( $entry );
             print "$text\n" if $text;
         }
     }
@@ -203,9 +261,9 @@ if( $action eq "print" ) {
     my $splitter = Stasis::LogSplit->new;
     
     while( defined( my $line = <$fh> ) ) {
-        my %pline = $parser->parse($line);
-        $classer->process(\%pline);
-        $splitter->process(\%pline);
+        my $pline = $parser->parse($line);
+        $classer->process($pline);
+        $splitter->process($pline);
     }
     
     my %raid = $classer->finish();
@@ -231,17 +289,6 @@ if( $action eq "print" ) {
             ", $n_pets pet" . ($n_pets == 1 ? "" : "s") . 
             ", and " . scalar(@splits) . " boss encounter" . (scalar(@splits) == 1 ? "" : "s") . ".";
     
-    # If no boss encounters, error out.
-    if(!scalar(@splits)) {
-        bomb "Error: There are no boss encounters in this log file.";
-    }
-    
-    # Rewind the file.
-    seek $fh, 0, 0;
-    
-    # Keep track of what line we're on.
-    my $nlog = -1;
-    
     # Create extensions.
     my @ext_names = qw(Activity Damage Death Healing Aura Cast ExtraAttack Interrupt Power Presence Index);
     my %exts;
@@ -249,110 +296,158 @@ if( $action eq "print" ) {
         $exts{$_} = Stasis::Extension->factory($_);
     }
     
-    # Process the splits, one at a time.
-    foreach my $split (@splits) {
-        my $boss = $split->{long};
-        
-        # Check zero length.
-        if( $split->{endLine} - $split->{startLine} <= 0 ) {
-            status sprintf "Skipping: %s (zero length).", $boss;
-            next;
+    # We need separate extensions for the trash and overall parses.
+    my %trash_exts;
+    if( $opt_trash ) {
+        foreach (@ext_names) {
+            $trash_exts{$_} = Stasis::Extension->factory($_);
+            $trash_exts{$_}->start();
+        }
+    }
+    
+    my %overall_exts;
+    if( $opt_overall ) {
+        foreach (@ext_names) {
+            $overall_exts{$_} = Stasis::Extension->factory($_);
+            $overall_exts{$_}->start();
+        }
+    }
+    
+    # Rewind the file.
+    seek $fh, 0, 0;
+    
+    # Keep track of when this log file started.
+    my $first = 0;
+    
+    # Keep track of what line we're on.
+    my $nlog = -1;
+    
+    # First split.
+    my $split = shift @splits;
+    
+    # Process the file.
+    my $pline;
+    while( defined( my $line = <$fh> ) ) {
+        if( !$first ) {
+            $pline = $parser->parse($line);
+            $first = $pline->{t};
         }
         
-        # Check negative time.
-        if( $split->{end} - $split->{start} <= 0 ) {
-            status sprintf "Skipping: %s (zero length).", $boss;
-            next;
-        }
+        # Log lines are indexed starting from zero.
+        $nlog ++;
         
-        # Check minlength option.
-        if( $opt_minlength && $split->{end} - $split->{start} < $opt_minlength ) {
-            status sprintf "Skipping: %s (too short).", $boss;
-            next;
-        }
-        
-        # Check attempts option.
-        if( !$opt_attempts && !$split->{kill} ) {
-            status sprintf "Skipping: %s (not a kill).", $boss, $split->{end} - $split->{start};
-            next;
-        }
-        
-        # Run statistics for this boss.
-        my $dname = sprintf "%s/sws-%s-%d", $opt_dir, $split->{short}, floor($split->{start});
-        my $dname_old = sprintf "%s/sws-%d", $opt_dir, floor($split->{start});
-        status sprintf "Processing: %s (sws-%s-%d).", $boss, $split->{short}, floor($split->{start});
-        
-        # Start all the extensions.
-        foreach my $ext (values %exts) {
-            $ext->start();
-        }
-        
-        # Process the file.
-        while( defined( my $line = <$fh> ) ) {
-            # Log lines are indexed starting from zero.
-            $nlog ++;
+        if( $split && $nlog >= $split->{startLine} ) {
+            # We're inside $split.
             
-            # Seek to the first line.
-            if( $nlog >= $split->{startLine} ) {
-                my %pline = $parser->parse($line);
-                
+            if( $opt_minlength && $split->{end} - $split->{start} < $opt_minlength ) {
+                # Check minlength option.
+                status sprintf "Skipping: %s (too short).", $split->{long} if $nlog == $split->{startLine};
+            } elsif( !$opt_attempts && !$split->{kill} ) {
+                # Check attempts option.
+                status sprintf "Skipping: %s (not a kill).", $split->{long}, $split->{end} - $split->{start} if $nlog == $split->{startLine};
+            } else {
+                # If we got this far, we should parse this encounter.
+                $pline = $parser->parse($line);
+
+                # If this is the first line, start all the extensions.
+                if( $nlog == $split->{startLine} ) {
+                    foreach my $ext (values %exts) {
+                        $ext->start();
+                    }
+                }
+
+                # Run this line through the extensions.
                 foreach my $ext (values %exts) {
-                    $ext->process(\%pline);
+                    $ext->process($pline);
                 }
+
+                foreach my $overall_ext (values %overall_exts) {
+                    $overall_ext->process($pline);
+                }
+
+                # When we reach the last line, write this split out.
+                if( $split && $nlog >= $split->{endLine} ) {
+                    # Find the directory name.
+                    my $dname = sprintf "%s/sws-%s-%d", $opt_dir, $split->{short}, floor($split->{start});
+                    my $dname_old = sprintf "%s/sws-%d", $opt_dir, floor($split->{start});
+
+                    # End all the extensions.
+                    foreach my $ext (values %exts) {
+                        $ext->finish();
+                    }
+
+                    # Write the files for this split.
+                    unless( $opt_nowrite ) {
+                        eval {
+                            writedir $dname, $dname_old, $split->{long}, $split->{short}, \%raid, \%exts;
+                        }; if( $@ ) {
+                            bomb $@;
+                        }
+                    }
+
+                    status sprintf "Wrote: %s (sws-%s-%d).", $split->{long}, $split->{short}, floor($split->{start});
+                }
+            }
+        } elsif( $opt_trash ) {
+            # We haven't yet reached $split, or we're past the last one.
+            $pline = $parser->parse($line);
+            
+            foreach my $trash_ext (values %trash_exts) {
+                $trash_ext->process($pline);
             }
             
-            # Stop at the last line.
-            if( $nlog >= $split->{endLine} ) {
-                last;
+            foreach my $overall_ext (values %overall_exts) {
+                $overall_ext->process($pline);
             }
         }
         
-        # End all the extensions.
-        foreach my $ext (values %exts) {
-            $ext->finish();
-        }
-        
-        # Write the files.
-        unless( $opt_nowrite ) {
-            eval {
-                # Remove the directory if it exists.
-                File::Path::rmtree($dname) if -d $dname;
-                File::Path::rmtree($dname_old) if -d $dname_old;
-
-                # Create the directory.
-                mkdir $dname or die $!;
-
-                # Write the index.
-                my $charter = Stasis::ChartPage->new( name => $boss, short => $split->{short}, raid => \%raid, ext => \%exts );
-                my ($chart_xml, $chart_html) = $charter->page;
-                open CHARTPAGE, ">$dname/index.html" or die;
-                print CHARTPAGE $chart_html;
-                close CHARTPAGE;
-
-                # Write the actor files.
-                my $ap = Stasis::ActorPage->new( name => $boss, short => $split->{short}, raid => \%raid, ext => \%exts );
-                foreach my $actor (keys %{$exts{Presence}{actors}}) {
-                    my $id = lc $actor;
-                    $id = Stasis::PageMaker->tameText($id);
-
-                    open ACTORPAGE, sprintf ">$dname/actor_%s.html", $id or die;
-                    print ACTORPAGE $ap->page($actor);
-                    close ACTORPAGE;
-                }
-
-                # Write the data.xml file.
-                open DATAXML, ">$dname/data.xml" or die;
-                print DATAXML $chart_xml;
-                close DATAXML;
-            }; if( $@ ) {
-                bomb $@;
-            }
+        # When we reach the last line, move to the next split.
+        if( $split && $nlog >= $split->{endLine} ) {
+            $split = shift @splits;
         }
     }
     
     # Close the file.
-    if( $opt_file ) {
-        close $fh;
+    close $fh;
+    
+    # Write the files for the trash extensions.
+    if( $opt_trash ) {
+        my $dname = sprintf "%s/sws-trash-%d", $opt_dir, floor($first);
+        my $dname_old = $dname;
+        
+        foreach my $ext (values %trash_exts) {
+            $ext->finish();
+        }
+        
+        unless( $opt_nowrite ) {
+            eval {
+                writedir $dname, $dname_old, "Trash Mobs", "trash", \%raid, \%trash_exts;
+            }; if( $@ ) {
+                bomb $@;
+            }
+        }
+        
+        status sprintf "Wrote: Trash Mobs (sws-trash-%d).", floor($first);
+    }
+    
+    # Write the files for the overall extensions.
+    if( $opt_overall ) {
+        my $dname = sprintf "%s/sws-overall-%d", $opt_dir, floor($first);
+        my $dname_old = $dname;
+        
+        foreach my $ext (values %overall_exts) {
+            $ext->finish();
+        }
+        
+        unless( $opt_nowrite ) {
+            eval {
+                writedir $dname, $dname_old, "Overall", "overall", \%raid, \%overall_exts;
+            }; if( $@ ) {
+                bomb $@;
+            }
+        }
+        
+        status sprintf "Wrote: Overall (sws-overall-%d).", floor($first);
     }
 } elsif( $action eq "history" ) {
     # Going to output in $opt_dir
@@ -443,10 +538,10 @@ if( $action eq "print" ) {
         my $nlog = -1;
         while( <$fh> ) {
             $nlog++;
-            my %entry = $parser->parse($_);
-            $classer->process(\%entry);
-            $splitter->process(\%entry);
-            $db->addLine( $nlog, \%entry );
+            my $entry = $parser->parse($_);
+            $classer->process($entry);
+            $splitter->process($entry);
+            $db->addLine( $nlog, $entry );
         }
 
         my %raid = $classer->finish();
