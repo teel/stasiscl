@@ -584,6 +584,19 @@ sub finish {
         }
     }
     
+    # Remove splits that make no sense.
+    foreach my $split (values %{$self->{splits}}) {
+        # Check zero or negative line length.
+        if( $split->{endLine} - $split->{startLine} <= 0 ) {
+            $split->{delete} = 1;
+        }
+        
+        # Check zero or negative time.
+        if( $split->{end} - $split->{start} <= 0 ) {
+            $split->{delete} = 1;
+        }
+    }
+    
     # Remove smaller splits that intersect with larger ones.
     foreach my $split1 (values %{$self->{splits}}) {
         foreach my $split2 (values %{$self->{splits}}) {

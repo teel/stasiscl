@@ -231,6 +231,11 @@ if( $action eq "print" ) {
             ", $n_pets pet" . ($n_pets == 1 ? "" : "s") . 
             ", and " . scalar(@splits) . " boss encounter" . (scalar(@splits) == 1 ? "" : "s") . ".";
     
+    # If no boss encounters, error out.
+    if(!scalar(@splits)) {
+        bomb "Error: There are no boss encounters in this log file.";
+    }
+    
     # Rewind the file.
     seek $fh, 0, 0;
     
