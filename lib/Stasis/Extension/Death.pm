@@ -34,7 +34,7 @@ sub start {
     $self->{actors} = {};
     $self->{ohtrack} = {};
     $self->{dtrack} = {};
-    $self->{_autopsylen} = 30;
+    $self->{_autopsylen} = 40;
 }
 
 sub process {
@@ -66,7 +66,7 @@ sub process {
         
         # Bail out.
         return;
-    } else {
+    } elsif( ! grep $entry->{action} eq $_, qw(SPELL_AURA_APPLIED SPELL_AURA_APPLIED_DOSE SPELL_AURA_REMOVED) ) {
         # Bail out now.
         # If this action was a damage, miss, or heal we will fall through to the next section.
         return;

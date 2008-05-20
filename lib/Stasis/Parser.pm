@@ -1537,9 +1537,16 @@ sub toString {
             $target,
             $entry->{extra}{spellname};
     } elsif( $entry->{action} eq "SPELL_AURA_APPLIED_DOSE" ) {
-
+        $text = sprintf "[%s] %s %s (%d)",
+            $target,
+            $entry->{extra}{auratype} eq "DEBUFF" ? "afflicted by" : "gain",
+            $entry->{extra}{spellname},
+            $entry->{extra}{amount};
     } elsif( $entry->{action} eq "SPELL_AURA_REMOVED_DOSE" ) {
-
+        $text = sprintf "[%s] decrease dose %s (%d)",
+            $target,
+            $entry->{extra}{spellname},
+            $entry->{extra}{amount};
     } elsif( $entry->{action} eq "SPELL_CAST_START" ) {
 
     } elsif( $entry->{action} eq "SPELL_CAST_SUCCESS" ) {

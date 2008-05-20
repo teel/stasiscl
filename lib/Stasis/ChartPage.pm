@@ -293,10 +293,11 @@ sub page {
 
     @deathlist = sort { $a->{'t'} <=> $b->{'t'} } @deathlist;
 
+    my $deathid = 0;
     foreach my $death (@deathlist) {
-        my $id = $death->{t};
-        $id = Stasis::PageMaker->tameText($id);
-
+        # Increment death ID.
+        $deathid++;
+        
         # Get the last line of the autopsy.
         my $lastline = pop @{$death->{autopsy}};
         push @{$death->{autopsy}}, $lastline;
@@ -312,7 +313,7 @@ sub page {
                     "Event" => $lastline->{text} || "",
                 },
                 type => "master",
-                name => "death_$id",
+                name => "death_$deathid",
             );
 
         # Print subsequent rows.
@@ -327,11 +328,11 @@ sub page {
                         "Event" => $line->{text} || "",
                     },
                     type => "slave",
-                    name => "death_$id",
+                    name => "death_$deathid",
                 );
         }
 
-        $PAGE .= $pm->jsClose("death_$id");
+        $PAGE .= $pm->jsClose("death_$deathid");
     }
 
     $PAGE .= $pm->tableEnd;
