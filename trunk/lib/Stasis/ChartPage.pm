@@ -264,6 +264,78 @@ sub page {
     
     $PAGE .= $pm->tableEnd;
     
+    ##########
+    # DEATHS #
+    ##########
+
+    $PAGE .= "<h3><a name=\"deaths\"></a>Deaths</h3>";
+
+    $PAGE .= $pm->tableStart;
+
+    my @deathHeader = (
+            "Death",
+            "Time",
+            "R-Health",
+            "Event",
+        );
+
+    $PAGE .= $pm->tableHeader(@deathHeader);
+
+    my @deathlist;
+
+    foreach my $deathevent (keys %{$self->{ext}{Death}{actors}}) {
+        if ($self->{raid}{$deathevent} && 
+            $self->{raid}{$deathevent}{class} &&
+            $self->{raid}{$deathevent}{class} ne "Pet") {
+                push @deathlist, @{$self->{ext}{Death}{actors}{$deathevent}};
+        }
+    }
+
+    @deathlist = sort { $a->{'t'} <=> $b->{'t'} } @deathlist;
+
+    foreach my $death (@deathlist) {
+        my $id = $death->{t};
+        $id = Stasis::PageMaker->tameText($id);
+
+        # Get the last line of the autopsy.
+        my $lastline = pop @{$death->{autopsy}};
+        push @{$death->{autopsy}}, $lastline;
+
+        # Print the front row.
+        my $t = $death->{t} - $raidStart;
+        $PAGE .= $pm->tableRow(
+                header => \@deathHeader,
+                data => {
+                    "Death" => $pm->actorLink( $death->{actor},  $self->{ext}{Index}->actorname($death->{actor}), $self->{raid}{$death->{actor}}{class} ),
+                    "Time" => $death->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
+                    "R-Health" => $lastline->{hp} || "",
+                    "Event" => $lastline->{text} || "",
+                },
+                type => "master",
+                name => "death_$id",
+            );
+
+        # Print subsequent rows.
+        foreach my $line (@{$death->{autopsy}}) {
+            my $t = ($line->{t}||0) - $raidStart;
+
+            $PAGE .= $pm->tableRow(
+                    header => \@deathHeader,
+                    data => {
+                        "Death" => $line->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
+                        "R-Health" => $line->{hp} || "",
+                        "Event" => $line->{text} || "",
+                    },
+                    type => "slave",
+                    name => "death_$id",
+                );
+        }
+
+        $PAGE .= $pm->jsClose("death_$id");
+    }
+
+    $PAGE .= $pm->tableEnd;
+    
     ####################
     # RAID & MOBS LIST #
     ####################

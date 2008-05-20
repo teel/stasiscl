@@ -52,11 +52,12 @@ sub process {
         $self->{ohtrack}{ $entry->{target} } -= $entry->{extra}{amount};
     } elsif( $entry->{action} eq "UNIT_DIED" || $entry->{action} eq "PARTY_KILL" ) {
         # Make a deaths array if it doesn't exist already.
-        $self->{actors}{ $entry->{actor} } ||= [];
+        $self->{actors}{ $entry->{target} } ||= [];
         
         # Push this death onto it.
         push @{$self->{actors}{ $entry->{target} }}, {
             "t" => $entry->{t},
+            "actor" => $entry->{target},
             "autopsy" => $self->{dtrack}{ $entry->{target} } || [],
         } if ($self->{dtrack}{ $entry->{target} });
         

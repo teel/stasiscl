@@ -171,7 +171,7 @@ sub pageHeader {
 <div class="swsmaster">
 <div class="top">
 <h2>$boss: $starttxt</h2>
-<b><a href="index.html#damage">Damage</a> &ndash; <a href="index.html#healing">Healing</a> &ndash; <a href="index.html#actors">Raid &amp; Mobs</a></b>
+<b><a href="index.html#damage">Damage</a> &ndash; <a href="index.html#healing">Healing</a> &ndash; <a href="index.html#deaths">Deaths</a> &ndash; <a href="index.html#actors">Raid &amp; Mobs</a></b>
 </div>
 END
 }
