@@ -16,3 +16,7 @@ function toggleTableSection(secName) {
         document.getElementById('a_section_'+secName).innerHTML = text;
     }
 }
+
+function toggleActorGroup(grpName) {
+    
+}

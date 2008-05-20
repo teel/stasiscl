@@ -268,7 +268,7 @@ sub page {
     # DEATHS #
     ##########
 
-    $PAGE .= "<h3><a name=\"deaths\"></a>Deaths</h3>";
+    $PAGE .= "<a name=\"deaths\"></a>";
 
     $PAGE .= $pm->tableStart;
 
@@ -278,9 +278,7 @@ sub page {
             "R-Health",
             "Event",
         );
-
-    $PAGE .= $pm->tableHeader(@deathHeader);
-
+        
     my @deathlist;
 
     foreach my $deathevent (keys %{$self->{ext}{Death}{actors}}) {
@@ -293,49 +291,54 @@ sub page {
 
     @deathlist = sort { $a->{'t'} <=> $b->{'t'} } @deathlist;
 
-    my $deathid = 0;
-    foreach my $death (@deathlist) {
-        # Increment death ID.
-        $deathid++;
-        
-        # Get the last line of the autopsy.
-        my $lastline = pop @{$death->{autopsy}};
-        push @{$death->{autopsy}}, $lastline;
+    if( scalar @deathlist ) {
+        $PAGE .= "<h3>Deaths</h3>";
+        $PAGE .= $pm->tableHeader(@deathHeader);
 
-        # Print the front row.
-        my $t = $death->{t} - $raidStart;
-        $PAGE .= $pm->tableRow(
-                header => \@deathHeader,
-                data => {
-                    "Death" => $pm->actorLink( $death->{actor},  $self->{ext}{Index}->actorname($death->{actor}), $self->{raid}{$death->{actor}}{class} ),
-                    "Time" => $death->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
-                    "R-Health" => $lastline->{hp} || "",
-                    "Event" => $lastline->{text} || "",
-                },
-                type => "master",
-                name => "death_$deathid",
-            );
+        my $deathid = 0;
+        foreach my $death (@deathlist) {
+            # Increment death ID.
+            $deathid++;
 
-        # Print subsequent rows.
-        foreach my $line (@{$death->{autopsy}}) {
-            my $t = ($line->{t}||0) - $raidStart;
+            # Get the last line of the autopsy.
+            my $lastline = pop @{$death->{autopsy}};
+            push @{$death->{autopsy}}, $lastline;
 
+            # Print the front row.
+            my $t = $death->{t} - $raidStart;
             $PAGE .= $pm->tableRow(
                     header => \@deathHeader,
                     data => {
-                        "Death" => $line->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
-                        "R-Health" => $line->{hp} || "",
-                        "Event" => $line->{text} || "",
+                        "Death" => $pm->actorLink( $death->{actor},  $self->{ext}{Index}->actorname($death->{actor}), $self->{raid}{$death->{actor}}{class} ),
+                        "Time" => $death->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
+                        "R-Health" => $lastline->{hp} || "",
+                        "Event" => $lastline->{text} || "",
                     },
-                    type => "slave",
+                    type => "master",
                     name => "death_$deathid",
                 );
+
+            # Print subsequent rows.
+            foreach my $line (@{$death->{autopsy}}) {
+                my $t = ($line->{t}||0) - $raidStart;
+
+                $PAGE .= $pm->tableRow(
+                        header => \@deathHeader,
+                        data => {
+                            "Death" => $line->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
+                            "R-Health" => $line->{hp} || "",
+                            "Event" => $line->{text} || "",
+                        },
+                        type => "slave",
+                        name => "death_$deathid",
+                    );
+            }
+
+            $PAGE .= $pm->jsClose("death_$deathid");
         }
 
-        $PAGE .= $pm->jsClose("death_$deathid");
+        $PAGE .= $pm->tableEnd;
     }
-
-    $PAGE .= $pm->tableEnd;
     
     ####################
     # RAID & MOBS LIST #
