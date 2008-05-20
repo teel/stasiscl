@@ -270,8 +270,6 @@ sub page {
 
     $PAGE .= "<a name=\"deaths\"></a>";
 
-    $PAGE .= $pm->tableStart;
-
     my @deathHeader = (
             "Death",
             "Time",
@@ -295,6 +293,7 @@ sub page {
         $PAGE .= "<h3>Deaths</h3>";
         $PAGE .= $pm->tableHeader(@deathHeader);
 
+        $PAGE .= $pm->tableStart;
         my $deathid = 0;
         foreach my $death (@deathlist) {
             # Increment death ID.
