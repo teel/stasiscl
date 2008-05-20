@@ -131,7 +131,7 @@ sub tableRow {
         
         if( !$firstflag && $params{type} eq "master" ) {
             # This is the first one (flag hasn't been set yet)
-            $result .= sprintf "<td${first}${align}>(<a class=\"toggle\" id=\"a_section_%s\" href=\"javascript:toggleTableSection('%s');\">-</a>) %s</td>", $params{name}, $params{name}, $params{data}{$col};
+            $result .= sprintf "<td${first}${align}>(<a class=\"toggle\" id=\"a_section_%s\" href=\"javascript:toggleTableSection('%s');\">+</a>) %s</td>", $params{name}, $params{name}, $params{data}{$col};
         } else {
             if( $params{data}{$col} ) {
                 $result .= sprintf "<td${first}${align}>%s</td>", $params{data}{$col};
