@@ -291,9 +291,9 @@ sub page {
 
     if( scalar @deathlist ) {
         $PAGE .= "<h3>Deaths</h3>";
-        $PAGE .= $pm->tableHeader(@deathHeader);
 
         $PAGE .= $pm->tableStart;
+        $PAGE .= $pm->tableHeader(@deathHeader);
         my $deathid = 0;
         foreach my $death (@deathlist) {
             # Increment death ID.
