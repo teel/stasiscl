@@ -513,6 +513,11 @@ sub raid {
     return \%ret;
 }
 
+sub ext {
+    my $self = shift;
+    my $ext = shift;
+}
+
 sub disconnect {
     my $self = shift;
 

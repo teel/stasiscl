@@ -158,6 +158,11 @@ sub writedir($$$$$$) {
         print ACTORPAGE $ap->page($actor);
         close ACTORPAGE;
     }
+    
+    # Write the environment file.
+    open ENVPAGE, ">$dname/actor_0.html" or die;
+    print ENVPAGE $ap->page(0);
+    close ENVPAGE;
 
     # Write the data.xml file.
     open DATAXML, ">$dname/data.xml" or die;

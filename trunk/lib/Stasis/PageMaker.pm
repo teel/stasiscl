@@ -232,7 +232,7 @@ sub actorLink {
     $name ||= "";
     $color ||= "Mob";
     
-    if( $id ) {
+    if( $id || (defined $id && $id eq "0") ) {
         return sprintf "<a href=\"actor_%s.html\" class=\"actor color%s\">%s</a>", $self->tameText($id), $color, HTML::Entities::encode_entities($name);
     } else {
         return HTML::Entities::encode_entities($name);
