@@ -31,10 +31,17 @@ our @ISA = "Stasis::Extension";
 sub start {
     my $self = shift;
     $self->{actors} = {};
+    $self->{total} = {
+        start => 0,
+        end => 0,
+    };
 }
 
 sub process {
     my ($self, $entry) = @_;
+    
+    $self->{total}{start} = $entry->{t} if !$self->{total}{start};
+    $self->{total}{end} = $entry->{t};
     
     if( $entry->{actor} ) {
         $self->{actors}{ $entry->{actor} }{start} = $entry->{t} if !$self->{actors}{ $entry->{actor} }{start};
@@ -44,6 +51,23 @@ sub process {
     if( $entry->{target} ) {
         $self->{actors}{ $entry->{target} }{start} = $entry->{t} if !$self->{actors}{ $entry->{target} }{start};
         $self->{actors}{ $entry->{target} }{end} = $entry->{t};
+    }
+}
+
+# Returns (start, end, total) for the raid or for an actor
+sub presence {
+    my $self = shift;
+    my $actor = shift;
+    
+    if( $actor && $self->{actors}{$actor} ) {
+        # Actor
+        return ( $self->{actors}{$actor}{start}, $self->{actors}{$actor}{end}, $self->{actors}{$actor}{end} - $self->{actors}{$actor}{start} );
+    } elsif( $actor ) {
+        # Actor didn't exist
+        return ( 0, 0, 0 );
+    } else {
+        # Raid
+        return ( $self->{total}{start}, $self->{total}{end}, $self->{total}{end} - $self->{total}{start} );
     }
 }
 

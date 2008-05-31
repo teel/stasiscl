@@ -435,7 +435,14 @@ our %fingerprints = (
     mobContinue => [ "25741", "25840" ],
     mobEnd => [],
     timeout => 30,
-}
+},
+
+"Kil'jaeden" => {
+    mobStart => [ "25315" ],
+    mobContinue => [ "25315" ],
+    mobEnd => [ "25315" ],
+    timeout => 30,
+},
 
 );
 
