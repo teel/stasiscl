@@ -446,6 +446,27 @@ our %fingerprints = (
 
 );
 
+# Invert the %fingerprints hash.
+our %fstart;
+our %fcontinue;
+our %fend;
+
+{
+    while( my ($kprint, $vprint) = each %fingerprints ) {
+        foreach (@{$vprint->{mobStart}}) {
+            $fstart{$_} = $kprint;
+        }
+        
+        foreach (@{$vprint->{mobContinue}}) {
+            $fcontinue{$_} = $kprint;
+        }
+        
+        foreach (@{$vprint->{mobEnd}}) {
+            $fend{$_} = $kprint;
+        }
+    }
+}
+
 sub new {
     my $class = shift;
     my %params = @_;
@@ -473,97 +494,66 @@ sub process {
     my $actor_id = $anpc || $entry->{actor};
     my $target_id = $tnpc || $entry->{target};
     
-    # Continuously test for all fingerprints.
-    while( my ($boss, $print) = each (%fingerprints) ) {
+    # See if we should end, or continue, an encounter currently in progress.
+    while( my ($kboss, $vboss) = each %{$self->{scratch}} ) {
         # If we are currently in an encounter with this boss then see what we should do.
-        if( $self->{scratch}{$boss}{start} ) {
-            if( $entry->{t} > $self->{scratch}{$boss}{end} + $print->{timeout} ) {
+        if( $vboss->{start} ) {
+            if( $entry->{t} > $vboss->{end} + $fingerprints{$kboss}{timeout} ) {
                 # This fingerprint timed out without ending.
                 # Record it as an attempt, but disallow zero-length splits.
                 
-                $self->{scratch}{$boss}{attempt} ||= 0;
-                $self->{scratch}{$boss}{attempt} ++;
+                $vboss->{attempt} ||= 0;
+                $vboss->{attempt} ++;
                 
-                my $splitname = $boss . " try " . $self->{scratch}{$boss}{attempt};
+                my $splitname = $kboss . " try " . $self->{scratch}{$kboss}{attempt};
                 
                 # Figure out short name.
-                my $short = $print->{short} || lc $boss;
+                my $short = $fingerprints{$kboss}{short} || lc $kboss;
                 $short =~ s/\s+.*$//;
                 $short =~ s/[^\w]//g;
                 
-                $self->{splits}{$splitname} = { short => $short, long => $splitname, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 0 } if $self->{scratch}{$boss}{end} && $self->{scratch}{$boss}{start};
+                $self->{splits}{$splitname} = { short => $short, long => $splitname, start => $self->{scratch}{$kboss}{start}, end => $self->{scratch}{$kboss}{end}, startLine => $self->{scratch}{$kboss}{startLine}, endLine => $self->{scratch}{$kboss}{endLine}, kill => 0 } if $self->{scratch}{$kboss}{end} && $self->{scratch}{$kboss}{start};
                 
                 # Reset the start/end times for this fingerprint.
-                $self->{scratch}{$boss}{start} = 0;
-                $self->{scratch}{$boss}{end} = 0;
-                
-                # Maybe this is the start of a new encounter with this boss.
-                my $shouldStart;
-                foreach my $mobStart (@{ $print->{mobStart} }) {
-                    if( (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) && ($actor_id eq $mobStart || $target_id eq $mobStart) ) {
-                        $shouldStart ++;
-                    }
-                }
+                $self->{scratch}{$kboss}{start} = 0;
+                $self->{scratch}{$kboss}{end} = 0;
+            } elsif( ($fcontinue{$actor_id} && $fcontinue{$actor_id} eq $kboss) || ($fcontinue{$target_id} && $fcontinue{$target_id} eq $kboss) ) {
+                # We should continue this encounter.
+                $self->{scratch}{$kboss}{end} = $entry->{t};
+                $self->{scratch}{$kboss}{endLine} = $self->{nlog};
 
-                if( $shouldStart ) {
-                    $self->{scratch}{$boss}{start} = $entry->{t};
-                    $self->{scratch}{$boss}{end} = $entry->{t};
-                    $self->{scratch}{$boss}{startLine} = $self->{nlog};
-                    $self->{scratch}{$boss}{endLine} = $self->{nlog};
-                }
-            } else {
-                # This fingerprint hasn't yet timed out. Possibly continue it.
-                my $shouldContinue;
-                foreach my $mobContinue (@{ $print->{mobContinue} }) {
-                    if( $actor_id eq $mobContinue || $target_id eq $mobContinue ) {
-                        $shouldContinue ++;
-                    }
-                }
-                
-                # Continue it if we decided to.
-                if( $shouldContinue ) {
-                    $self->{scratch}{$boss}{end} = $entry->{t};
-                    $self->{scratch}{$boss}{endLine} = $self->{nlog};
-                }
-                
                 # Also possibly end it.
-                my $shouldEnd;
-                foreach my $mobEnd (@{ $print->{mobEnd} }) {
-                    if( $entry->{action} eq "UNIT_DIED" && $target_id eq $mobEnd ) {
-                        $shouldEnd ++;
-                    }
-                }
-                
-                # End it if we decided to.
-                if( $shouldEnd ) {
+                if( $entry->{action} eq "UNIT_DIED" && $fend{$target_id} && $fend{$target_id} eq $kboss ) {
                     # Figure out short name.
-                    my $short = $print->{short} || lc $boss;
+                    my $short = $fingerprints{$kboss}{short} || lc $kboss;
                     $short =~ s/\s+.*$//;
                     $short =~ s/[^\w]//g;
-                    
-                    $self->{splits}{$boss} = { short => $short, long => $boss, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 1 };
 
-                    # Reset the start/end times for this print.
-                    $self->{scratch}{$boss}{start} = 0;
-                    $self->{scratch}{$boss}{end} = 0;
+                    $self->{splits}{$kboss} = { short => $short, long => $kboss, start => $self->{scratch}{$kboss}{start}, end => $self->{scratch}{$kboss}{end}, startLine => $self->{scratch}{$kboss}{startLine}, endLine => $self->{scratch}{$kboss}{endLine}, kill => 1 };
+
+                    # Reset the start/end times for this fingerprint.
+                    $self->{scratch}{$kboss}{start} = 0;
+                    $self->{scratch}{$kboss}{end} = 0;
                 }
-            }
-        } else {
-            # We aren't currently in an encounter with this boss. Maybe we should start one.
-            my $shouldStart;
-            foreach my $mobStart (@{ $print->{mobStart} }) {
-                if( ($actor_id eq $mobStart || $target_id eq $mobStart) && (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) ) {
-                    $shouldStart ++;
-                }
-            }
-            
-            if( $shouldStart ) {
-                $self->{scratch}{$boss}{start} = $entry->{t};
-                $self->{scratch}{$boss}{end} = $entry->{t};
-                $self->{scratch}{$boss}{startLine} = $self->{nlog};
-                $self->{scratch}{$boss}{endLine} = $self->{nlog};
             }
         }
+    }
+    
+    # See if we should start a new encounter.
+    if( $fstart{$actor_id} && !$self->{scratch}{$fstart{$actor_id}}{start} && (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) ) {
+        # The actor should start a new encounter.
+        $self->{scratch}{$fstart{$actor_id}}{start} = $entry->{t};
+        $self->{scratch}{$fstart{$actor_id}}{end} = $entry->{t};
+        $self->{scratch}{$fstart{$actor_id}}{startLine} = $self->{nlog};
+        $self->{scratch}{$fstart{$actor_id}}{endLine} = $self->{nlog};
+    }
+    
+    if( $fstart{$target_id} && !$self->{scratch}{$fstart{$target_id}}{start} && (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) ) {
+        # The target should start a new encounter.
+        $self->{scratch}{$fstart{$target_id}}{start} = $entry->{t};
+        $self->{scratch}{$fstart{$target_id}}{end} = $entry->{t};
+        $self->{scratch}{$fstart{$target_id}}{startLine} = $self->{nlog};
+        $self->{scratch}{$fstart{$target_id}}{endLine} = $self->{nlog};
     }
 }
 
