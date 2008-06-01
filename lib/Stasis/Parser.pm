@@ -155,7 +155,7 @@ sub parse {
     }
     
     my %result;
-    if( $self->{version} == "1" ) {
+    if( $self->{version} == 1 ) {
         #############################
         # VERSION 1 LOGIC (PRE-2.4) #
         #############################

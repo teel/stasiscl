@@ -40,8 +40,8 @@ use constant {
     dbh => 8,
 };
 
-our @result_fields = qw(line_id t action actor actor_name actor_relationship target target_name target_relationship kextra vextra use_dict vextra_text);
-our @line_fields = qw(t action actor actor_name actor_relationship target target_name target_relationship);
+my @result_fields = qw(line_id t action actor actor_name actor_relationship target target_name target_relationship kextra vextra use_dict vextra_text);
+my @line_fields = qw(t action actor actor_name actor_relationship target target_name target_relationship);
 
 sub new {
     my $class = shift;

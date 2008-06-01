@@ -29,7 +29,7 @@ use Carp;
 
 our @ISA = "Stasis::Extension";
 
-our %damage_actions = (
+my %damage_actions = (
     ENVIRONMENTAL_DAMAGE => 1,
     SWING_DAMAGE => 1,
     SWING_MISSED => 1,
