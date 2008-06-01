@@ -30,7 +30,7 @@ use Carp;
 use Stasis::MobUtil;
 
 # Fingerprints of various boss encounters.
-our %fingerprints = (
+my %fingerprints = (
     
 ############
 # KARAZHAN #
@@ -447,9 +447,9 @@ our %fingerprints = (
 );
 
 # Invert the %fingerprints hash.
-our %fstart;
-our %fcontinue;
-our %fend;
+my %fstart;
+my %fcontinue;
+my %fend;
 
 {
     while( my ($kprint, $vprint) = each %fingerprints ) {
