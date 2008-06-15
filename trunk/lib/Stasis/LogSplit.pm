@@ -385,7 +385,7 @@ my %fingerprints = (
     short => "council",
     mobStart => [ "22950", "22952", "22951", "22949", "High Nethermancer Zerevor", "Veras Darkshadow", "Lady Malande", "Gathios the Shatterer" ],
     mobContinue => [ "22950", "22952", "22951", "22949", "High Nethermancer Zerevor", "Veras Darkshadow", "Lady Malande", "Gathios the Shatterer" ],
-    mobEnd => [ "23426", "The Illidari Council" ],
+    mobEnd => [ "22950", "22952", "22951", "22949", "23426", "The Illidari Council" ],
     timeout => 30,
 },
 
