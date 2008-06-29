@@ -89,12 +89,18 @@ sub process {
                     effective => 0,
                     hitCount => 0,
                     hitTotal => 0,
+                    hitMin => 0,
+                    hitMax => 0,
                     hitEffective => 0,
                     critCount => 0,
                     critTotal => 0,
+                    critMin => 0,
+                    critMax => 0,
                     critEffective => 0,
                     tickCount => 0,
                     tickTotal => 0,
+                    tickMin => 0,
+                    tickMax => 0,
                     tickEffective => 0,
                 }
             }
@@ -125,6 +131,19 @@ sub process {
         $hdata->{"${type}Count"} += 1;
         $hdata->{"${type}Total"} += $entry->{extra}{amount};
         $hdata->{"${type}Effective"} += $entry->{extra}{amount};
+        
+        # Update min/max hit size.
+        $hdata->{"${type}Min"} = $entry->{extra}{amount}
+            if( 
+                !$hdata->{"${type}Min"} ||
+                $entry->{extra}{amount} < $hdata->{"${type}Min"}
+            );
+
+        $hdata->{"${type}Max"} = $entry->{extra}{amount}
+            if( 
+                !$hdata->{"${type}Max"} ||
+                $entry->{extra}{amount} > $hdata->{"${type}Max"}
+            );
     
         # Account for overhealing, if it happened, by removing the excess from effective healing.
         if( $self->{ohtrack}{ $entry->{target} } > 0 ) {

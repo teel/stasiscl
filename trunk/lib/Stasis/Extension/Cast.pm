@@ -37,7 +37,7 @@ sub process {
     my ($self, $entry) = @_;
     
     if( $entry->{action} eq "SPELL_CAST_SUCCESS" ) {
-        $self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} } += 1;
+        $self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{count} += 1;
     }
 }
 

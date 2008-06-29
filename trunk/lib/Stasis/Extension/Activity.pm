@@ -63,60 +63,29 @@ sub process {
         }
         
         # Create an empty hash if it does not exist yet.
-        if( !exists( $self->{actors}{ $actor } ) ) {
-            $self->{actors}{ $actor } = {
-                all => {
-                    start => 0,
-                    end => 0,
-                    time => 0,
-                },
-                targets => {},
-            }
-        }
+        $self->{actors}{ $actor } ||= {
+            start => 0,
+            end => 0,
+            time => 0,
+        };
         
         my $adata = $self->{actors}{ $actor };
         
         # Track overall DPS time (independent of particular targets)
-        if( !$adata->{all}{start} ) {
+        if( !$adata->{start} ) {
             # This is the first DPS action, so mark the start of a span.
-            $adata->{all}{start} = $entry->{t};
-            $adata->{all}{end} = $entry->{t};
-        } elsif( $adata->{all}{end} + $self->{_dpstimeout} < $entry->{t} ) {
+            $adata->{start} = $entry->{t};
+            $adata->{end} = $entry->{t};
+        } elsif( $adata->{end} + $self->{_dpstimeout} < $entry->{t} ) {
             # The last span ended, add it.
-            $adata->{all}{time} += ( $adata->{all}{end} - $adata->{all}{start} + $self->{_dpsaddclose} );
+            $adata->{time} += ( $adata->{end} - $adata->{start} + $self->{_dpsaddclose} );
         
             # Reset the start and end times to the current time.
-            $adata->{all}{start} = $entry->{t};
-            $adata->{all}{end} = $entry->{t};
+            $adata->{start} = $entry->{t};
+            $adata->{end} = $entry->{t};
         } else {
             # The last span is continuing.
-            $adata->{all}{end} = $entry->{t};
-        }
-    
-        # Track DPS time against this particular target.
-        # Create an empty hash if it does not exist yet.
-        if( !exists( $adata->{targets}{ $entry->{target} } ) ) {
-            $adata->{targets}{ $entry->{target} } = {
-                start => 0,
-                end => 0,
-                time => 0,
-            }
-        }
-    
-        if( !$adata->{targets}{ $entry->{target} }{start} ) {
-            # This is the first DPS action, so mark the start of a span.
-            $adata->{targets}{ $entry->{target} }{start} = $entry->{t};
-            $adata->{targets}{ $entry->{target} }{end} = $entry->{t};
-        } elsif( $adata->{targets}{ $entry->{target} }{end} + $self->{_dpstimeout} < $entry->{t} ) {
-            # The last span ended, add it.
-            $adata->{targets}{ $entry->{target} }{time} += ( $adata->{targets}{ $entry->{target} }{end} - $adata->{targets}{ $entry->{target} }{start} + $self->{_dpsaddclose} );
-        
-            # Reset the start and end times to the current time.
-            $adata->{targets}{ $entry->{target} }{start} = $entry->{t};
-            $adata->{targets}{ $entry->{target} }{end} = $entry->{t};
-        } else {
-            # The last span is continuing.
-            $adata->{targets}{ $entry->{target} }{end} = $entry->{t};
+            $adata->{end} = $entry->{t};
         }
     }
 }
@@ -128,15 +97,8 @@ sub finish {
     my $actor;
     foreach $actor (keys %{ $self->{actors} }) {
         # Close total DPS time.
-        if( $self->{actors}{$actor}{all}{start} ) {
-            $self->{actors}{$actor}{all}{time} += $self->{actors}{$actor}{all}{end} - $self->{actors}{$actor}{all}{start};
-        }
-    
-        # Next close DPS time for each of this person's targets.
-        foreach my $target (keys %{ $self->{actors}{$actor}{targets} }) {
-            if( $self->{actors}{$actor}{targets}{$target}{start} ) {
-                $self->{actors}{$actor}{targets}{$target}{time} += $self->{actors}{$actor}{targets}{$target}{end} - $self->{actors}{$actor}{targets}{$target}{start};
-            }
+        if( $self->{actors}{$actor}{start} ) {
+            $self->{actors}{$actor}{time} += $self->{actors}{$actor}{end} - $self->{actors}{$actor}{start};
         }
     }
 }

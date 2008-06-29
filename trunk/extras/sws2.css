@@ -17,7 +17,8 @@ body {
     padding-top: 8px;
     padding-bottom: 12px;
     margin-bottom: 8px;
-    background-color: #d9f7e2;
+    background-color: #f2f2ff;
+    color: black;
 }
 
 .swsmaster h2 {
@@ -33,8 +34,12 @@ body {
 }
 
 .swsmaster a {
+    text-decoration: none;
+    color: #33d;
+}
+
+.swsmaster a:hover {
     text-decoration: underline;
-    color: #22e;
 }
 
 .swsmaster a.actor {
@@ -51,6 +56,11 @@ body {
     color: #000;
 }
 
+.swsmaster a.spell:hover {
+    visibility: visible;
+    text-decoration: underline;
+}
+
 .swsmaster a.spell span {
     visibility: hidden;
     text-decoration: none;
@@ -61,50 +71,103 @@ body {
 
 .swsmaster a.spell:hover span {
     visibility: visible;
+    text-decoration: none;
+}
+
+.swsmaster div.tabContainer {
+    text-align: center;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 20px;
+    width: 750px;
+    padding: 0;
+}
+
+.swsmaster div.tabBar {
+    text-align: left;
+    margin: 0;
+    padding: 0;
+}
+
+.swsmaster div.tabBar a {
+    padding: 10px;
+    margin: 5px;
+    background-color: #e5e5ff;
+    color: #55a;
+}
+
+.swsmaster div.tabBar a.select {
+    background-color: #55a;
+    color: #e5e5ff;
+    text-decoration: none;
+}
+
+.swsmaster div.tabBar a:hover {
+    background-color: #55a;
+    color: #e5e5ff;
+    text-decoration: none;
 }
 
 .swsmaster table.text {
     padding:0;
     margin:0;
-    border: 1px solid #ccc;
+/*    border: 1px solid #ccc; */
     margin-left: auto;
     margin-right: auto;
+    width: 300px;
 }
 
 .swsmaster table.stat {
     padding:0;
     margin:0;
-    border: 1px solid #ccc;
+/*    border: 1px solid #ccc; */
+    border:0;
     margin-left: auto;
     margin-right: auto;
+    width: 100%;
 }
 
 .swsmaster table.chart {
     padding:0;
     margin:0;
-    border: 1px solid #ccc;
-    width: 600px;
+/*    border: 1px solid #ccc; */
+    width: 700px;
     margin-left: auto;
     margin-right: auto;
 }
 
 .swsmaster table.text td {
     font-size: 11px;
-    text-align: center;
-    padding: 8px;
+    text-align: left;
+}
+
+.swsmaster td.vh {
+    color: #444;
 }
 
 .swsmaster th {
     text-align: left;
     font-family: verdana;
     font-size: 11px;
-    background-color: #947db2;
-    color: #fff;
-    padding-top: 4px;
+    color: purple;
+    padding-top: 8px;
     padding-bottom: 4px;
     padding-left: 2px;
     padding-right: 8px;
     white-space: nowrap;
+    border-bottom: 1px solid #eee;
+}
+
+.swsmaster span.tip {
+    border-bottom: 1px dotted #999;
+}
+
+.swsmaster th.title {
+    background-color: #e5e5ff;
+    color: #55a;
+    font-size: 12px;
+    padding: 4px;
+    border-top: 20px solid white;
 }
 
 .swsmaster tr.sectionSlave td {
@@ -113,11 +176,7 @@ body {
 }
 
 .swsmaster tr.sectionMaster td {
-    background-color: #eee;
-}
-
-.swsmaster tr.sectionMaster td.first {
-    font-weight: bold;
+/*    background-color: #eee; */
 }
 
 .swsmaster td.first {
@@ -129,7 +188,7 @@ body {
     text-align:left;
     font-family: verdana;
     font-size: 10px;
-    background-color: #eee;
+/*    background-color: #eee; */
     margin: 0;
     padding-top: 3px;
     padding-bottom: 2px;

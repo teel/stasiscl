@@ -322,9 +322,7 @@ sub new {
     my $class = shift;
     my %params = @_;
     
-    $params{hintsfile} ||= "";
     $params{version} = 2 if !$params{version} || $params{version} != 1;
-    $params{hints} ||= {};
     $params{scratch1} = {};
     $params{totems} = {};
     
