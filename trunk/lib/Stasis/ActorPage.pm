@@ -1163,6 +1163,7 @@ sub _rowHealing {
         "Ability" => $title,
         "R-Eff. Heal" => $sdata->{effective},
         "R-Overheal %" => $sdata->{total} ? sprintf "%0.1f%%", ($sdata->{total} - $sdata->{effective} ) / $sdata->{total} * 100 : "",
+        "R-Hits" => $sdata->{hitCount} && sprintf( "%d", $sdata->{hitCount} ),
         "R-Avg Hit" => $sdata->{hitCount} && $sdata->{hitTotal} && sprintf( "<span class=\"tip\" title=\"Range: %d&ndash;%d\">%d</span>", $sdata->{hitMin}, $sdata->{hitMax}, $sdata->{hitTotal} / $sdata->{hitCount} ),
         "R-Ticks" => $sdata->{tickCount} && sprintf( "%d", $sdata->{tickCount} ),
         "R-Avg Tick" => $sdata->{tickCount} && $sdata->{tickTotal} && sprintf( "<span class=\"tip\" title=\"Range: %d&ndash;%d\">%d</span>", $sdata->{tickMin}, $sdata->{tickMax}, $sdata->{tickTotal} / $sdata->{tickCount} ),
