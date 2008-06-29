@@ -36,7 +36,6 @@ use Stasis::ActorGroup;
 use Stasis::ChartPage;
 use Stasis::PageMaker;
 use Stasis::DB;
-use Stasis::Native;
 use File::Find qw();
 use File::Path qw();
 use File::Spec qw();
