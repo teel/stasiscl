@@ -32,9 +32,11 @@ use Stasis::LogSplit;
 use Stasis::ClassGuess;
 use Stasis::Extension;
 use Stasis::ActorPage;
+use Stasis::ActorGroup;
 use Stasis::ChartPage;
 use Stasis::PageMaker;
 use Stasis::DB;
+use Stasis::Native;
 use File::Find qw();
 use File::Path qw();
 use File::Spec qw();
@@ -159,6 +161,18 @@ sub writedir($$$$$$) {
         close ACTORPAGE;
     }
     
+    # Write the group files.
+    my $grouper = Stasis::ActorGroup->new;
+    $grouper->run( $raid, $exts );
+    foreach my $group (@{$grouper->{groups}}) {
+        my $id = lc $grouper->captain($group);
+        $id = Stasis::PageMaker->tameText($id);
+        
+        open GROUPPAGE, sprintf ">$dname/group_%s.html", $id or die;
+        print GROUPPAGE $ap->page($grouper->captain($group), 1);
+        close GROUPPAGE;
+    }
+    
     # Write the environment file.
     open ENVPAGE, ">$dname/actor_0.html" or die;
     print ENVPAGE $ap->page(0);
@@ -191,7 +205,6 @@ my $opt_minlength = 30;
 my $opt_sfile;
 my $opt_dir = ".";
 my $opt_nowrite;
-my $opt_hintsfile;
 my $opt_logger;
 my $opt_file;
 my $opt_attempts;
@@ -202,7 +215,6 @@ my $opt_overall;
 my $rc = GetOptions(
     "version=s"     => \$opt_version,
     "logger=s"      => \$opt_logger,
-    #"hintsfile=s"   => \$opt_hintsfile,
     "file=s"        => \$opt_file,
     "dir=s"         => \$opt_dir,
     "minlength=i"   => \$opt_minlength,
@@ -256,14 +268,11 @@ if( $action eq "print" ) {
     bomb "not a directory: $opt_dir" unless $opt_dir && -d $opt_dir;
     status "Using directory: $opt_dir";
     
-    # Check if $opt_hints (hints file) exists
-    bomb "not a file: $opt_hintsfile" if( $opt_hintsfile && ! -f $opt_hintsfile && ! -l $opt_hintsfile );
-    
     # Assign classes to %raid and splits to @splits
     status "Assigning classes and splitting bosses .. ";
     
-    my $classer = Stasis::ClassGuess->new( version => $opt_version, hintsfile => $opt_hintsfile );
-    my $splitter = Stasis::LogSplit->new;
+    my $classer = Stasis::ClassGuess->new( version => $opt_version );
+    my $splitter = Stasis::LogSplit->new( version => $opt_version );
     
     while( defined( my $line = <$fh> ) ) {
         my $pline = $parser->parse($line);
@@ -531,8 +540,8 @@ if( $action eq "print" ) {
         bomb "target file exists, choose another name: $opt_sfile";
     }
     
-    # Get class guesser and log splitter.
-    my $classer = Stasis::ClassGuess->new( version => $opt_version, hintsfile => $opt_hintsfile );
+    # Get class guesser, log splitter.
+    my $classer = Stasis::ClassGuess->new( version => $opt_version );
     my $splitter = Stasis::LogSplit->new;
     
     eval {
@@ -565,115 +574,6 @@ if( $action eq "print" ) {
         bomb "convert error: $@";
         unlink $opt_sfile;
     }
-} elsif( $action eq "sadd" ) {
-    # Get a database connection.
-    my $db = Stasis::DB->new( db => $opt_sfile );
-    
-    if( ! -e $opt_sfile ) {
-        # Bail if the file doesn't exist.
-        bomb "file does not exist: $opt_sfile";
-    }
-    
-    my @splits = @{$db->splits()};
-    my %raid = %{$db->raid()};
-    
-    # Create extensions.
-    my @ext_names = qw(Activity Damage Death Healing Aura Cast ExtraAttack Interrupt Power Presence Index);
-    my %exts;
-    foreach (@ext_names) {
-        $exts{$_} = Stasis::Extension->factory($_);
-    }
-    
-    # Process the splits, one at a time.
-    foreach my $split (@splits) {
-        my $boss = $split->{long};
-        
-        # Check zero length.
-        if( $split->{endLine} - $split->{startLine} <= 0 ) {
-            status sprintf "Skipping: %s (zero length).", $boss;
-            next;
-        }
-        
-        # Check negative time.
-        if( $split->{end} - $split->{start} <= 0 ) {
-            status sprintf "Skipping: %s (zero length).", $boss;
-            next;
-        }
-        
-        # Check minlength option.
-        if( $opt_minlength && $split->{end} - $split->{start} < $opt_minlength ) {
-            status sprintf "Skipping: %s (too short).", $boss;
-            next;
-        }
-        
-        # Check attempts option.
-        if( !$opt_attempts && !$split->{kill} ) {
-            status sprintf "Skipping: %s (not a kill).", $boss, $split->{end} - $split->{start};
-            next;
-        }
-        
-        # Run statistics for this boss.
-        my $dname = sprintf "%s/sws-%s-%d", $opt_dir, $split->{short}, floor($split->{start});
-        my $dname_old = sprintf "%s/sws-%d", $opt_dir, floor($split->{start});
-        status sprintf "Processing: %s (sws-%s-%d).", $boss, $split->{short}, floor($split->{start});
-        
-        # Start all the extensions.
-        foreach my $ext (values %exts) {
-            $ext->start();
-        }
-        
-        # Process the file.
-        $db->line( $split->{startLine}, $split->{endLine} );
-        while( defined( my $line = $db->line() ) ) {
-            foreach my $ext (values %exts) {
-                $ext->process($line);
-            }
-        }
-        
-        # End all the extensions.
-        foreach my $ext (values %exts) {
-            $ext->finish();
-        }
-        
-        # Write the files.
-        unless( $opt_nowrite ) {
-            eval {
-                # Remove the directory if it exists.
-                File::Path::rmtree($dname) if -d $dname;
-                File::Path::rmtree($dname_old) if -d $dname_old;
-
-                # Create the directory.
-                mkdir $dname or die $!;
-
-                # Write the index.
-                my $charter = Stasis::ChartPage->new( name => $boss, short => $split->{short}, raid => \%raid, ext => \%exts );
-                my ($chart_xml, $chart_html) = $charter->page;
-                open CHARTPAGE, ">$dname/index.html" or die;
-                print CHARTPAGE $chart_html;
-                close CHARTPAGE;
-
-                # Write the actor files.
-                my $ap = Stasis::ActorPage->new( name => $boss, short => $split->{short}, raid => \%raid, ext => \%exts );
-                foreach my $actor (keys %{$exts{Presence}{actors}}) {
-                    my $id = lc $actor;
-                    $id = Stasis::PageMaker->tameText($id);
-
-                    open ACTORPAGE, sprintf ">$dname/actor_%s.html", $id or die;
-                    print ACTORPAGE $ap->page($actor);
-                    close ACTORPAGE;
-                }
-
-                # Write the data.xml file.
-                open DATAXML, ">$dname/data.xml" or die;
-                print DATAXML $chart_xml;
-                close DATAXML;
-            }; if( $@ ) {
-                bomb $@;
-            }
-        }
-    }
-} elsif( $action eq "sinfo" ) {
-    
 } else {
     bomb "bad action: $action";
 }

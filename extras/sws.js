@@ -17,6 +17,23 @@ function toggleTableSection(secName) {
     }
 }
 
-function toggleActorGroup(grpName) {
+function toggleTab(tabId) {
+    var divs = document.getElementsByTagName('div');
+    for( var x = 0 ; x < divs.length ; x ++ ) {
+        if( divs[x].className == 'tab' ) {
+            divs[x].style.display = 'none';
+        }
+    }
     
+    var as = document.getElementsByTagName('a');
+    for( var x = 0 ; x < as.length ; x ++ ) {
+        if( as[x].className == 'tabLink select' ) {
+            as[x].className = 'tabLink';
+        }
+    }
+    
+    var div = document.getElementById('tab_' + tabId);
+    var a = document.getElementById('tablink_' + tabId);
+    div.style.display = 'block';
+    a.className = 'tabLink select';
 }

@@ -57,14 +57,24 @@ sub process {
 # Returns (start, end, total) for the raid or for an actor
 sub presence {
     my $self = shift;
-    my $actor = shift;
     
-    if( $actor && $self->{actors}{$actor} ) {
-        # Actor
-        return ( $self->{actors}{$actor}{start}, $self->{actors}{$actor}{end}, $self->{actors}{$actor}{end} - $self->{actors}{$actor}{start} );
-    } elsif( $actor ) {
-        # Actor didn't exist
-        return ( 0, 0, 0 );
+    if( @_ ) {
+        my $start = undef;
+        my $end = undef;
+
+        foreach (@_) {
+            if( $_ && $self->{actors}{$_} ) {
+                if( !defined $start || $start > $self->{actors}{$_}{start} ) {
+                    $start = $self->{actors}{$_}{start};
+                }
+
+                if( !defined $end || $end < $self->{actors}{$_}{end} ) {
+                    $end = $self->{actors}{$_}{end};
+                }
+            }
+        }
+        
+        return ( $start || 0, $end || 0, ($end || 0) - ($start || 0) );
     } else {
         # Raid
         return ( $self->{total}{start}, $self->{total}{end}, $self->{total}{end} - $self->{total}{start} );

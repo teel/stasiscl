@@ -27,6 +27,7 @@ use strict;
 use warnings;
 use POSIX;
 use Stasis::PageMaker;
+use Stasis::ActorGroup;
 
 sub new {
     my $class = shift;
@@ -45,7 +46,11 @@ sub page {
     
     my $PAGE;
     my $XML;
-    my $pm = Stasis::PageMaker->new;
+    
+    my $grouper = Stasis::ActorGroup->new;
+    $grouper->run( $self->{raid}, $self->{ext} );
+    
+    my $pm = Stasis::PageMaker->new( raid => $self->{raid}, ext => $self->{ext}, grouper => $grouper );
     
     ############################
     # RAID DURATION / RAID DPS #
@@ -169,30 +174,32 @@ sub page {
     # PRINT TOP HEADER #
     ####################
     
-    $PAGE .= $pm->pageHeader($self->{name}, $raidStart);
+    $PAGE .= $pm->pageHeader($self->{name}, "", $raidStart);
     
-    $PAGE .= "<h3>Raid Information</h3>";
-    $PAGE .= $pm->textBox( sprintf( "%d DPS over %dm%02ds<br />%d raid members", $raidDPS, $raidPresence/60, $raidPresence%60, scalar keys %raiderDamage ) );
+    $PAGE .= $pm->vertBox( "Raid Information",
+        "Duration"  => sprintf( "%dm%02ds", $raidPresence/60, $raidPresence%60 ),
+        "DPS"       => sprintf( "%d", $raidDPS ),
+        "Members"   => scalar keys %raiderDamage,
+    );
     
     ################
     # DAMAGE CHART #
     ################
     
-    $PAGE .= "<h3><a name=\"damage\"></a>Damage</h3>";
-    
     $PAGE .= $pm->tableStart( "chart" );
     
     my @damageHeader = (
             "Player",
-            "Presence",
+            "R-Presence",
+            "R-Activity",
             "R-Dam. Out",
-            "R-Dam. %",
-            "R-DPS",
-            "R-DPS Time",
+            "R-%",
+            "R-Pres. DPS",
+            "R-Act. DPS",
             " ",
         );
     
-    $PAGE .= $pm->tableHeader(@damageHeader);
+    $PAGE .= $pm->tableHeader("Damage", @damageHeader);
     
     my @damagesort = sort {
         $raiderDamage{$b} <=> $raiderDamage{$a} || $a cmp $b
@@ -207,37 +214,35 @@ sub page {
             header => \@damageHeader,
             data => {
                 "Player" => $pm->actorLink( $actor, $self->{ext}{Index}->actorname($actor), $self->{raid}{$actor}{class} ),
-                "Presence" => sprintf( "%02d:%02d", $ptime/60, $ptime%60 ),
-                "R-Dam. %" => $raiderDamage{$actor} && $raidDamage && sprintf( "%d%%", ceil($raiderDamage{$actor} / $raidDamage * 100) ),
+                "R-Presence" => sprintf( "%02d:%02d", $ptime/60, $ptime%60 ),
+                "R-%" => $raiderDamage{$actor} && $raidDamage && sprintf( "%d%%", ceil($raiderDamage{$actor} / $raidDamage * 100) ),
                 "R-Dam. Out" => $raiderDamage{$actor},
                 " " => $mostdmg && sprintf( "%d", ceil($raiderDamage{$actor} / $mostdmg * 100) ),
-                "R-DPS" => $raiderDamage{$actor} && $self->{ext}{Activity}{actors}{$actor}{all}{time} && sprintf( "%d", $raiderDamage{$actor} / $self->{ext}{Activity}{actors}{$actor}{all}{time} ),
-                "R-DPS Time" => $raiderDamage{$actor} && $self->{ext}{Activity}{actors}{$actor}{all}{time} && $ptime && sprintf( "%0.1f%%", $self->{ext}{Activity}{actors}{$actor}{all}{time} / $ptime * 100 ),
+                "R-Pres. DPS" => $raiderDamage{$actor} && $self->{ext}{Activity}{actors}{$actor}{time} && sprintf( "%d", $raiderDamage{$actor} / $ptime ),
+                "R-Act. DPS" => $raiderDamage{$actor} && $self->{ext}{Activity}{actors}{$actor}{time} && sprintf( "%d", $raiderDamage{$actor} / $self->{ext}{Activity}{actors}{$actor}{time} ),
+                "R-Activity" => $raiderDamage{$actor} && $self->{ext}{Activity}{actors}{$actor}{time} && $ptime && sprintf( "%0.1f%%", $self->{ext}{Activity}{actors}{$actor}{time} / $ptime * 100 ),
             },
             type => "",
         );
     }
     
-    $PAGE .= $pm->tableEnd;
     
     #################
     # HEALING CHART #
     #################
     
-    $PAGE .= "<h3><a name=\"healing\"></a>Healing</h3>";
-    
-    $PAGE .= $pm->tableStart( "chart" );
-    
     my @healingHeader = (
             "Player",
-            "Presence",
+            "R-Presence",
+            "",
             "R-Eff. Heal",
             "R-%",
+            "",
             "R-Overheal",
             " ",
         );
     
-    $PAGE .= $pm->tableHeader(@healingHeader);
+    $PAGE .= $pm->tableHeader("<a name=\"healing\"></a>Healing", @healingHeader);    
     
     my @healsort = sort {
         $raiderHealing{$b} <=> $raiderHealing{$a} || $a cmp $b
@@ -252,7 +257,7 @@ sub page {
             header => \@healingHeader,
             data => {
                 "Player" => $pm->actorLink( $actor, $self->{ext}{Index}->actorname($actor), $self->{raid}{$actor}{class} ),
-                "Presence" => sprintf( "%02d:%02d", $ptime/60, $ptime%60 ),
+                "R-Presence" => sprintf( "%02d:%02d", $ptime/60, $ptime%60 ),
                 "R-Eff. Heal" => $raiderHealing{$actor},
                 "R-%" => $raiderHealing{$actor} && $raidHealing && sprintf( "%d%%", ceil($raiderHealing{$actor} / $raidHealing * 100) ),
                 " " => $mostheal && $raiderHealing{$actor} && sprintf( "%d", ceil($raiderHealing{$actor} / $mostheal * 100) ),
@@ -290,10 +295,9 @@ sub page {
     @deathlist = sort { $a->{'t'} <=> $b->{'t'} } @deathlist;
 
     if( scalar @deathlist ) {
-        $PAGE .= "<h3>Deaths</h3>";
 
-        $PAGE .= $pm->tableStart;
-        $PAGE .= $pm->tableHeader(@deathHeader);
+        $PAGE .= $pm->tableStart("chart");
+        $PAGE .= $pm->tableHeader("Deaths", @deathHeader);
         my $deathid = 0;
         foreach my $death (@deathlist) {
             # Increment death ID.
@@ -343,36 +347,94 @@ sub page {
     # RAID & MOBS LIST #
     ####################
     
-    $PAGE .= "<h3><a name=\"actors\"></a>Raid &amp; Mobs</h3>";
-    
     $PAGE .= $pm->tableStart("chart");
     
-    my @actorHeader = (
-            "Actor",
-            "Class",
-            "Presence",
-            "R-Presence %",
-        );
-    
-    my @actorsort = sort {
-        $self->{ext}{Index}->actorname($a) cmp $self->{ext}{Index}->actorname($b)
-    } keys %{$self->{ext}{Presence}{actors}};
-        
-    $PAGE .= $pm->tableHeader(@actorHeader);
-    
-    foreach my $actor (@actorsort) {
-        my $ptime = $self->{ext}{Presence}{actors}{$actor}{end} - $self->{ext}{Presence}{actors}{$actor}{start};
+    {
+        my @actorHeader = (
+                "Actor",
+                "Class",
+                "Presence",
+                "R-Presence %",
+            );
 
-        $PAGE .= $pm->tableRow( 
-            header => \@actorHeader,
-            data => {
-                "Actor" => $pm->actorLink( $actor,  $self->{ext}{Index}->actorname($actor), $self->{raid}{$actor}{class} ),
-                "Class" => $self->{raid}{$actor}{class} || "Mob",
-                "Presence" => sprintf( "%02d:%02d", $ptime/60, $ptime%60 ),
-                "R-Presence %" => $raidPresence && sprintf( "%d%%", ceil($ptime/$raidPresence*100) ),
-            },
-            type => "",
-        );
+        my @actorsort = sort {
+            $self->{ext}{Index}->actorname($a) cmp $self->{ext}{Index}->actorname($b)
+        } keys %{$self->{ext}{Presence}{actors}};
+        
+        $PAGE .= "<a name=\"actors\"></a>";
+        $PAGE .= $pm->tableHeader("Raid &amp; Mobs", @actorHeader);
+
+        my @rows;
+
+        foreach my $actor (@actorsort) {
+            my ($pstart, $pend, $ptime) = $self->{ext}{Presence}->presence($actor);
+            
+            my $group = $grouper->group($actor);
+            if( $group ) {
+                # See if this should be added to an existing row.
+                
+                my $found;
+                foreach my $row (@rows) {
+                    if( $row->{key} eq $grouper->captain($group) ) {
+                        # It exists. Add this data to the existing master row.
+                        $row->{row}{start} = $pstart if( $row->{row}{start} > $pstart );
+                        $row->{row}{end} = $pstart if( $row->{row}{end} < $pend );
+                        
+                        $found = 1;
+                        last;
+                    }
+                }
+                
+                if( !$found ) {
+                    # Create the row.
+                    push @rows, {
+                        key => $grouper->captain($group),
+                        row => {
+                            start => $pstart,
+                            end => $pend,
+                        },
+                    }
+                }
+            } else {
+                # Create the row.
+                push @rows, {
+                    key => $actor,
+                    row => {
+                        start => $pstart,
+                        end => $pend,
+                    },
+                }
+            }
+        }
+        
+        foreach my $row (@rows) {
+            # Master row
+            my $class = $self->{raid}{$row->{key}}{class} || "Mob";
+            my $owner;
+            
+            if( $class eq "Pet" ) {
+                foreach (keys %{$self->{raid}}) {
+                    if( grep $_ eq $row->{key}, @{$self->{raid}{$_}{pets}}) {
+                        $owner = $_;
+                        last;
+                    }
+                }
+            }
+            
+            my $group = $grouper->group($row->{key});
+            my ($pstart, $pend, $ptime) = $self->{ext}{Presence}->presence( $group ? @{$group->{members}} : $row->{key} );
+            
+            $PAGE .= $pm->tableRow( 
+                header => \@actorHeader,
+                data => {
+                    "Actor" => $pm->actorLink( $row->{key} ),
+                    "Class" => $class . ($owner ? " (" . $pm->actorLink($owner) . ")" : "" ),
+                    "Presence" => sprintf( "%02d:%02d", $ptime/60, $ptime%60 ),
+                    "R-Presence %" => $raidPresence && sprintf( "%d%%", ceil($ptime/$raidPresence*100) ),
+                },
+                type => "",
+            );
+        }
     }
     
     $PAGE .= $pm->tableEnd;
@@ -411,15 +473,15 @@ sub page {
             "Mage" => "mag",
             "Hunter" => "hnt",
         );
-        
+    
     foreach my $actor (@damagesort) {
         my $ptime = $self->{ext}{Presence}{actors}{$actor}{end} - $self->{ext}{Presence}{actors}{$actor}{start};
         
         my %xml_keys = (
             name => $self->{ext}{Index}->actorname($actor) || "Unknown",
             classe => $xml_classmap{ $self->{raid}{$actor}{class} } || "war",
-            dps => $self->{ext}{Activity}{actors}{$actor}{all}{time} && ceil( $raiderDamage{$actor} / $self->{ext}{Activity}{actors}{$actor}{all}{time} ) || 0,
-            dpstime => $self->{ext}{Activity}{actors}{$actor}{all}{time} && $ptime && $self->{ext}{Activity}{actors}{$actor}{all}{time} / $ptime * 100 || 0,
+            dps => $self->{ext}{Activity}{actors}{$actor}{time} && ceil( $raiderDamage{$actor} / $self->{ext}{Activity}{actors}{$actor}{time} ) || 0,
+            dpstime => $self->{ext}{Activity}{actors}{$actor}{time} && $ptime && $self->{ext}{Activity}{actors}{$actor}{time} / $ptime * 100 || 0,
             dmgout => $raiderDamage{$actor} && $raidDamage && $raiderDamage{$actor} / $raidDamage * 100 || 0,
             heal => $raiderHealing{$actor} && $raidHealing && $raiderHealing{$actor} / $raidHealing * 100 || 0,
             ovh => $raiderHealing{$actor} && $raiderHealingTotal{$actor} && ceil( ($raiderHealingTotal{$actor} - $raiderHealing{$actor}) / $raiderHealingTotal{$actor} * 100 ) || 0,

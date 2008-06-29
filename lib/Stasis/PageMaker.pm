@@ -31,7 +31,38 @@ use Carp;
 
 sub new {
     my $class = shift;
-    bless {}, $class;
+    my %params = @_;
+    bless \%params, $class;
+}
+
+sub tabBar {
+    my $self = shift;
+    
+    my $BAR;
+    $BAR .= "<div class=\"tabContainer\">";
+    $BAR .= "<div class=\"tabBar\">";
+    
+    foreach my $tab (@_) {
+        $BAR .= sprintf "<a href=\"javascript:toggleTab('%s');\" id=\"tablink_%s\" class=\"tabLink\">%s</a>", $self->tameText($tab), $self->tameText($tab), $tab;
+    }
+    
+    $BAR .= "</div>";
+}
+
+sub tabBarEnd {
+    return "</div>";
+}
+
+sub tabStart {
+    my $self = shift;
+    my $name = shift;
+    
+    my $id = $self->tameText($name);
+    return "<div class=\"tab\" id=\"tab_$id\">";
+}
+
+sub tabEnd {
+    return "</div>";
 }
 
 sub tableStart {
@@ -47,11 +78,18 @@ sub tableEnd {
     return "</table><br />";
 }
 
+sub tableTitle {
+    my $self = shift;
+    my $title = shift;
+    
+    return sprintf "<tr><th class=\"title\" colspan=\"%d\">%s</th></tr>", scalar @_, $title;
+}
+
 # tableHeader( @header_rows )
 sub tableHeader {
     my $self = shift;
     
-    my $result;
+    my $result = $self->tableTitle( shift, @_ );
     
     $result .= "<tr>";
     
@@ -109,7 +147,9 @@ sub tableRow {
         }
         
         my $align = "";
+        my $r;
         if( $col =~ /^R-/ ) {
+            $r = 1;
             $align = "text-align: right; ";
         }
         
@@ -131,10 +171,10 @@ sub tableRow {
         
         if( !$firstflag && $params{type} eq "master" ) {
             # This is the first one (flag hasn't been set yet)
-            $result .= sprintf "<td${first}${align}>(<a class=\"toggle\" id=\"a_section_%s\" href=\"javascript:toggleTableSection('%s');\">+</a>) %s</td>", $params{name}, $params{name}, $params{data}{$col};
+            $result .= sprintf "<td${first}${align}>(<a class=\"toggle\" id=\"a_section_%s\" href=\"javascript:toggleTableSection('%s');\">+</a>) %s</td>", $params{name}, $params{name}, $r ? $self->_commify($params{data}{$col}) : $params{data}{$col};
         } else {
             if( $params{data}{$col} ) {
-                $result .= sprintf "<td${first}${align}>%s</td>", $params{data}{$col};
+                $result .= sprintf "<td${first}${align}>%s</td>", $r ? $self->_commify($params{data}{$col}) : $params{data}{$col};
             } else {
                 $result .= "<td${first}${align}>&nbsp;</td>";
             }
@@ -150,10 +190,13 @@ sub tableRow {
 sub pageHeader {
     my $self = shift;
     my $boss = shift;
+    my $title = shift;
     my $start = shift;
     
     # Default vars
     $boss ||= "Page";
+    $title ||= "";
+    $title = $title ? "$boss : $title" : $boss;
     
     #my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime( $start );
     #my $starttxt = sprintf "%4d-%02d-%02d %02d:%02d:%02d", $year + 1900, $mon + 1, $mday, $hour, $min, $sec;
@@ -162,7 +205,7 @@ sub pageHeader {
     return <<END;
 <html>
 <head>
-<title>$boss</title>
+<title>$title</title>
 <link rel="stylesheet" type="text/css" href="../extras/sws2.css" />
 <script type="text/javascript" src="../extras/sws.js"></script>
 <script src="http://www.wowhead.com/widgets/power.js"></script>
@@ -171,7 +214,7 @@ sub pageHeader {
 <div class="swsmaster">
 <div class="top">
 <h2>$boss: $starttxt</h2>
-<b><a href="index.html#damage">Damage</a> &ndash; <a href="index.html#healing">Healing</a> &ndash; <a href="index.html#deaths">Deaths</a> &ndash; <a href="index.html#actors">Raid &amp; Mobs</a></b>
+<b><a href="index.html">Damage</a> &ndash; <a href="index.html#healing">Healing</a> &ndash; <a href="index.html#deaths">Deaths</a> &ndash; <a href="index.html#actors">Raid &amp; Mobs</a></b>
 </div>
 END
 }
@@ -202,12 +245,38 @@ sub textBox {
     $TABLE .= "</table>";
 }
 
+sub vertBox {
+    my $self = shift;
+    my $title = shift;
+    
+    my $TABLE;
+    $TABLE .= "<table cellspacing=\"0\" class=\"text\">";
+    $TABLE .= "<tr><th colspan=\"2\">$title</th></tr>" if $title;
+    
+    for( my $row = 0; $row < (@_ - 1) ; $row += 2 ) {
+        $TABLE .= "<tr><td class=\"vh\">" . $_[$row] . "</td><td>" . $_[$row + 1] . "</td></tr>";
+    }
+    
+    $TABLE .= "</table>";
+}
+
 sub jsClose {
     my $self = shift;
     my $section = shift;
     return <<END;
 <script type="text/javascript">
 toggleTableSection('$section');
+</script>   
+
+END
+}
+
+sub jsTab {
+    my $self = shift;
+    my $section = shift;
+    return <<END;
+<script type="text/javascript">
+toggleTab('$section');
 </script>   
 
 END
@@ -226,14 +295,20 @@ sub tameText {
 sub actorLink {
     my $self = shift;
     my $id = shift;
-    my $name = shift;
-    my $color = shift;
+    my $single = shift;
+    my $name = $self->{ext}{Index}->actorname($id);
+    my $color = $self->{raid}{$id} && $self->{raid}{$id}{class};
     
     $name ||= "";
     $color ||= "Mob";
     
     if( $id || (defined $id && $id eq "0") ) {
-        return sprintf "<a href=\"actor_%s.html\" class=\"actor color%s\">%s</a>", $self->tameText($id), $color, HTML::Entities::encode_entities($name);
+        my $group = $self->{grouper}->group($id);
+        if( $group && !$single ) {
+            return sprintf "<a href=\"group_%s.html\" class=\"actor color%s\">%s</a>", $self->tameText($self->{grouper}->captain($group)), $color, HTML::Entities::encode_entities($name);
+        } else {
+            return sprintf "<a href=\"actor_%s.html\" class=\"actor color%s\">%s%s</a>", $self->tameText($id), $color, HTML::Entities::encode_entities($name), ( $group && $single ? " #" . $self->{grouper}->number($id) : "" );
+        }
     } else {
         return HTML::Entities::encode_entities($name);
     }
@@ -247,10 +322,18 @@ sub spellLink {
     $name ||= "";
     
     if( $id && $id =~ /^[0-9]+$/ ) {
-        return sprintf "<a href=\"http://www.wowhead.com/?spell=%s\" target=\"swswh_%s\" class=\"spell\">%s <span> wh &#187;</span></a>", $id, $id, HTML::Entities::encode_entities($name);
+        return sprintf "<a href=\"http://www.wowhead.com/?spell=%s\" target=\"swswh_%s\" class=\"spell\">%s</a>", $id, $id, HTML::Entities::encode_entities($name);
     } else {
         return HTML::Entities::encode_entities($name);
     }
+}
+
+sub _commify {
+    shift;
+    local($_) = shift;
+    return $_ unless /^\d+$/;
+    1 while s/^(-?\d+)(\d{3})/$1 $2/;
+    return $_;
 }
 
 1;
