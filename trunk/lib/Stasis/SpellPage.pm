@@ -38,6 +38,7 @@ sub new {
     $params{raid} ||= {};
     $params{grouper} = Stasis::ActorGroup->new;
     $params{grouper}->run( $params{raid}, $params{ext} );
+    $params{pm} ||= Stasis::PageMaker->new( raid => $params{raid}, ext => $params{ext}, grouper => $params{grouper} );
     $params{name} ||= "Untitled";
     
     bless \%params, $class;
@@ -50,7 +51,7 @@ sub page {
     return unless $SPELL;
     
     my $PAGE;
-    my $pm = Stasis::PageMaker->new( raid => $self->{raid}, ext => $self->{ext}, grouper => $self->{grouper} );
+    my $pm = $self->{pm};
     
     ###############
     # PAGE HEADER #
