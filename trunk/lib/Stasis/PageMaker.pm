@@ -214,7 +214,7 @@ sub pageHeader {
 <div class="swsmaster">
 <div class="top">
 <h2>$boss: $starttxt</h2>
-<b><a href="index.html">Damage</a> &ndash; <a href="index.html#healing">Healing</a> &ndash; <a href="index.html#deaths">Deaths</a> &ndash; <a href="index.html#actors">Raid &amp; Mobs</a></b>
+<b><a href="index.html">Damage Out</a> &ndash; <a href="index.html#damagein">Damage In</a> &ndash; <a href="index.html#healing">Healing</a> &ndash; <a href="index.html#deaths">Deaths</a> &ndash; <a href="index.html#actors">Raid &amp; Mobs</a></b>
 </div>
 END
 }
@@ -322,7 +322,8 @@ sub spellLink {
     $name ||= "";
     
     if( $id && $id =~ /^[0-9]+$/ ) {
-        return sprintf "<a href=\"http://www.wowhead.com/?spell=%s\" target=\"swswh_%s\" class=\"spell\">%s</a>", $id, $id, HTML::Entities::encode_entities($name);
+        return sprintf "<a href=\"spell_%s.html\" rel=\"spell=%s\" class=\"spell\">%s</a>", $id, $id, HTML::Entities::encode_entities($name);
+        #return sprintf "<a href=\"http://www.wowhead.com/?spell=%s\" target=\"swswh_%s\" class=\"spell\">%s</a>", $id, $id, HTML::Entities::encode_entities($name);
     } else {
         return HTML::Entities::encode_entities($name);
     }

@@ -31,9 +31,10 @@ use Stasis::Parser;
 use Stasis::LogSplit;
 use Stasis::ClassGuess;
 use Stasis::Extension;
-use Stasis::ActorPage;
-use Stasis::ActorGroup;
 use Stasis::ChartPage;
+use Stasis::ActorPage;
+use Stasis::SpellPage;
+use Stasis::ActorGroup;
 use Stasis::PageMaker;
 use Stasis::DB;
 use File::Find qw();
@@ -43,6 +44,20 @@ use File::Copy qw(copy);
 use POSIX;
 use HTML::Entities;
 use Getopt::Long;
+
+## OPTIONS ##
+my $opt_version = 2;
+my $opt_minlength = 30;
+my $opt_sfile;
+my $opt_dir = ".";
+my $opt_nowrite;
+my $opt_logger;
+my $opt_file;
+my $opt_attempts;
+my $opt_year;
+my $opt_trash;
+my $opt_overall;
+my $opt_server;
 
 ## SUBS ##
 
@@ -150,7 +165,7 @@ sub writedir($$$$$$) {
     close CHARTPAGE;
 
     # Write the actor files.
-    my $ap = Stasis::ActorPage->new( name => $long, short => $short, raid => $raid, ext => $exts );
+    my $ap = Stasis::ActorPage->new( server => $opt_server, name => $long, short => $short, raid => $raid, ext => $exts );
     foreach my $actor (keys %{$exts->{Presence}{actors}}) {
         my $id = lc $actor;
         $id = Stasis::PageMaker->tameText($id);
@@ -176,6 +191,17 @@ sub writedir($$$$$$) {
     open ENVPAGE, ">$dname/actor_0.html" or die;
     print ENVPAGE $ap->page(0);
     close ENVPAGE;
+    
+    # Write the spell files.
+    my $sp = Stasis::SpellPage->new( name => $long, short => $short, raid => $raid, ext => $exts );
+    foreach my $spell (keys %{$exts->{Index}{spells}}) {
+        my $id = lc $spell;
+        $id = Stasis::PageMaker->tameText($id);
+
+        open SPELLPAGE, sprintf ">$dname/spell_%s.html", $id or die;
+        print SPELLPAGE $sp->page($spell);
+        close SPELLPAGE;
+    }
 
     # Write the data.xml file.
     open DATAXML, ">$dname/data.xml" or die;
@@ -199,18 +225,6 @@ my $action = lc shift @ARGV;
 usage(0) if $action eq "-h" || $action eq "help" || $action eq "-help" || $action eq "--help";
 
 # Get options.
-my $opt_version = 2;
-my $opt_minlength = 30;
-my $opt_sfile;
-my $opt_dir = ".";
-my $opt_nowrite;
-my $opt_logger;
-my $opt_file;
-my $opt_attempts;
-my $opt_year;
-my $opt_trash;
-my $opt_overall;
-
 my $rc = GetOptions(
     "version=s"     => \$opt_version,
     "logger=s"      => \$opt_logger,
@@ -223,6 +237,7 @@ my $rc = GetOptions(
     "sfile=s"       => \$opt_sfile,
     "trash"         => \$opt_trash,
     "overall"       => \$opt_overall,
+    "server=s"      => \$opt_server,
 );
 
 # Clean up opt_dir
@@ -238,29 +253,46 @@ binmode(STDOUT, ":utf8");
 
 # Case out the various actions.
 if( $action eq "print" ) {
-    # Figure out the filehandle to use.
+    # action PRINT: used to print out actions from a log file
+    
+    # Figure out what input to use.
+    my $db;
     my $fh;
+    
     if( $opt_file ) {
+        # Get a filehandle.
         open $fh, $opt_file or bomb "could not open file: $opt_file";
+    } elsif( $opt_sfile ) {
+        # Get a database connection.
+        status "WARNING: SQLite mode is experimental, and the file format is subject to change!";
+        $db = Stasis::DB->new( db => $opt_sfile );
+        $db->line(1);
     } else {
-        bomb "STDIN is no longer supported, please use -file (see 'stasis help' for more details)";
+        bomb "STDIN is no longer supported, please use -file or -sfile (see 'stasis help' for more details)";
     }
     
-    # action PRINT: used to print out actions from a log file
-    while( <$fh> ) {
-        my $entry = $parser->parse($_);
+    while( defined( $_ = $opt_file ? <$fh> : $db->line() ) ) {
+        my $entry = $opt_file ? $parser->parse($_) : $_;
         if( $entry->{action} ) {
             my $text = $parser->toString( $entry );
             print "$text\n" if $text;
         }
     }
 } elsif( $action eq "add" ) {
-    # Figure out the filehandle to use.
+    # Figure out what input to use.
     my $fh;
+    my $db;
+    
     if( $opt_file ) {
+        # Get a filehandle.
         open $fh, $opt_file or bomb "could not open file: $opt_file";
+    } elsif( $opt_sfile ) {
+        # Get a database connection.
+        status "WARNING: SQLite mode is experimental, and the file format is subject to change!";
+        $db = Stasis::DB->new( db => $opt_sfile );
+        $db->line(1);
     } else {
-        bomb "STDIN is no longer supported, please use -file (see 'stasis help' for more details)";
+        bomb "STDIN is no longer supported, please use -file or -sfile (see 'stasis help' for more details)";
     }
     
     # Going to output in $opt_dir
@@ -273,8 +305,8 @@ if( $action eq "print" ) {
     my $classer = Stasis::ClassGuess->new( version => $opt_version );
     my $splitter = Stasis::LogSplit->new( version => $opt_version );
     
-    while( defined( my $line = <$fh> ) ) {
-        my $pline = $parser->parse($line);
+    while( defined( $_ = $opt_file ? <$fh> : $db->line() ) ) {
+        my $pline = $opt_file ? $parser->parse($_) : $_;
         $classer->process($pline);
         $splitter->process($pline);
     }
@@ -327,7 +359,11 @@ if( $action eq "print" ) {
     }
     
     # Rewind the file.
-    seek $fh, 0, 0;
+    if( $opt_file ) {
+        seek $fh, 0, 0;
+    } else {
+        $db->line(1);
+    }
     
     # Keep track of when this log file started.
     my $first = 0;
@@ -340,9 +376,9 @@ if( $action eq "print" ) {
     
     # Process the file.
     my $pline;
-    while( defined( my $line = <$fh> ) ) {
+    while( defined( my $line = $opt_file ? <$fh> : $db->line() ) ) {
         if( !$first ) {
-            $pline = $parser->parse($line);
+            $pline = $opt_file ? $parser->parse($line) : $line;
             $first = $pline->{t};
         }
         
@@ -360,7 +396,7 @@ if( $action eq "print" ) {
                 status sprintf "Skipping: %s (not a kill).", $split->{long}, $split->{end} - $split->{start} if $nlog == $split->{startLine};
             } else {
                 # If we got this far, we should parse this encounter.
-                $pline = $parser->parse($line);
+                $pline = $opt_file ? $parser->parse($line) : $line;
 
                 # If this is the first line, start all the extensions.
                 if( $nlog == $split->{startLine} ) {
@@ -403,7 +439,7 @@ if( $action eq "print" ) {
             }
         } elsif( $opt_trash ) {
             # We haven't yet reached $split, or we're past the last one.
-            $pline = $parser->parse($line);
+            $pline = $opt_file ? $parser->parse($line) : $line;
             
             foreach my $trash_ext (values %trash_exts) {
                 $trash_ext->process($pline);
@@ -421,7 +457,11 @@ if( $action eq "print" ) {
     }
     
     # Close the file.
-    close $fh;
+    if( $opt_file ) {
+        close $fh;
+    } else {
+        $db->disconnect();
+    }
     
     # Write the files for the trash extensions.
     if( $opt_trash ) {
@@ -539,34 +579,18 @@ if( $action eq "print" ) {
         bomb "target file exists, choose another name: $opt_sfile";
     }
     
-    # Get class guesser, log splitter.
-    my $classer = Stasis::ClassGuess->new( version => $opt_version );
-    my $splitter = Stasis::LogSplit->new;
-    
     eval {
         # Create the target file.
         $db->create();
         
-        # Import log entries while also figuring out splits and classes.
+        # Import log entries.
         my $nlog = -1;
         while( <$fh> ) {
             $nlog++;
             my $entry = $parser->parse($_);
-            $classer->process($entry);
-            $splitter->process($entry);
             $db->addLine( $nlog, $entry );
         }
-
-        my %raid = $classer->finish();
-        my @splits = $splitter->finish();
-
-        # Insert splits.
-        $db->splits( \@splits );
-
-        # Insert class information.
-        $db->raid( \%raid );
         
-        # Done.
         $db->finish();
         $db->disconnect();
     }; if( $@ ) {

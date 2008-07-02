@@ -115,6 +115,32 @@ sub page {
             }
         }
     }
+
+    # Calculate incoming damage
+    my %raiderIncoming;
+    my $raidInDamage = 0;
+    foreach my $actor (keys %{$self->{ext}{Presence}{actors}}) {
+        foreach my $spell (keys %{$self->{ext}{Damage}{actors}{$actor}}) {
+			foreach my $target (keys %{$self->{ext}{Damage}{actors}{$actor}{$spell}}) {
+				next unless $self->{raid}{$target}{class};
+				next if $self->{raid}{$target}{class} eq "Pet";
+
+				$raiderIncoming{$target} ||= 0;
+				$raiderIncoming{$target} += $self->{ext}{Damage}{actors}{$actor}{$spell}{$target}{total};
+				$raidInDamage += $self->{ext}{Damage}{actors}{$actor}{$spell}{$target}{total};
+			}
+		}
+	}
+
+	# Calculate death count
+	my %deathCount;
+    foreach my $deathevent (keys %{$self->{ext}{Death}{actors}}) {
+        if ($self->{raid}{$deathevent} && 
+            $self->{raid}{$deathevent}{class} &&
+            $self->{raid}{$deathevent}{class} ne "Pet") {
+				$deathCount{$deathevent} = @{$self->{ext}{Death}{actors}{$deathevent}};
+        }
+    }
     
     # Calculate raid healing
     # Also get a list of total healing and effectiving healing by raid member (on the side)
@@ -176,10 +202,11 @@ sub page {
     
     $PAGE .= $pm->pageHeader($self->{name}, "", $raidStart);
     
-    $PAGE .= $pm->vertBox( "Raid Information",
-        "Duration"  => sprintf( "%dm%02ds", $raidPresence/60, $raidPresence%60 ),
-        "DPS"       => sprintf( "%d", $raidDPS ),
-        "Members"   => scalar keys %raiderDamage,
+    $PAGE .= $pm->vertBox( "Raid summary",
+        "Duration"   => sprintf( "%dm%02ds", $raidPresence/60, $raidPresence%60 ),
+        "Damage out" => sprintf( "%d", $raidDamage || 0 ),
+        "DPS"        => sprintf( "%d", $raidDPS || 0 ),
+        "Members"    => scalar keys %raiderDamage,
     );
     
     ################
@@ -192,14 +219,14 @@ sub page {
             "Player",
             "R-Presence",
             "R-Activity",
-            "R-Dam. Out",
-            "R-%",
             "R-Pres. DPS",
             "R-Act. DPS",
+            "R-Dam. Out",
+            "R-%",
             " ",
         );
     
-    $PAGE .= $pm->tableHeader("Damage", @damageHeader);
+    $PAGE .= $pm->tableHeader("Damage Out", @damageHeader);
     
     my @damagesort = sort {
         $raiderDamage{$b} <=> $raiderDamage{$a} || $a cmp $b
@@ -226,6 +253,46 @@ sub page {
         );
     }
     
+
+    #########################
+    # DAMAGE INCOMING CHART #
+    #########################
+    
+    my @damageInHeader = (
+            "Player",
+            "R-Presence",
+            "",
+            "R-Deaths",
+            "",
+            "R-Dam. In",
+            "R-%",
+            " ",
+        );
+    
+    $PAGE .= $pm->tableHeader("<a name=\"damagein\"></a>Damage In", @damageInHeader);
+    
+    my @damageinsort = sort {
+        $raiderIncoming{$b} <=> $raiderIncoming{$a} || $a cmp $b
+    } keys %raiderIncoming;
+    
+    my $mostindmg = keys %raiderIncoming && $raiderIncoming{ $damageinsort[0] };
+    
+    foreach my $actor (@damageinsort) {
+        my $ptime = $self->{ext}{Presence}{actors}{$actor}{end} - $self->{ext}{Presence}{actors}{$actor}{start};
+        
+        $PAGE .= $pm->tableRow( 
+            header => \@damageInHeader,
+            data => {
+                "Player" => $pm->actorLink( $actor, $self->{ext}{Index}->actorname($actor), $self->{raid}{$actor}{class} ),
+                "R-Presence" => sprintf( "%02d:%02d", $ptime/60, $ptime%60 ),
+                "R-%" => $raiderIncoming{$actor} && $raidInDamage && sprintf( "%d%%", ceil($raiderIncoming{$actor} / $raidInDamage * 100) ),
+                "R-Dam. In" => $raiderIncoming{$actor},
+                "R-Deaths" => $deathCount{$actor} || " 0",
+                " " => $mostdmg && sprintf( "%d", ceil($raiderIncoming{$actor} / $mostindmg * 100) ),
+            },
+            type => "",
+        );
+    }
     
     #################
     # HEALING CHART #
@@ -235,10 +302,10 @@ sub page {
             "Player",
             "R-Presence",
             "",
+            "R-Overheal",
+            "",
             "R-Eff. Heal",
             "R-%",
-            "",
-            "R-Overheal",
             " ",
         );
     
@@ -449,12 +516,13 @@ sub page {
     # PRINT OPENING XML TAG #
     #########################
     
-    $XML .= sprintf( '  <raid dpstime="%d" start="%s" dps="%d" comment="%s" lg="%d" dir="%s">' . "\n",
+    $XML .= sprintf( '  <raid dpstime="%d" start="%s" dps="%d" comment="%s" lg="%d" dmg="%d" dir="%s">' . "\n",
                 100,
                 $raidStart*1000 - 8*3600000,
                 $raidDPS,
                 $self->{name},
                 $raidPresence*60000,
+                $raidDamage,
                 sprintf( "sws-%s-%d", $self->{short}, floor($raidStart) ),
             );
     
@@ -483,12 +551,12 @@ sub page {
             dps => $self->{ext}{Activity}{actors}{$actor}{time} && ceil( $raiderDamage{$actor} / $self->{ext}{Activity}{actors}{$actor}{time} ) || 0,
             dpstime => $self->{ext}{Activity}{actors}{$actor}{time} && $ptime && $self->{ext}{Activity}{actors}{$actor}{time} / $ptime * 100 || 0,
             dmgout => $raiderDamage{$actor} && $raidDamage && $raiderDamage{$actor} / $raidDamage * 100 || 0,
+            dmgin => $raiderIncoming{$actor} && $raidInDamage && $raiderIncoming{$actor} / $raidInDamage * 100 || 0,
             heal => $raiderHealing{$actor} && $raidHealing && $raiderHealing{$actor} / $raidHealing * 100 || 0,
             ovh => $raiderHealing{$actor} && $raiderHealingTotal{$actor} && ceil( ($raiderHealingTotal{$actor} - $raiderHealing{$actor}) / $raiderHealingTotal{$actor} * 100 ) || 0,
-            death => 0,
+            death => $deathCount{$actor} || 0,
             
             # Ignored values
-            dmgin => 0,
             decurse => 0,
             pres => 100,
         );

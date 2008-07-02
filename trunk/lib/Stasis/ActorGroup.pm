@@ -25,6 +25,7 @@ package Stasis::ActorGroup;
 
 use strict;
 use warnings;
+use Stasis::MobUtil;
 use Carp;
 
 sub new {
@@ -91,17 +92,19 @@ sub run {
         }
     }
     
-    # Next look at mobs with the same name.
+    # Next look at mobs with the same NPC ID.
     my %name;
     
     foreach my $mob (keys %{$ext->{Presence}{actors}}) {
         next if $raid->{$mob} && $raid->{$mob}{class};
+        my ($type, $npc, $spawn) = Stasis::MobUtil->splitguid($mob);
+        next if !$npc;
         
-        $name{ $ext->{Index}->actorname($mob) } ||= [];
-        push @{ $name{ $ext->{Index}->actorname($mob) } }, $mob;
+        $name{ $npc } ||= [];
+        push @{ $name{ $npc } }, $mob;
     }
     
-    while( my ($mobname, $moblist) = each( %name ) ) {
+    while( my ($mobnpc, $moblist) = each( %name ) ) {
         if( @$moblist > 1 ) {
             # We got enough mobs to make a group.
             push @groups, {
