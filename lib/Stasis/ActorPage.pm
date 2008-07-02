@@ -39,6 +39,7 @@ sub new {
     $params{grouper} = Stasis::ActorGroup->new;
     $params{grouper}->run( $params{raid}, $params{ext} );
     $params{name} ||= "Untitled";
+    $params{server} ||= "";
     
     bless \%params, $class;
 }
@@ -54,7 +55,6 @@ sub page {
     return unless @PLAYER;
     
     my $PAGE;
-    
     my $pm = Stasis::PageMaker->new( raid => $self->{raid}, ext => $self->{ext}, grouper => $self->{grouper} );
     
     #################
@@ -71,14 +71,32 @@ sub page {
         push @playpet, @{$self->{raid}{$_}{pets}} if( exists $self->{raid}{$_} && exists $self->{raid}{$_}{pets} );
     }
     
-    # Damage to mobs
-    my $dmg_to_mobs = 0;
-    foreach my $kactor (@playpet) {
-        while( my ($kspell, $vspell) = each(%{ $self->{ext}{Damage}{actors}{$kactor} } ) ) {
+    # Total damage, and damage from/to enemies (not enemies of the raid, this means enemies of the actor)
+    my $dmg_from_all = 0;
+    my $dmg_from_enemies = 0;
+    
+    my $dmg_to_all = 0;
+    my $dmg_to_enemies = 0;
+    while( my ($kactor, $vactor) = each(%{ $self->{ext}{Damage}{actors} }) ) {
+        while( my ($kspell, $vspell) = each(%$vactor) ) {
             while( my ($ktarget, $vtarget) = each(%$vspell) ) {
                 # $vtarget is a spell hash.
-                unless( $self->{raid}{$ktarget} && $self->{raid}{$ktarget}{class} ) {
-                    $dmg_to_mobs += $vtarget->{total};
+                my $is_enemy = $kactor eq "0" || ($self->{raid}{$kactor}{class} && !$self->{raid}{$ktarget}{class}) || (!$self->{raid}{$kactor}{class} && $self->{raid}{$ktarget}{class});
+                
+                if( grep $_ eq $kactor, @playpet ) {
+                    $dmg_to_all += $vtarget->{total};
+                    
+                    if( $is_enemy ) {
+                        $dmg_to_enemies += $vtarget->{total};
+                    }
+                }
+                
+                if( grep $_ eq $ktarget, @playpet ) {
+                    $dmg_from_all += $vtarget->{total};
+                    
+                    if( $is_enemy ) {
+                        $dmg_from_enemies += $vtarget->{total};
+                    }
                 }
             }
         }
@@ -97,6 +115,14 @@ sub page {
     # Type info
     push @summaryRows, "Class" => $self->{raid}{$MOB}{class} || "Mob";
     
+    if( $self->{server} && $self->{raid}{$MOB}{class} && $self->{raid}{$MOB}{class} ne "Pet" ) {
+        my $r = $self->{server};
+        my $n = $self->{ext}{Index}->actorname($MOB);
+        $r =~ s/([^A-Za-z0-9])/sprintf("%%%02X", ord($1))/seg;
+        $n =~ s/([^A-Za-z0-9])/sprintf("%%%02X", ord($1))/seg;
+        push @summaryRows, "Armory" => "<a href=\"http://www.wowarmory.com/character-sheet.xml?r=$r&n=$n\" target=\"swsar_$n\">$displayName &#187;</a>";
+    }
+    
     # Presence
     push @summaryRows, "Presence" => sprintf( "%02d:%02d", $ptime/60, $ptime%60 );
     
@@ -110,22 +136,30 @@ sub page {
         }
     }
     
-    # DPS Info
-    if( !$do_group && $ptime && $dmg_to_mobs && $self->{ext}{Activity}{actors}{$MOB} && $self->{ext}{Activity}{actors}{$MOB}{time} ) {
+    # Damage Info
+    if( $dmg_to_all ) {
         push @summaryRows, (
-            "DPS Activity" => sprintf
+            "Damage in" => $dmg_from_all . ( $dmg_from_all - $dmg_from_enemies ? " (" . ($dmg_from_all - $dmg_from_enemies) . " was friendly fire)" : "" ),
+            "Damage out" => $dmg_to_all . ( $dmg_to_all - $dmg_to_enemies ? " (" . ($dmg_to_all - $dmg_to_enemies) . " was friendly fire)" : "" ),
+        );
+    }
+    
+    # DPS Info
+    if( !$do_group && $ptime && $dmg_to_enemies && $self->{ext}{Activity}{actors}{$MOB} && $self->{ext}{Activity}{actors}{$MOB}{time} ) {
+        push @summaryRows, (
+            "DPS activity" => sprintf
             (
                 "%02d:%02d (%0.1f%% of presence)",
                 $self->{ext}{Activity}{actors}{$MOB}{time}/60, 
                 $self->{ext}{Activity}{actors}{$MOB}{time}%60, 
                 $self->{ext}{Activity}{actors}{$MOB}{time}/$ptime*100, 
             ),
-            "DPS (over presence)" => sprintf( "%d", $dmg_to_mobs/$ptime ),
-            "DPS (over activity)" => sprintf( "%d", $dmg_to_mobs/$self->{ext}{Activity}{actors}{$MOB}{time} ),
+            "DPS (over presence)" => sprintf( "%d", $dmg_to_enemies/$ptime ),
+            "DPS (over activity)" => sprintf( "%d", $dmg_to_enemies/$self->{ext}{Activity}{actors}{$MOB}{time} ),
         );
     }
     
-    $PAGE .= $pm->vertBox( "Summary", @summaryRows );
+    $PAGE .= $pm->vertBox( "Actor summary", @summaryRows );
     $PAGE .= "<br />";
     
     if( $MOB_GROUP ) {
