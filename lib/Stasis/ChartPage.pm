@@ -35,6 +35,9 @@ sub new {
     
     $params{ext} ||= {};
     $params{raid} ||= {};
+    $params{grouper} = Stasis::ActorGroup->new;
+    $params{grouper}->run( $params{raid}, $params{ext} );
+    $params{pm} ||= Stasis::PageMaker->new( raid => $params{raid}, ext => $params{ext}, grouper => $params{grouper} );
     $params{name} ||= "Untitled";
     $params{short} ||= $params{name};
     
@@ -47,10 +50,8 @@ sub page {
     my $PAGE;
     my $XML;
     
-    my $grouper = Stasis::ActorGroup->new;
-    $grouper->run( $self->{raid}, $self->{ext} );
-    
-    my $pm = Stasis::PageMaker->new( raid => $self->{raid}, ext => $self->{ext}, grouper => $grouper );
+    my $grouper = $self->{grouper};
+    my $pm = $self->{pm};
     
     ############################
     # RAID DURATION / RAID DPS #
