@@ -76,6 +76,7 @@ sub page {
     # Calculate raid DPS
     # Also get a list of total damage by raid member (on the side)
     my %raiderDamage;
+    my %raiderIncoming;
     my $raidDamage = 0;
     foreach my $actor (keys %{$self->{ext}{Presence}{actors}}) {
         # Only show raiders
@@ -104,6 +105,7 @@ sub page {
             # Raider.
             # Start it at zero.
             $raiderDamage{$actor} ||= 0;
+            $raiderIncoming{$actor} ||= 0;
 
             foreach my $spell (keys %{$self->{ext}{Damage}{actors}{$actor}}) {
                 foreach my $target (keys %{$self->{ext}{Damage}{actors}{$actor}{$spell}}) {
@@ -118,20 +120,20 @@ sub page {
     }
 
     # Calculate incoming damage
-    my %raiderIncoming;
     my $raidInDamage = 0;
-    foreach my $actor (keys %{$self->{ext}{Presence}{actors}}) {
-        foreach my $spell (keys %{$self->{ext}{Damage}{actors}{$actor}}) {
-			foreach my $target (keys %{$self->{ext}{Damage}{actors}{$actor}{$spell}}) {
-				next unless $self->{raid}{$target}{class};
-				next if $self->{raid}{$target}{class} eq "Pet";
+    while( my ($kactor, $vactor) = each(%{ $self->{ext}{Damage}{actors} }) ) {
+        while( my ($kspell, $vspell) = each(%$vactor) ) {
+            while( my ($ktarget, $vtarget) = each(%$vspell) ) {
+				next unless $self->{raid}{$ktarget}{class};
+				next if $self->{raid}{$ktarget}{class} eq "Pet";
 
-				$raiderIncoming{$target} ||= 0;
-				$raiderIncoming{$target} += $self->{ext}{Damage}{actors}{$actor}{$spell}{$target}{total};
-				$raidInDamage += $self->{ext}{Damage}{actors}{$actor}{$spell}{$target}{total};
+				$raiderIncoming{$ktarget} ||= 0;
+				$raiderIncoming{$ktarget} += $vtarget->{total};
+				$raidInDamage += $vtarget->{total};
 			}
 		}
 	}
+	
 
 	# Calculate death count
 	my %deathCount;
