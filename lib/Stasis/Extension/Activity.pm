@@ -31,12 +31,11 @@ our @ISA = "Stasis::Extension";
 sub start {
     my $self = shift;
     $self->{actors} = {};
+    $self->{span_scratch} = {};
+    $self->{last_scratch} = {};
     
     # No damage for this long will end a DPS span.
     $self->{_dpstimeout} = 5;
-    
-    # When a DPS span is closed, add this amount of buffer time.
-    $self->{_dpsaddclose} = 5;
 }
 
 sub process {
@@ -62,24 +61,36 @@ sub process {
             $spell = $entry->{extra}{spellid};
         }
         
-        # Create an empty hash if it does not exist yet.
-        $self->{actors}{ $actor } ||= {
+        my $target = $entry->{target};
+        
+        # Create a scratch hash for this actor/target pair if it does not exist already.
+        $self->{span_scratch}{ $actor }{ $target } ||= {
             start => 0,
             end => 0,
-            time => 0,
         };
         
-        my $adata = $self->{actors}{ $actor };
-        
-        # Track overall DPS time (independent of particular targets)
+        # Track DPS time.
+        my $adata = $self->{span_scratch}{ $actor }{ $target };
         if( !$adata->{start} ) {
             # This is the first DPS action, so mark the start of a span.
             $adata->{start} = $entry->{t};
             $adata->{end} = $entry->{t};
         } elsif( $adata->{end} + $self->{_dpstimeout} < $entry->{t} ) {
             # The last span ended, add it.
-            $adata->{time} += ( $adata->{end} - $adata->{start} + $self->{_dpsaddclose} );
-        
+            $self->{actors}{ $actor }{ $target } ||= [];
+            
+            my $span = {
+                start => $adata->{start},
+                end => $adata->{end} + $self->{_dpstimeout},
+            };
+            
+            push @{$self->{actors}{ $actor }{ $target }}, $span;
+            
+            # Update last_scratch
+            if( !$self->{last_scratch}{$actor} || $span->{end} > $self->{last_scratch}{$actor}{end} ) {
+                $self->{last_scratch}{$actor} = $span;
+            }
+            
             # Reset the start and end times to the current time.
             $adata->{start} = $entry->{t};
             $adata->{end} = $entry->{t};
@@ -94,13 +105,99 @@ sub finish {
     my $self = shift;
     
     # We need to close up all the un-closed dps spans.
-    my $actor;
-    foreach $actor (keys %{ $self->{actors} }) {
-        # Close total DPS time.
-        if( $self->{actors}{$actor}{start} ) {
-            $self->{actors}{$actor}{time} += $self->{actors}{$actor}{end} - $self->{actors}{$actor}{start};
+    while( my ($kactor, $vactor) = each( %{ $self->{span_scratch} } ) ) {
+        while( my ($ktarget, $vtarget) = each( %$vactor ) ) {
+            $self->{actors}{ $kactor }{ $ktarget } ||= [];
+            
+            my $span = {
+                start => $vtarget->{start},
+                end => $vtarget->{end} + $self->{_dpstimeout},
+            };
+            
+            push @{$self->{actors}{ $kactor }{ $ktarget }}, $span;
+            
+            # Update last_scratch
+            if( !$self->{last_scratch}{$kactor} || $span->{end} > $self->{last_scratch}{$kactor}{end} ) {
+                $self->{last_scratch}{$kactor} = $span;
+            }
         }
     }
+    
+    # Remove _dpstimeout from all last spans for each actor.
+    foreach (values %{ $self->{last_scratch} }) {
+        $_->{end} -= $self->{_dpstimeout};
+    }
+    
+    delete $self->{span_scratch};
+    delete $self->{last_scratch};
+}
+
+# Returns total for a set of actors "actor" onto targets "target".
+# If blank will use all.
+sub activity {
+    my $self = shift;
+    my %params = @_;
+    
+    $params{actor} ||= [];
+    $params{target} ||= [];
+    
+    # Store relevant activity spans.
+    my @span;
+    
+    while( my ($kactor, $vactor) = each( %{ $self->{actors} } ) ) {
+        # Skip actors we do not wish to examine.
+        next if @{$params{actor}} && ! grep $_ eq $kactor, @{$params{actor}};
+        
+        while( my ($ktarget, $vtarget) = each( %$vactor ) ) {
+            # Skip targets we do not wish to examine.
+            next if @{$params{target}} && ! grep $_ eq $ktarget, @{$params{target}};
+            
+            # Include the spans listed in $vtarget (an array of start/end hashes)
+            push @span, @$vtarget;
+        }
+    }
+    
+    # Sort spans by start time.
+    @span = sort { $a->{start} <=> $b->{start} } @span;
+    
+    # Store the final list in here.
+    my @final = ();
+    
+    foreach my $span (@span) {
+        # We are assured that $span starts at the same time as, or after, everything in @final.
+        # If it overlaps the last span in @final then merge it in.
+        
+        if( @final ) {
+            my $last = $final[$#final];
+            if( $span->{start} <= $last->{end} ) {
+                # There is an overlap.
+                if( $span->{end} > $last->{end} ) {
+                    # Extend $last.
+                    $last->{end} = $span->{end};
+                }
+            } else {
+                # No overlap.
+                push @final, {
+                    start => $span->{start},
+                    end => $span->{end},
+                };
+            }
+        } else {
+            # @final has nothing in it yet.
+            push @final, {
+                start => $span->{start},
+                end => $span->{end},
+            };
+        }
+    }
+    
+    # Total up @final.
+    my $sum = 0;
+    foreach (@final) {
+        $sum += $_->{end} - $_->{start};
+    }
+    
+    return $sum;
 }
 
 1;

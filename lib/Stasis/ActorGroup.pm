@@ -35,6 +35,7 @@ sub new {
     $params{version} = 2 if !$params{version} || $params{version} != 1;
     $params{groups} = [];
     $params{lookup} = {};
+    $params{lookup_n} = {};
     
     bless \%params, $class;
 }
@@ -119,8 +120,12 @@ sub run {
     $self->{lookup} = {};
     
     for (my $gid = 0; $gid < @groups ; $gid++) {
+        my $n = 0;
         foreach my $member (@{$groups[$gid]->{members}}) {
+            $n ++;
+            
             $self->{lookup}{$member} = $groups[$gid];
+            $self->{lookup_n}{$member} = $n;
         }
     }
     
@@ -146,26 +151,7 @@ sub number {
     my $self = shift;
     my $actor = shift;
     
-    my $n = 0;
-    my $group = $self->{lookup}{$actor};
-    
-    if( $group ) {
-        foreach (@{$group->{members}}) {
-            $n++;
-            
-            if( lc $_ eq lc $actor ) {
-                return $n;
-            }
-        }
-        
-        if( !$n ) {
-            carp "Group error on mob \"$actor\"";
-        }
-        
-        return $n;
-    } else {
-        return 0;
-    }
+    return $self->{lookup_n}{$actor} || 0;
 }
 
 1;

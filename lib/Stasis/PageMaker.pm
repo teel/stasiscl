@@ -274,6 +274,7 @@ END
 sub jsTab {
     my $self = shift;
     my $section = shift;
+    $section = $self->tameText($section);
     return <<END;
 <script type="text/javascript">
 toggleTab('$section');
@@ -333,7 +334,7 @@ sub _commify {
     shift;
     local($_) = shift;
     return $_ unless /^\d+$/;
-    1 while s/^(-?\d+)(\d{3})/$1 $2/;
+    1 while s/^(-?\d+)(\d{3})/$1,$2/;
     return $_;
 }
 
