@@ -238,7 +238,8 @@ sub page {
     my $mostdmg = keys %raiderDamage && $raiderDamage{ $damagesort[0] };
     
     foreach my $actor (@damagesort) {
-        my $ptime = $self->{ext}{Presence}{actors}{$actor}{end} - $self->{ext}{Presence}{actors}{$actor}{start};
+        my $ptime = $self->{ext}{Presence}->presence($actor);
+        my $dpsTime = $self->{ext}{Activity}->activity( actor => [ $actor, @{ $self->{raid}{$actor}{pets} } ] );
         
         $PAGE .= $pm->tableRow( 
             header => \@damageHeader,
@@ -248,9 +249,9 @@ sub page {
                 "R-%" => $raiderDamage{$actor} && $raidDamage && sprintf( "%d%%", ceil($raiderDamage{$actor} / $raidDamage * 100) ),
                 "R-Dam. Out" => $raiderDamage{$actor},
                 " " => $mostdmg && sprintf( "%d", ceil($raiderDamage{$actor} / $mostdmg * 100) ),
-                "R-Pres. DPS" => $raiderDamage{$actor} && $self->{ext}{Activity}{actors}{$actor}{time} && sprintf( "%d", $raiderDamage{$actor} / $ptime ),
-                "R-Act. DPS" => $raiderDamage{$actor} && $self->{ext}{Activity}{actors}{$actor}{time} && sprintf( "%d", $raiderDamage{$actor} / $self->{ext}{Activity}{actors}{$actor}{time} ),
-                "R-Activity" => $raiderDamage{$actor} && $self->{ext}{Activity}{actors}{$actor}{time} && $ptime && sprintf( "%0.1f%%", $self->{ext}{Activity}{actors}{$actor}{time} / $ptime * 100 ),
+                "R-Pres. DPS" => $raiderDamage{$actor} && $dpsTime && sprintf( "%d", $raiderDamage{$actor} / $ptime ),
+                "R-Act. DPS" => $raiderDamage{$actor} && $dpsTime && sprintf( "%d", $raiderDamage{$actor} / $dpsTime ),
+                "R-Activity" => $raiderDamage{$actor} && $dpsTime && $ptime && sprintf( "%0.1f%%", $dpsTime / $ptime * 100 ),
             },
             type => "",
         );
@@ -547,12 +548,13 @@ sub page {
     
     foreach my $actor (@damagesort) {
         my $ptime = $self->{ext}{Presence}{actors}{$actor}{end} - $self->{ext}{Presence}{actors}{$actor}{start};
+        my $dpsTime = $self->{ext}{Activity}->activity( actor => [ $actor, @{ $self->{raid}{$actor}{pets} } ] );
         
         my %xml_keys = (
             name => $self->{ext}{Index}->actorname($actor) || "Unknown",
             classe => $xml_classmap{ $self->{raid}{$actor}{class} } || "war",
-            dps => $self->{ext}{Activity}{actors}{$actor}{time} && ceil( $raiderDamage{$actor} / $self->{ext}{Activity}{actors}{$actor}{time} ) || 0,
-            dpstime => $self->{ext}{Activity}{actors}{$actor}{time} && $ptime && $self->{ext}{Activity}{actors}{$actor}{time} / $ptime * 100 || 0,
+            dps => $dpsTime && ceil( $raiderDamage{$actor} / $dpsTime ) || 0,
+            dpstime => $dpsTime && $ptime && $dpsTime / $ptime * 100 || 0,
             dmgout => $raiderDamage{$actor} && $raidDamage && $raiderDamage{$actor} / $raidDamage * 100 || 0,
             dmgin => $raiderIncoming{$actor} && $raidInDamage && $raiderIncoming{$actor} / $raidInDamage * 100 || 0,
             heal => $raiderHealing{$actor} && $raidHealing && $raiderHealing{$actor} / $raidHealing * 100 || 0,

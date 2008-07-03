@@ -72,6 +72,8 @@ sub page {
         push @playpet, @{$self->{raid}{$_}{pets}} if( exists $self->{raid}{$_} && exists $self->{raid}{$_}{pets} );
     }
     
+    my $dpsTime = $self->{ext}{Activity}->activity( actor => \@playpet );
+    
     # Total damage, and damage from/to enemies (not enemies of the raid, this means enemies of the actor)
     my $dmg_from_all = 0;
     my $dmg_from_enemies = 0;
@@ -146,17 +148,17 @@ sub page {
     }
     
     # DPS Info
-    if( !$do_group && $ptime && $dmg_to_enemies && $self->{ext}{Activity}{actors}{$MOB} && $self->{ext}{Activity}{actors}{$MOB}{time} ) {
+    if( $ptime && $dmg_to_enemies && $dpsTime ) {
         push @summaryRows, (
             "DPS activity" => sprintf
             (
                 "%02d:%02d (%0.1f%% of presence)",
-                $self->{ext}{Activity}{actors}{$MOB}{time}/60, 
-                $self->{ext}{Activity}{actors}{$MOB}{time}%60, 
-                $self->{ext}{Activity}{actors}{$MOB}{time}/$ptime*100, 
+                $dpsTime/60, 
+                $dpsTime%60, 
+                $dpsTime/$ptime*100, 
             ),
             "DPS (over presence)" => sprintf( "%d", $dmg_to_enemies/$ptime ),
-            "DPS (over activity)" => sprintf( "%d", $dmg_to_enemies/$self->{ext}{Activity}{actors}{$MOB}{time} ),
+            "DPS (over activity)" => sprintf( "%d", $dmg_to_enemies/$dpsTime ),
         );
     }
     
@@ -200,10 +202,10 @@ sub page {
             "Ability",
             "R-Total",
             "R-Hits",
-            "R-Avg Hit",
             "R-Crits",
-            "R-Avg Crit",
             "R-Ticks",
+            "R-Avg Hit",
+            "R-Avg Crit",
             "R-Avg Tick",
             "R-CriCruGla %",
             "MDPBARI %",
@@ -263,11 +265,11 @@ sub page {
             "Target",
             "R-Total",
             "R-Hits",
-            "R-Avg Hit",
             "R-Crits",
-            "R-Avg Crit",
             "R-Ticks",
-            "R-Avg Tick",
+            "R-DPS",
+            "R-Time",
+            "",
             "R-CriCruGla %",
             "MDPBARI %",
         );
@@ -290,10 +292,13 @@ sub page {
                 # JavaScript ID
                 my $id = $pm->tameText( $row->{key} );
                 
+                my $group = $self->{grouper}->group( $row->{key} );
+                my $dpsTime = $self->{ext}{Activity}->activity( actor => \@playpet, target => [ $group ? @{$group->{members}} : ($row->{key}) ] );
+                
                 # Master row
                 $PAGE .= $pm->tableRow( 
                     header => \@header,
-                    data => $self->_rowDamage( $row->{row}, $pm->actorLink( $row->{key} ), "Target" ),
+                    data => $self->_rowDamage( $row->{row}, $pm->actorLink( $row->{key} ), "Target", $dpsTime ),
                     type => "master",
                     name => "dmgout_$id",
                 );
@@ -326,11 +331,11 @@ sub page {
             "Source",
             "R-Total",
             "R-Hits",
-            "R-Avg Hit",
             "R-Crits",
-            "R-Avg Crit",
             "R-Ticks",
-            "R-Avg Tick",
+            "R-DPS",
+            "R-Time",
+            "",
             "R-CriCruGla %",
             "MDPBARI %",
         );
@@ -353,10 +358,13 @@ sub page {
                 # JavaScript ID
                 my $id = $pm->tameText( $row->{key} );
                 
+                my $group = $self->{grouper}->group( $row->{key} );
+                my $dpsTime = $self->{ext}{Activity}->activity( target => \@PLAYER, actor => [ $group ? @{$group->{members}} : ($row->{key}) ] );
+                
                 # Master row
                 $PAGE .= $pm->tableRow( 
                     header => \@header,
-                    data => $self->_rowDamage( $row->{row}, $pm->actorLink( $row->{key} ), "Source" ),
+                    data => $self->_rowDamage( $row->{row}, $pm->actorLink( $row->{key} ), "Source", $dpsTime ),
                     type => "master",
                     name => "dmgin_$id",
                 );
@@ -395,10 +403,10 @@ sub page {
             "Ability",
             "R-Eff. Heal",
             "R-Hits",
-            "R-Avg Hit",
             "R-Crits",
-            "R-Avg Crit",
             "R-Ticks",
+            "R-Avg Hit",
+            "R-Avg Crit",
             "R-Avg Tick",
             "R-Crit %",
             "R-Overheal %",
@@ -1169,6 +1177,7 @@ sub _rowDamage {
     my $sdata = shift;
     my $title = shift;
     my $header = shift;
+    my $time = shift;
     
     # We're printing a row based on $sdata.
     my $swings = ($sdata->{count} - $sdata->{tickCount});
@@ -1176,6 +1185,8 @@ sub _rowDamage {
     return {
         ($header || "Ability") => $title,
         "R-Total" => $sdata->{total},
+        "R-DPS" => $time && sprintf( "%d", $sdata->{total}/$time ),
+        "R-Time" => $time && sprintf( "%02d:%02d", $time/60, $time%60 ),
         "R-Hits" => $sdata->{hitCount} && sprintf( "%d", $sdata->{hitCount} ),
         "R-Avg Hit" => $sdata->{hitCount} && $sdata->{hitTotal} && sprintf( "<span class=\"tip\" title=\"Range: %d&ndash;%d\">%d</span>", $sdata->{hitMin}, $sdata->{hitMax}, $sdata->{hitTotal} / $sdata->{hitCount} ),
         "R-Ticks" => $sdata->{tickCount} && sprintf( "%d", $sdata->{tickCount} ),
@@ -1191,11 +1202,12 @@ sub _rowHealing {
     my $self = shift;
     my $sdata = shift;
     my $title = shift;
+    my $header = shift;
     
     # We're printing a row based on $sdata.
     
     return {
-        "Ability" => $title,
+        ($header || "Ability") => $title,
         "R-Eff. Heal" => $sdata->{effective},
         "R-Overheal %" => $sdata->{total} ? sprintf "%0.1f%%", ($sdata->{total} - $sdata->{effective} ) / $sdata->{total} * 100 : "",
         "R-Hits" => $sdata->{hitCount} && sprintf( "%d", $sdata->{hitCount} ),
