@@ -128,21 +128,19 @@ sub tableRow {
     $params{header} ||= [];
     $params{data} ||= {};
     $params{type} ||= "";
-    $params{name} ||= "";
     
     # Override 'name'
     $params{name} = $params{type} eq "master" ? ++$self->{id} : $self->{id};
     
     if( $params{type} eq "slave" ) {
-        $result .= sprintf "<tr class=\"sectionSlave\" name=\"s%s\">", $params{name}, $params{name};
+        $result .= "<tr class=\"sectionSlave\" name=\"s" . $params{name} . "\">";
     } elsif( $params{type} eq "master" ) {
-        $result .= sprintf "<tr class=\"sectionMaster\">";
+        $result .= "<tr class=\"sectionMaster\">";
     } else {
-        $result .= sprintf "<tr class=\"section\">";
+        $result .= "<tr class=\"section\">";
     }
     
     my $firstflag;
-    
     foreach my $col (@{$params{header}}) {
         my @class;
         my $align = "";
@@ -151,34 +149,24 @@ sub tableRow {
             push @class, "f";
         }
         
-        my $r;
-        if( $col =~ /^R-/ ) {
-            $r = 1;
-            push @class, "r";
-        }
-        
-        if( $col =~ /-W$/ ) {
-            push @class, "w";
-        }
+        $col =~ /^(R-|)([^\-]*)(|-W)$/;
+        push @class, "r" if $1;
+        push @class, "w" if $3;
         
         if( @class ) {
             $align = " class=\"" . join( " ", @class ) . "\"";
         }
         
-        my $ncol = $col;
-        $ncol =~ s/^R-//;
-        $ncol =~ s/-W$//;
-        
-        if( $col =~ /^\s+$/ && $params{data}{$col} ) {
+        if( $col eq " " && $params{data}{$col} ) {
             $params{data}{$col} = sprintf "<div class=\"chartbar\" style=\"width:%dpx\">&nbsp;</span>", $params{data}{$col};
         }
         
         if( !$firstflag && $params{type} eq "master" ) {
             # This is the first one (flag hasn't been set yet)
-            $result .= sprintf "<td${align}>(<a class=\"toggle\" id=\"as%s\" href=\"javascript:toggleTableSection(%s);\">+</a>) %s</td>", $params{name}, $params{name}, $r ? $self->_commify($params{data}{$col}) : $params{data}{$col};
+            $result .= sprintf "<td%s>(<a class=\"toggle\" id=\"as%s\" href=\"javascript:toggleTableSection(%s);\">+</a>) %s</td>", $align, $params{name}, $params{name}, $params{data}{$col} =~ /^\d+$/ ? $self->_commify($params{data}{$col}) : $params{data}{$col};
         } else {
             if( $params{data}{$col} ) {
-                $result .= sprintf "<td${align}>%s</td>", $r ? $self->_commify($params{data}{$col}) : $params{data}{$col};
+                $result .= "<td${align}>" . ($params{data}{$col} =~ /^\d+$/ ? $self->_commify($params{data}{$col}) : $params{data}{$col}) . "</td>";
             } else {
                 $result .= "<td${align}>&nbsp;</td>";
             }
@@ -344,7 +332,6 @@ sub spellLink {
 sub _commify {
     shift;
     local($_) = shift;
-    return $_ unless /^\d+$/;
     1 while s/^(-?\d+)(\d{3})/$1,$2/;
     return $_;
 }

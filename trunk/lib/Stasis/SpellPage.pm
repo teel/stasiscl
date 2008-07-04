@@ -665,15 +665,15 @@ sub _damageOrHealingRows {
     my @rows;
     
     while( my ($kactor, $vactor) = each(%{ $ext->{actors}}) ) {
-        # Figure out what the key for this actor is.
-        my $gactor = $self->{grouper}->group($kactor);
-        my $kactor_use = $gactor ? $self->{grouper}->captain($gactor) : $kactor;
-        
         while( my ($kspell, $vspell) = each(%$vactor) ) {
             # Focus on our spell.
             next unless $kspell eq $spell;
             
             while( my ($ktarget, $vtarget) = each(%$vspell) ) {
+                # Figure out the key for this actor.
+                my $gactor = $self->{grouper}->group($kactor);
+                my $kactor_use = $gactor ? $self->{grouper}->captain($gactor) : $kactor;
+                
                 # Figure out the key for this target.
                 my $gtarget = $self->{grouper}->group($ktarget);
                 my $ktarget_use = $gtarget ? $self->{grouper}->captain($gtarget) : $ktarget;
@@ -744,16 +744,16 @@ sub _castOrGainRows {
     my @rows;
     
     while( my ($kactor, $vactor) = each(%{ $ext->{actors}}) ) {
-        # Figure out what the key for this actor is.
-        my $gactor = $self->{grouper}->group($kactor);
-        my $kactor_use = $gactor ? $self->{grouper}->captain($gactor) : $kactor;
-
         while( my ($kspell, $vspell) = each(%{ $ext->{actors}{$kactor} } ) ) {
             # Focus on our spell.
             next unless $kspell eq $spell;
             
             while( my ($ktarget, $vtarget) = each(%$vspell) ) {
-                # $vtarget is a spell hash.
+                # Figure out what the key for this actor is.
+                my $gactor = $self->{grouper}->group($kactor);
+                my $kactor_use = $gactor ? $self->{grouper}->captain($gactor) : $kactor;
+                
+                # Figure out what the key for this target is.
                 my $gtarget = $self->{grouper}->group($ktarget);
                 my $ktarget_use = $gtarget ? $self->{grouper}->captain($gtarget) : $ktarget;
                 

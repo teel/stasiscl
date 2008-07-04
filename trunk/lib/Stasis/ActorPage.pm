@@ -849,13 +849,18 @@ sub page {
                 push @{$death->{autopsy}}, $lastline;
 
                 # Print the front row.
+                
+                my $text = $lastline->{text};
+                $text =~ s/\[\[([^\[\]]+?)\]\]/ $pm->actorLink($1, 1) /eg;
+                $text =~ s/\{\{([^\{\}]+?)\}\}/ $pm->spellLink($1, $self->{ext}{Index}->spellname($1)) /eg;
+                
                 my $t = $death->{t} - $raidStart;
                 $PAGE .= $pm->tableRow(
                         header => \@header,
                         data => {
                             "Death Time" => $death->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
                             "R-Health" => $lastline->{hp} || "",
-                            "Event" => $lastline->{text} || "",
+                            "Event" => $text,
                         },
                         type => "master",
                         name => "death_$id",
@@ -864,13 +869,17 @@ sub page {
                 # Print subsequent rows.
                 foreach my $line (@{$death->{autopsy}}) {
                     my $t = ($line->{t}||0) - $raidStart;
+                    
+                    my $text = $line->{text};
+                    $text =~ s/\[\[([^\[\]]+?)\]\]/ $pm->actorLink($1, 1) /eg;
+                    $text =~ s/\{\{([^\{\}]+?)\}\}/ $pm->spellLink($1, $self->{ext}{Index}->spellname($1)) /eg;
 
                     $PAGE .= $pm->tableRow(
                             header => \@header,
                             data => {
                                 "Death Time" => $line->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
                                 "R-Health" => $line->{hp} || "",
-                                "Event" => $line->{text} || "",
+                                "Event" => $text,
                             },
                             type => "slave",
                             name => "death_$id",
@@ -950,18 +959,18 @@ sub _targetRows {
     while( my ($kactor, $vactor) = each(%{ $ext->{actors}}) ) {
         # If we're doing an out (!$in) then skip other actors.
         next if !$in && !grep $_ eq $kactor, @_;
-        
-        # Figure out what the key for this actor is.
-        my $gactor = $self->{grouper}->group($kactor);
-        my $kactor_use = $gactor && $_[0] ne $kactor ? $self->{grouper}->captain($gactor) : $kactor;
-        
+                
         while( my ($kspell, $vspell) = each(%$vactor) ) {
-            # Figure out what the key for this spell is.
-            my $espell = $in ? $kspell : "$kactor_use: $kspell";
-            
             while( my ($ktarget, $vtarget) = each(%$vspell) ) {
                 # If we're coming in then skip other actors.
                 next if $in && !grep $_ eq $ktarget, @GROUP;
+                
+                # Figure out what the key for this actor is.
+                my $gactor = $self->{grouper}->group($kactor);
+                my $kactor_use = $gactor && $_[0] ne $kactor ? $self->{grouper}->captain($gactor) : $kactor;
+                
+                # Figure out what the key for this spell is.
+                my $espell = $in ? $kspell : "$kactor_use: $kspell";
                 
                 # Figure out the key for this target.
                 my $gtarget = $self->{grouper}->group($ktarget);
@@ -1229,11 +1238,11 @@ sub _sum {
         while( my ($key, $val) = each (%$sd2) ) {
             $sd1->{$key} ||= 0;
             
-            if( $key =~ /([Mm]in|[Mm]ax)$/ ) {
+            if( $key =~ /[Mm](in|ax)$/ ) {
                 # Minimum or maximum
-                if( lc $1 eq "min" && (!$sd1->{$key} || $val < $sd1->{$key}) ) {
+                if( lc $1 eq "in" && (!$sd1->{$key} || $val < $sd1->{$key}) ) {
                     $sd1->{$key} = $val;
-                } elsif( lc $1 eq "max" && (!$sd1->{$key} || $val > $sd1->{$key}) ) {
+                } elsif( lc $1 eq "ax" && (!$sd1->{$key} || $val > $sd1->{$key}) ) {
                     $sd1->{$key} = $val;
                 }
             } else {
