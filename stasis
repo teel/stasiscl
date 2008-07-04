@@ -147,8 +147,8 @@ sub status($) {
     }
 }
 
-sub writedir($$$$$$) {
-    my ($dname, $dname_old, $long, $short, $raid, $exts) = @_;
+sub writedir($$$$$$$) {
+    my ($dname, $dname_old, $long, $short, $raid, $exts, $collapse) = @_;
     
     # Remove the directory if it exists.
     File::Path::rmtree($dname) if -d $dname;
@@ -158,15 +158,22 @@ sub writedir($$$$$$) {
     mkdir $dname or die $!;
 
     # Write the index.
-    my $charter = Stasis::ChartPage->new( name => $long, short => $short, raid => $raid, ext => $exts );
+    my $charter = Stasis::ChartPage->new( name => $long, short => $short, raid => $raid, ext => $exts, collapse => $collapse );
     my ($chart_xml, $chart_html) = $charter->page;
     open CHARTPAGE, ">$dname/index.html" or die;
     print CHARTPAGE $chart_html;
     close CHARTPAGE;
+    
+    # Group actors.
+    my $grouper = Stasis::ActorGroup->new;
+    $grouper->run( $raid, $exts );
 
     # Write the actor files.
-    my $ap = Stasis::ActorPage->new( server => $opt_server, name => $long, short => $short, raid => $raid, ext => $exts );
+    my $ap = Stasis::ActorPage->new( server => $opt_server, name => $long, short => $short, raid => $raid, ext => $exts, collapse => $collapse );
     foreach my $actor (keys %{$exts->{Presence}{actors}}) {
+        # Respect $collapse.
+        next if $collapse && $grouper->group($actor);
+        
         my $id = lc $actor;
         $id = Stasis::PageMaker->tameText($id);
 
@@ -176,8 +183,6 @@ sub writedir($$$$$$) {
     }
     
     # Write the group files.
-    my $grouper = Stasis::ActorGroup->new;
-    $grouper->run( $raid, $exts );
     foreach my $group (@{$grouper->{groups}}) {
         my $id = lc $grouper->captain($group);
         $id = Stasis::PageMaker->tameText($id);
@@ -193,7 +198,7 @@ sub writedir($$$$$$) {
     close ENVPAGE;
     
     # Write the spell files.
-    my $sp = Stasis::SpellPage->new( name => $long, short => $short, raid => $raid, ext => $exts );
+    my $sp = Stasis::SpellPage->new( name => $long, short => $short, raid => $raid, ext => $exts, collapse => $collapse );
     foreach my $spell (keys %{$exts->{Index}{spells}}) {
         my $id = lc $spell;
         $id = Stasis::PageMaker->tameText($id);
@@ -431,7 +436,7 @@ if( $action eq "print" ) {
                     # Write the files for this split.
                     unless( $opt_nowrite ) {
                         eval {
-                            writedir $dname, $dname_old, $split->{long}, $split->{short}, \%raid, \%exts;
+                            writedir $dname, $dname_old, $split->{long}, $split->{short}, \%raid, \%exts, 0;
                         }; if( $@ ) {
                             bomb $@;
                         }
@@ -477,7 +482,7 @@ if( $action eq "print" ) {
         
         unless( $opt_nowrite ) {
             eval {
-                writedir $dname, $dname_old, "Trash Mobs", "trash", \%raid, \%trash_exts;
+                writedir $dname, $dname_old, "Trash Mobs", "trash", \%raid, \%trash_exts, 1;
             }; if( $@ ) {
                 bomb $@;
             }
@@ -497,7 +502,7 @@ if( $action eq "print" ) {
         
         unless( $opt_nowrite ) {
             eval {
-                writedir $dname, $dname_old, "Overall", "overall", \%raid, \%overall_exts;
+                writedir $dname, $dname_old, "Overall", "overall", \%raid, \%overall_exts, 1;
             }; if( $@ ) {
                 bomb $@;
             }

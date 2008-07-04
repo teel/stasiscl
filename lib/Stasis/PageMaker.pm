@@ -296,6 +296,8 @@ sub actorLink {
     my $self = shift;
     my $id = shift;
     my $single = shift;
+    
+    $single = 0 if $self->{collapse};
     my $name = $self->{ext}{Index}->actorname($id);
     my $color = $self->{raid}{$id} && $self->{raid}{$id}{class};
     
