@@ -275,9 +275,9 @@ if( $action eq "print" ) {
         my $entry = $opt_file ? $parser->parse($_) : $_;
         if( $entry->{action} ) {
             if( my $text = $parser->toString( $entry ) ) {
-                $entry->{t} =~ /^(\d+)\.(\d+)$/;
+                $entry->{t} =~ /^(\d+)(\.(\d+)|)$/;
                 my @t = localtime $1;
-                printf "%d/%d %02d:%02d:%02d\.%03d  %s\n", $t[4]+1, $t[3], $t[2], $t[1], $t[0], $2, $text;
+                printf "%d/%d %02d:%02d:%02d\.%03d  %s\n", $t[4]+1, $t[3], $t[2], $t[1], $t[0], $2?$3:0, $text;
             }
         }
     }
