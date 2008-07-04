@@ -79,7 +79,7 @@ sub process {
     push @{ $self->{dtrack}{ $entry->{target} } }, {
         "t" => $entry->{t},
         "hp" => $self->{ohtrack}{ $entry->{target} },
-        "text" => Stasis::Parser->toString( $entry ),
+        "text" => Stasis::Parser->toString( $entry, sub { "[[" . ($_[0]||0) . "]]" }, sub { "{{" . ($_[0]||0) . "}}" } ),
     };
     
     # Shorten the list if it got too long.

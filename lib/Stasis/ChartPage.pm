@@ -379,6 +379,10 @@ sub page {
             push @{$death->{autopsy}}, $lastline;
 
             # Print the front row.
+            my $text = $lastline->{text};
+            $text =~ s/\[\[([^\[\]]+?)\]\]/ $pm->actorLink($1, 1) /eg;
+            $text =~ s/\{\{([^\{\}]+?)\}\}/ $pm->spellLink($1, $self->{ext}{Index}->spellname($1)) /eg;
+            
             my $t = $death->{t} - $raidStart;
             $PAGE .= $pm->tableRow(
                     header => \@deathHeader,
@@ -386,7 +390,7 @@ sub page {
                         "Death" => $pm->actorLink( $death->{actor},  $self->{ext}{Index}->actorname($death->{actor}), $self->{raid}{$death->{actor}}{class} ),
                         "Time" => $death->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
                         "R-Health" => $lastline->{hp} || "",
-                        "Event" => $lastline->{text} || "",
+                        "Event" => $text,
                     },
                     type => "master",
                     name => "death_$deathid",
@@ -395,13 +399,17 @@ sub page {
             # Print subsequent rows.
             foreach my $line (@{$death->{autopsy}}) {
                 my $t = ($line->{t}||0) - $raidStart;
-
+                
+                my $text = $line->{text};
+                $text =~ s/\[\[([^\[\]]+?)\]\]/ $pm->actorLink($1, 1) /eg;
+                $text =~ s/\{\{([^\{\}]+?)\}\}/ $pm->spellLink($1, $self->{ext}{Index}->spellname($1)) /eg;
+                
                 $PAGE .= $pm->tableRow(
                         header => \@deathHeader,
                         data => {
                             "Death" => $line->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
                             "R-Health" => $line->{hp} || "",
-                            "Event" => $line->{text} || "",
+                            "Event" => $text,
                         },
                         type => "slave",
                         name => "death_$deathid",
