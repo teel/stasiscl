@@ -379,7 +379,7 @@ sub page {
             push @{$death->{autopsy}}, $lastline;
 
             # Print the front row.
-            my $text = $lastline->{text};
+            my $text = $lastline->{text}||"";
             $text =~ s/\[\[([^\[\]]+?)\]\]/ $pm->actorLink($1, 1) /eg;
             $text =~ s/\{\{([^\{\}]+?)\}\}/ $pm->spellLink($1, $self->{ext}{Index}->spellname($1)) /eg;
             
@@ -400,7 +400,7 @@ sub page {
             foreach my $line (@{$death->{autopsy}}) {
                 my $t = ($line->{t}||0) - $raidStart;
                 
-                my $text = $line->{text};
+                my $text = $line->{text}||"";
                 $text =~ s/\[\[([^\[\]]+?)\]\]/ $pm->actorLink($1, 1) /eg;
                 $text =~ s/\{\{([^\{\}]+?)\}\}/ $pm->spellLink($1, $self->{ext}{Index}->spellname($1)) /eg;
                 
