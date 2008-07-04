@@ -127,7 +127,6 @@ sub new {
     $params{year} ||= strftime "%Y", localtime;
     $params{logger} ||= "You";
     $params{version} = 2 if !$params{version} || $params{version} != 1;
-    # $params{csv} = Text::CSV_XS->new({ binary => 1, eol => $/ });
     
     bless \%params, $class;
 }
@@ -1387,10 +1386,12 @@ sub _legacyAction {
 }
 
 sub toString {
-    my ($self, $entry) = @_;
+    my ($self, $entry, $actor_callback, $spell_callback) = @_;
     
-    my $actor = $entry->{actor_name} || "Environment";
-    my $target = $entry->{target_name} || "Environment";
+    my $actor = $actor_callback ? $actor_callback->( $entry->{actor} ) : ($entry->{actor_name} || "Environment");
+    my $target = $actor_callback ? $actor_callback->( $entry->{target} ) : ($entry->{target_name} || "Environment");
+    my $spell = $spell_callback ? $spell_callback->( $entry->{extra}{spellid} ) : ($entry->{extra}{spellname});
+    my $extraspell = $spell_callback ? $spell_callback->( $entry->{extra}{extraspellid} ) : ($entry->{extra}{extraspellname});
     my $text;
     
     if( $entry->{action} eq "SWING_DAMAGE" ) {
@@ -1425,7 +1426,7 @@ sub toString {
     } elsif( $entry->{action} eq "SPELL_DAMAGE" ) {
         $text = sprintf "[%s] %s %s [%s] %d",
             $actor,
-            $entry->{extra}{spellname},
+            $spell,
             $entry->{extra}{critical} ? "crit" : "hit",
             $target,
             $entry->{extra}{amount};
@@ -1438,33 +1439,33 @@ sub toString {
     } elsif( $entry->{action} eq "SPELL_MISSED" ) {
         $text = sprintf "[%s] %s [%s] %s",
             $actor,
-            $entry->{extra}{spellname},
+            $spell,
             $target,
             lc( $entry->{extra}{misstype} );
     } elsif( $entry->{action} eq "SPELL_HEAL" ) {
         $text = sprintf "[%s] %s %s [%s] %d",
             $actor,
-            $entry->{extra}{spellname},
+            $spell,
             $entry->{extra}{critical} ? "crit heal" : "heal",
             $target,
             $entry->{extra}{amount};
     } elsif( $entry->{action} eq "SPELL_ENERGIZE" ) {
         $text = sprintf "[%s] %s energize [%s] %d %s",
             $actor,
-            $entry->{extra}{spellname},
+            $spell,
             $target,
             $entry->{extra}{amount},
             $entry->{extra}{powertype};
     } elsif( $entry->{action} eq "SPELL_PERIODIC_MISSED" ) {
         $text = sprintf "[%s] %s [%s] %s",
             $actor,
-            $entry->{extra}{spellname},
+            $spell,
             $target,
             lc( $entry->{extra}{misstype} );
     } elsif( $entry->{action} eq "SPELL_PERIODIC_DAMAGE" ) {
         $text = sprintf "[%s] %s dot [%s] %d",
             $actor,
-            $entry->{extra}{spellname},
+            $spell,
             $target,
             lc( $entry->{extra}{amount} );
         
@@ -1476,54 +1477,54 @@ sub toString {
     } elsif( $entry->{action} eq "SPELL_PERIODIC_HEAL" ) {
         $text = sprintf "[%s] %s hot [%s] %d",
             $actor,
-            $entry->{extra}{spellname},
+            $spell,
             $target,
             lc( $entry->{extra}{amount} );
     } elsif( $entry->{action} eq "SPELL_PERIODIC_DRAIN" ) {
         $text = sprintf "[%s] %s drain [%s] %d %s",
             $actor,
-            $entry->{extra}{spellname},
+            $spell,
             $target,
             $entry->{extra}{amount},
             $entry->{extra}{powertype};
     } elsif( $entry->{action} eq "SPELL_PERIODIC_LEECH" ) {
         $text = sprintf "[%s] %s leech [%s] %d %s",
             $actor,
-            $entry->{extra}{spellname},
+            $spell,
             $target,
             $entry->{extra}{amount},
             $entry->{extra}{powertype};
     } elsif( $entry->{action} eq "SPELL_PERIODIC_ENERGIZE" ) {
         $text = sprintf "[%s] %s energize [%s] %d %s",
             $actor,
-            $entry->{extra}{spellname},
+            $spell,
             $target,
             $entry->{extra}{amount},
             $entry->{extra}{powertype};
     } elsif( $entry->{action} eq "SPELL_DRAIN" ) {
         $text = sprintf "[%s] %s drain [%s] %d %s",
             $actor,
-            $entry->{extra}{spellname},
+            $spell,
             $target,
             $entry->{extra}{amount},
             $entry->{extra}{powertype};
     } elsif( $entry->{action} eq "SPELL_LEECH" ) {
         $text = sprintf "[%s] %s leech [%s] %d %s",
             $actor,
-            $entry->{extra}{spellname},
+            $spell,
             $target,
             $entry->{extra}{amount},
             $entry->{extra}{powertype};
     } elsif( $entry->{action} eq "SPELL_INTERRUPT" ) {
         $text = sprintf "[%s] %sinterrupt [%s] %s",
             $actor,
-            $entry->{extra}{spellname} ? $entry->{extra}{spellname} . " " : "",
+            $spell ? $spell . " " : "",
             $target,
-            $entry->{extra}{extraspellname},
+            $extraspell,
     } elsif( $entry->{action} eq "SPELL_EXTRA_ATTACKS" ) {
         $text = sprintf "[%s] %s +%d attack%s",
             $actor,
-            $entry->{extra}{spellname},
+            $spell,
             $entry->{extra}{amount},
             $entry->{extra}{amount} > 1 ? "s" : "",
     } elsif( $entry->{action} eq "SPELL_INSTAKILL" ) {
@@ -1544,35 +1545,35 @@ sub toString {
         $text = sprintf "[%s] %s %s",
             $target,
             $entry->{extra}{auratype} eq "DEBUFF" ? "afflicted by" : "gain",
-            $entry->{extra}{spellname};
+            $spell;
     } elsif( $entry->{action} eq "SPELL_AURA_REMOVED" ) {
         $text = sprintf "[%s] fade %s",
             $target,
-            $entry->{extra}{spellname};
+            $spell;
     } elsif( $entry->{action} eq "SPELL_AURA_APPLIED_DOSE" ) {
         $text = sprintf "[%s] %s %s (%d)",
             $target,
             $entry->{extra}{auratype} eq "DEBUFF" ? "afflicted by" : "gain",
-            $entry->{extra}{spellname},
+            $spell,
             $entry->{extra}{amount};
     } elsif( $entry->{action} eq "SPELL_AURA_REMOVED_DOSE" ) {
         $text = sprintf "[%s] decrease dose %s (%d)",
             $target,
-            $entry->{extra}{spellname},
+            $spell,
             $entry->{extra}{amount};
     } elsif( $entry->{action} eq "SPELL_CAST_START" ) {
 
     } elsif( $entry->{action} eq "SPELL_CAST_SUCCESS" ) {
         $text = sprintf "[%s] cast %s [%s]",
             $actor,
-            $entry->{extra}{spellname},
+            $spell,
             $target;
     } elsif( $entry->{action} eq "SPELL_CAST_FAILED" ) {
 
     } elsif( $entry->{action} eq "DAMAGE_SHIELD" ) {
         $text = sprintf "[%s] %s reflect %s [%s] %d",
             $actor,
-            $entry->{extra}{spellname},
+            $spell,
             $entry->{extra}{critical} ? "crit " : "",
             $target,
             $entry->{extra}{amount};
@@ -1585,7 +1586,7 @@ sub toString {
     } elsif( $entry->{action} eq "DAMAGE_SHIELD_MISSED" ) {
         $text = sprintf "[%s] %s [%s] %s",
             $actor,
-            $entry->{extra}{spellname},
+            $spell,
             $target,
             lc( $entry->{extra}{misstype} );
     } elsif( $entry->{action} eq "ENCHANT_APPLIED" ) {
@@ -1597,7 +1598,7 @@ sub toString {
     } elsif( $entry->{action} eq "DAMAGE_SPLIT" ) {
         $text = sprintf "[%s] %s %s [%s] %d (split)",
             $actor,
-            $entry->{extra}{spellname},
+            $spell,
             $entry->{extra}{critical} ? "crit" : "hit",
             $target,
             $entry->{extra}{amount};
