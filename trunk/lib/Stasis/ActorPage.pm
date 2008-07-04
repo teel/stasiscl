@@ -38,7 +38,7 @@ sub new {
     $params{raid} ||= {};
     $params{grouper} = Stasis::ActorGroup->new;
     $params{grouper}->run( $params{raid}, $params{ext} );
-    $params{pm} ||= Stasis::PageMaker->new( raid => $params{raid}, ext => $params{ext}, grouper => $params{grouper} );
+    $params{pm} ||= Stasis::PageMaker->new( raid => $params{raid}, ext => $params{ext}, grouper => $params{grouper}, collapse => $params{collapse} );
     $params{name} ||= "Untitled";
     $params{server} ||= "";
     
@@ -167,17 +167,20 @@ sub page {
     
     if( $MOB_GROUP ) {
         # Group information
-        my $group_text = "<div align=\"left\">This is a group composed of multiple mobs.<br />";
+        my $group_text = "<div align=\"left\">This is a group composed of " . @{$MOB_GROUP->{members}} . " mobs.<br />";
         
         $group_text .= "<br /><b>Group Link</b></br />";
         $group_text .= sprintf "%s%s<br />", $pm->actorLink($MOB), ( $do_group ? " (currently viewing)" : "" );
         
         $group_text .= "<br /><b>Member Links</b></br />";
-        
-        foreach (@{$MOB_GROUP->{members}}) {
-            $group_text .= sprintf "%s%s<br />", $pm->actorLink($_, 1), ( !$do_group && $_ eq $MOB ? " (currently viewing)" : "" );
+
+        if( $self->{collapse} ) {
+            $group_text .= "Member links are disabled for this group."
+        } else {
+            foreach (@{$MOB_GROUP->{members}}) {
+                $group_text .= sprintf "%s%s<br />", $pm->actorLink($_, 1), ( !$do_group && $_ eq $MOB ? " (currently viewing)" : "" );
+            }
         }
-        
         
         $group_text .= "</div>";
         
