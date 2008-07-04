@@ -5,7 +5,7 @@ function toggleTableSection(secName) {
     var trs = document.getElementsByTagName('tr');
     for( var x = 0 ; x < trs.length ; x ++ ) {
         att = trs[x].getAttribute('name');
-        if( att == 'section_' + secName ) {
+        if( att == 'section_' + secName || att == 's' + secName ) {
             trs[x].style.display = trs[x].style.display == 'none' ? '' : 'none';
             text = trs[x].style.display == 'none' ? '+' : '-';
             number ++;
@@ -13,7 +13,16 @@ function toggleTableSection(secName) {
     }
     
     if( number > 0 ) {
-        document.getElementById('a_section_'+secName).innerHTML = text;
+        a1 = document.getElementById('a_section_'+secName);
+        a2 = document.getElementById('as'+secName);
+        
+        if( a1 ) {
+            a1.innerHTML = text;
+        }
+        
+        if( a2 ) {
+            a2.innerHTML = text;
+        }
     }
 }
 

@@ -179,10 +179,6 @@ body {
 /*    background-color: #eee; */
 }
 
-.swsmaster td.first {
-    width: 220px;
-}
-
 .swsmaster td {
     vertical-align: top;
     text-align:left;
@@ -206,6 +202,23 @@ body {
     font-weight: bold;
     text-decoration: none;
     padding: 1px 3px;
+}
+
+.swsmaster td.w {
+    white-space: normal;
+    width: 300px;
+}
+
+.swsmaster td.r {
+    text-align: right;
+}
+
+.swsmaster td.f {
+    width: 220px;
+}
+
+.swsmaster td.first {
+    width: 220px;
 }
 
 .swsmaster .colorWarrior {

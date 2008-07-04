@@ -32,6 +32,8 @@ use Carp;
 sub new {
     my $class = shift;
     my %params = @_;
+    
+    $params{id} = 0;
     bless \%params, $class;
 }
 
@@ -128,37 +130,39 @@ sub tableRow {
     $params{type} ||= "";
     $params{name} ||= "";
     
+    # Override 'name'
+    $params{name} = $params{type} eq "master" ? ++$self->{id} : $self->{id};
+    
     if( $params{type} eq "slave" ) {
-        $result .= sprintf "<tr class=\"sectionSlave\" name=\"section_%s\">", $params{name}, $params{name};
+        $result .= sprintf "<tr class=\"sectionSlave\" name=\"s%s\">", $params{name}, $params{name};
     } elsif( $params{type} eq "master" ) {
-        $result .= sprintf "<tr class=\"sectionMaster\">", $params{name};
+        $result .= sprintf "<tr class=\"sectionMaster\">";
     } else {
-        $result .= sprintf "<tr class=\"section\">", $params{name};
+        $result .= sprintf "<tr class=\"section\">";
     }
     
     my $firstflag;
-    my $first;
     
     foreach my $col (@{$params{header}}) {
+        my @class;
+        my $align = "";
+        
         if( !$firstflag ) {
-            $first = " class=\"first\"" ;
-        } else {
-            $first = "";
+            push @class, "f";
         }
         
-        my $align = "";
         my $r;
         if( $col =~ /^R-/ ) {
             $r = 1;
-            $align = "text-align: right; ";
+            push @class, "r";
         }
         
         if( $col =~ /-W$/ ) {
-            $align = "white-space: normal; width: 300px;";
+            push @class, "w";
         }
         
-        if( $align ) {
-            $align = " style=\"${align}\"";
+        if( @class ) {
+            $align = " class=\"" . join( " ", @class ) . "\"";
         }
         
         my $ncol = $col;
@@ -171,12 +175,12 @@ sub tableRow {
         
         if( !$firstflag && $params{type} eq "master" ) {
             # This is the first one (flag hasn't been set yet)
-            $result .= sprintf "<td${first}${align}>(<a class=\"toggle\" id=\"a_section_%s\" href=\"javascript:toggleTableSection('%s');\">+</a>) %s</td>", $params{name}, $params{name}, $r ? $self->_commify($params{data}{$col}) : $params{data}{$col};
+            $result .= sprintf "<td${align}>(<a class=\"toggle\" id=\"as%s\" href=\"javascript:toggleTableSection(%s);\">+</a>) %s</td>", $params{name}, $params{name}, $r ? $self->_commify($params{data}{$col}) : $params{data}{$col};
         } else {
             if( $params{data}{$col} ) {
-                $result .= sprintf "<td${first}${align}>%s</td>", $r ? $self->_commify($params{data}{$col}) : $params{data}{$col};
+                $result .= sprintf "<td${align}>%s</td>", $r ? $self->_commify($params{data}{$col}) : $params{data}{$col};
             } else {
-                $result .= "<td${first}${align}>&nbsp;</td>";
+                $result .= "<td${align}>&nbsp;</td>";
             }
         }
         
@@ -197,6 +201,9 @@ sub pageHeader {
     $boss ||= "Page";
     $title ||= "";
     $title = $title ? "$boss : $title" : $boss;
+    
+    # Reset table row ID
+    $self->{id} = 0;
     
     #my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime( $start );
     #my $starttxt = sprintf "%4d-%02d-%02d %02d:%02d:%02d", $year + 1900, $mon + 1, $mday, $hour, $min, $sec;
@@ -263,6 +270,10 @@ sub vertBox {
 sub jsClose {
     my $self = shift;
     my $section = shift;
+    
+    # Override $section
+    $section = $self->{id};
+    
     return <<END;
 <script type="text/javascript">
 toggleTableSection('$section');
