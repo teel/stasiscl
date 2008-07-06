@@ -429,11 +429,10 @@ my %fingerprints = (
     timeout => 30,
 },
 
-# FIXME: encounter never ends
 "M'uru" => {
     mobStart => [ "25741" ],
     mobContinue => [ "25741", "25840" ],
-    mobEnd => [],
+    mobEnd => [ "25840" ],
     timeout => 30,
 },
 
