@@ -828,7 +828,7 @@ sub page {
     # DEATHS #
     ##########
 
-    if( $self->_keyExists( $self->{ext}{Death}{actors}, @PLAYER ) ) {
+    if( (!$do_group || !$self->{collapse} ) && $self->_keyExists( $self->{ext}{Death}{actors}, @PLAYER ) ) {
         my @header = (
                 "Death Time",
                 "R-Health",

@@ -58,6 +58,7 @@ my $opt_year;
 my $opt_trash;
 my $opt_overall;
 my $opt_server;
+my $opt_collapse;
 
 ## SUBS ##
 
@@ -108,6 +109,11 @@ Options:
                boss kills and attempts. If you specify -trash, -attempt, 
                and -overall this will include a parse that rolls up every
                action in the log file.
+               
+    -collapse  For boss attempts and kills, collapse all mobs that have the
+               same NPC ID and all pets with the same name and owner. This
+               is always done for trash parses to save space, but by default
+               is not done for boss parses.
 
 Example for parsing boss kills only:
     $me add -dir /var/www/sws -file WoWCombatLog.txt
@@ -243,6 +249,7 @@ my $rc = GetOptions(
     "trash"         => \$opt_trash,
     "overall"       => \$opt_overall,
     "server=s"      => \$opt_server,
+    "collapse"      => \$opt_collapse,
 );
 
 # Clean up opt_dir
@@ -436,7 +443,7 @@ if( $action eq "print" ) {
                     # Write the files for this split.
                     unless( $opt_nowrite ) {
                         eval {
-                            writedir $dname, $dname_old, $split->{long}, $split->{short}, \%raid, \%exts, 0;
+                            writedir $dname, $dname_old, $split->{long}, $split->{short}, \%raid, \%exts, $opt_collapse;
                         }; if( $@ ) {
                             bomb $@;
                         }
