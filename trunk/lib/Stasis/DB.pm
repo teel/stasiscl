@@ -297,7 +297,6 @@ sub _dbh {
     
     $self->{dbh} ||= DBI->connect( "dbi:SQLite:" . $self->{db}, undef, undef, {RaiseError=>1} ) or croak "Cannot read local database: $DBI::errstr";
     return $self->{dbh};
-    
 }
 
 1;

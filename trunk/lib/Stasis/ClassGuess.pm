@@ -330,21 +330,17 @@ sub new {
 }
 
 sub process {
-    my $self = shift;
-    return $self->{version} == 1 ? $self->process1(@_) : $self->process2(@_);
+    my ($self) = @_;
+    return $self->{version} == 1 ? process1(@_) : process2(@_);
 }
 
 sub finish {
-    my $self = shift;
-    return $self->{version} == 1 ? $self->finish1(@_) : $self->finish2(@_);
+    my ($self) = @_;
+    return $self->{version} == 1 ? finish1(@_) : finish2(@_);
 }
 
 sub process1 {
-    my $self = shift;
-    my $entry = shift;
-    
-    # Player names look like this (no whitespace).
-    my $rxplayer = '^[^\s]+$';
+    my ( $self, $entry ) = @_;
     
     # Skip entries with no action.
     return unless $entry && $entry->{action};
@@ -353,7 +349,7 @@ sub process1 {
     return if( $entry->{actor_name} eq "Unknown" || $entry->{target_name} eq "Unknown" );
     
     # Check damage.
-    if( ($entry->{action} eq "SPELL_MISS" || $entry->{action} eq "SPELL_DAMAGE" || $entry->{action} eq "SPELL_PERIODIC_MISS" || $entry->{action} eq "SPELL_PERIODIC_DAMAGE") && $entry->{actor_name} =~ /$rxplayer/ ) {
+    if( ($entry->{action} eq "SPELL_MISS" || $entry->{action} eq "SPELL_DAMAGE" || $entry->{action} eq "SPELL_PERIODIC_MISS" || $entry->{action} eq "SPELL_PERIODIC_DAMAGE") && $entry->{actor_name} !~ /\s/ ) {
         # For each class profile...
         while( my($cname, $cdata) = each(%profiles) ) {
             # Check if this damage matches...
@@ -365,7 +361,7 @@ sub process1 {
     }
     
     # Check heals.
-    if( ($entry->{action} eq "SPELL_HEAL" || $entry->{action} eq "SPELL_PERIODIC_HEAL") && $entry->{actor_name} =~ /$rxplayer/ ) {
+    if( ($entry->{action} eq "SPELL_HEAL" || $entry->{action} eq "SPELL_PERIODIC_HEAL") && $entry->{actor_name} !~ /\s/ ) {
         # For each class profile...
         while( my($cname, $cdata) = each(%profiles) ) {
             # Check if this heal matches...
@@ -377,7 +373,7 @@ sub process1 {
     }
     
     # Check casts.
-    if( $entry->{action} eq "SPELL_CAST_SUCCESS" && $entry->{actor_name} =~ /$rxplayer/ ) {
+    if( $entry->{action} eq "SPELL_CAST_SUCCESS" && $entry->{actor_name} !~ /\s/ ) {
         # For each class profile...
         while( my($cname, $cdata) = each(%profiles) ) {
             # Check if this cast matches...
@@ -389,7 +385,7 @@ sub process1 {
     }
     
     # Check auras.
-    if( $entry->{action} eq "SPELL_AURA_APPLIED" && $entry->{target_name} =~ /$rxplayer/ ) {
+    if( $entry->{action} eq "SPELL_AURA_APPLIED" && $entry->{target_name} !~ /\s/ ) {
         # For each class profile...
         while( my($cname, $cdata) = each(%profiles) ) {
             # Check if this aura matches...
@@ -462,15 +458,13 @@ sub process1 {
 }
 
 sub process2 {
-    my $self = shift;
-    my $entry = shift;
+    my ( $self, $entry ) = @_;
     
     # Skip if actor is not set.
     return unless $entry->{actor};
     
     # Look closely at the actor and target.
     my ($atype, $anpc, $aspawn ) = Stasis::MobUtil->splitguid( $entry->{actor} );
-    my ($ttype, $tnpc, $tspawn ) = Stasis::MobUtil->splitguid( $entry->{target} );
     
     # Check things that a player can do, if:
     # 1) the actor looks like a player based on type
@@ -490,53 +484,53 @@ sub process2 {
     # Summons
     if( $entry->{action} eq "SPELL_SUMMON" ) {
         $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+        
+        # Shaman elemental totems (Fire and Earth respectively)
+        if( $entry->{extra}{spellid} == 2894 || $entry->{extra}{spellid} == 2062 ) {
+            # Associate totem with shaman by SPELL_SUMMON event.
+            $self->{scratch2}{totems}{ $entry->{target} } = $entry->{actor};
+        }
     }
     
     # Mend Pet
-    if( $entry->{action} eq "SPELL_PERIODIC_HEAL" && $entry->{extra}{spellid} == 27046 ) {
-        $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
-    }
-    
-    # Spirit Bond
-    if( $entry->{action} eq "SPELL_PERIODIC_HEAL" && $entry->{extra}{spellid} == 24529 ) {
-        $self->{scratch2}{pets}{ $entry->{target} }{ $entry->{actor} } ++;
+    elsif( $entry->{action} eq "SPELL_PERIODIC_HEAL" ) {
+        if( $entry->{extra}{spellid} == 27046 ) {
+            # Mend Pet
+            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+        } elsif( $entry->{extra}{spellid} == 24529 ) {
+            # Spirit Bond
+            $self->{scratch2}{pets}{ $entry->{target} }{ $entry->{actor} } ++;
+        }
     }
     
     # Feed Pet Effect
-    if( $entry->{action} =~ /^SPELL(_PERIODIC|)_ENERGIZE$/ && $entry->{extra}{spellid} == 1539 ) {
+    elsif( $entry->{action} eq "SPELL_PERIODIC_ENERGIZE" && $entry->{extra}{spellid} == 1539 ) {
         $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
     }
     
     # Go for the Throat
-    if( $entry->{action} =~ /^SPELL(_PERIODIC|)_ENERGIZE$/ && $entry->{extra}{spellid} == 34953 ) {
+    elsif( $entry->{action} eq "SPELL_ENERGIZE" && $entry->{extra}{spellid} == 34953 ) {
         $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
     }
     
     # Dark Pact
-    if( $entry->{action} eq "SPELL_LEECH" && $entry->{extra}{spellid} == 27265 ) {
+    elsif( $entry->{action} eq "SPELL_LEECH" && $entry->{extra}{spellid} == 27265 ) {
         $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
     }
     
     # Demonic Sacrifice
-    if( $entry->{action} eq "SPELL_INSTAKILL" && $entry->{extra}{spellid} == 18788 ) {
+    elsif( $entry->{action} eq "SPELL_INSTAKILL" && $entry->{extra}{spellid} == 18788 ) {
         $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
     }
     
     # Soul Link
-    if( $entry->{action} eq "DAMAGE_SPLIT" && $entry->{extra}{spellid} == 25228 ) {
+    elsif( $entry->{action} eq "DAMAGE_SPLIT" && $entry->{extra}{spellid} == 25228 ) {
         $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
     }
     
     # Mana Feed
-    if( $entry->{action} eq "SPELL_ENERGIZE" && $entry->{extra}{spellid} == 32553 ) {
+    elsif( $entry->{action} eq "SPELL_ENERGIZE" && $entry->{extra}{spellid} == 32553 ) {
         $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
-    }
-    
-    # Shaman elemental totems (Fire and Earth respectively)
-    # Using some really questionable guesswork but it seems to do the right thing.
-    if( $entry->{action} eq "SPELL_SUMMON" && ( $entry->{extra}{spellid} == 2894 || $entry->{extra}{spellid} == 2062 ) ) {
-        # Associate totem with shaman by SPELL_SUMMON event.
-        $self->{scratch2}{totems}{ $entry->{target} } = $entry->{actor};
     }
     
     if( $anpc == 15438 || $anpc == 15352 ) {
@@ -546,6 +540,7 @@ sub process2 {
             my @elemental = Stasis::MobUtil->splitguid( $entry->{actor} );
             if( $totem[2] + 1 == $elemental[2] ) {
                 $self->{scratch2}{pets}{ $shamanid }{ $entry->{actor} } ++;
+                $self->{scratch2}{class}{ $entry->{actor} } = "Pet";
             }
         }
     }
@@ -614,6 +609,8 @@ sub finish2 {
     my %raid;
     
     while( my ($actorid, $actorclass) = each (%{$self->{scratch2}{class}})) {
+        next if $actorclass eq "Pet";
+        
         $raid{$actorid} = {
             class => $actorclass,
             pets => [],

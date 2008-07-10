@@ -138,8 +138,8 @@ Parses a single line.
 =cut
 
 sub parse {
-    my $self = shift;
-    return $self->{version} == 1 ? $self->parse1(@_) : $self->parse2(@_);
+    my ($self) = @_;
+    return $self->{version} == 1 ? parse1(@_) : parse2(@_);
 }
 
 sub parse1 {
@@ -967,328 +967,328 @@ sub parse2 {
     # Action specific processing
     if( $result->{action} eq "SWING_DAMAGE" ) {
         $result->{extra} = {
-            amount => shift @col || 0,
-            school => hex shift @col || 0,
-            resisted => shift @col || 0,
-            blocked => shift @col || 0,
-            absorbed => shift @col || 0,
-            critical => shift @col || 0,
-            glancing => shift @col || 0,
-            crushing => shift @col || 0,
+            amount => shift @col,
+            school => hex shift @col,
+            resisted => shift @col,
+            blocked => shift @col,
+            absorbed => shift @col,
+            critical => shift @col,
+            glancing => shift @col,
+            crushing => shift @col,
         }
     } elsif( $result->{action} eq "SWING_MISSED" ) {
         $result->{extra} = {
-            misstype => shift @col || 0,
+            misstype => shift @col,
         }
     } elsif( $result->{action} eq "RANGE_DAMAGE" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            amount => shift @col || 0,
-            school => hex shift @col || 0,
-            resisted => shift @col || 0,
-            blocked => shift @col || 0,
-            absorbed => shift @col || 0,
-            critical => shift @col || 0,
-            glancing => shift @col || 0,
-            crushing => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            amount => shift @col,
+            school => hex shift @col,
+            resisted => shift @col,
+            blocked => shift @col,
+            absorbed => shift @col,
+            critical => shift @col,
+            glancing => shift @col,
+            crushing => shift @col,
         }
     } elsif( $result->{action} eq "RANGE_MISSED" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            misstype => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            misstype => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_DAMAGE" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            amount => shift @col || 0,
-            school => hex shift @col || 0,
-            resisted => shift @col || 0,
-            blocked => shift @col || 0,
-            absorbed => shift @col || 0,
-            critical => shift @col || 0,
-            glancing => shift @col || 0,
-            crushing => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            amount => shift @col,
+            school => hex shift @col,
+            resisted => shift @col,
+            blocked => shift @col,
+            absorbed => shift @col,
+            critical => shift @col,
+            glancing => shift @col,
+            crushing => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_MISSED" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            misstype => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            misstype => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_HEAL" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            amount => shift @col || 0,
-            critical => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            amount => shift @col,
+            critical => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_ENERGIZE" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            amount => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            amount => shift @col,
             powertype => $self->_powerName( shift @col ),
         }
     } elsif( $result->{action} eq "SPELL_PERIODIC_MISSED" ) {
         $result->{extra} = {                
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            misstype => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            misstype => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_PERIODIC_DAMAGE" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            amount => shift @col || 0,
-            school => hex shift @col || 0,
-            resisted => shift @col || 0,
-            blocked => shift @col || 0,
-            absorbed => shift @col || 0,
-            critical => shift @col || 0,
-            glancing => shift @col || 0,
-            crushing => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            amount => shift @col,
+            school => hex shift @col,
+            resisted => shift @col,
+            blocked => shift @col,
+            absorbed => shift @col,
+            critical => shift @col,
+            glancing => shift @col,
+            crushing => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_PERIODIC_HEAL" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            amount => shift @col || 0,
-            critical => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            amount => shift @col,
+            critical => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_PERIODIC_DRAIN" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            amount => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            amount => shift @col,
             powertype => $self->_powerName( shift @col ),
-            extraamount => shift @col || 0,
+            extraamount => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_PERIODIC_LEECH" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            amount => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            amount => shift @col,
             powertype => $self->_powerName( shift @col ),
-            extraamount => shift @col || 0,
+            extraamount => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_PERIODIC_ENERGIZE" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            amount => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            amount => shift @col,
             powertype => $self->_powerName( shift @col ),
         }
     } elsif( $result->{action} eq "SPELL_DRAIN" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            amount => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            amount => shift @col,
             powertype => $self->_powerName( shift @col ),
-            extraamount => shift @col || 0,
+            extraamount => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_LEECH" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            amount => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            amount => shift @col,
             powertype => $self->_powerName( shift @col ),
-            extraamount => shift @col || 0,
+            extraamount => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_INTERRUPT" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            extraspellid => shift @col || 0,
-            extraspellname => shift @col || 0,
-            extraspellschool => hex shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            extraspellid => shift @col,
+            extraspellname => shift @col,
+            extraspellschool => hex shift @col,
         }
     } elsif( $result->{action} eq "SPELL_EXTRA_ATTACKS" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            amount => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            amount => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_INSTAKILL" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
         }
     } elsif( $result->{action} eq "SPELL_DURABILITY_DAMAGE" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
         }
     } elsif( $result->{action} eq "SPELL_DURABILITY_DAMAGE_ALL" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
         }
     } elsif( $result->{action} eq "SPELL_DISPEL_FAILED" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            extraspellid => shift @col || 0,
-            extraspellname => shift @col || 0,
-            extraspellschool => hex shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            extraspellid => shift @col,
+            extraspellname => shift @col,
+            extraspellschool => hex shift @col,
         }
     } elsif( $result->{action} eq "SPELL_AURA_DISPELLED" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            extraspellid => shift @col || 0,
-            extraspellname => shift @col || 0,
-            extraspellschool => hex shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            extraspellid => shift @col,
+            extraspellname => shift @col,
+            extraspellschool => hex shift @col,
         }
     } elsif( $result->{action} eq "SPELL_AURA_STOLEN" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            extraspellid => shift @col || 0,
-            extraspellname => shift @col || 0,
-            extraspellschool => hex shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            extraspellid => shift @col,
+            extraspellname => shift @col,
+            extraspellschool => hex shift @col,
         }
     } elsif( $result->{action} eq "SPELL_AURA_APPLIED" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            auratype => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            auratype => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_AURA_REMOVED" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            auratype => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            auratype => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_AURA_APPLIED_DOSE" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            auratype => shift @col || 0,
-            amount => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            auratype => shift @col,
+            amount => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_AURA_REMOVED_DOSE" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            auratype => shift @col || 0,
-            amount => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            auratype => shift @col,
+            amount => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_CAST_START" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
         }
     } elsif( $result->{action} eq "SPELL_CAST_SUCCESS" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
         }
     } elsif( $result->{action} eq "SPELL_CAST_FAILED" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            misstype => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            misstype => shift @col,
         }
     } elsif( $result->{action} eq "DAMAGE_SHIELD" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            amount => shift @col || 0,
-            school => hex shift @col || 0,
-            resisted => shift @col || 0,
-            blocked => shift @col || 0,
-            absorbed => shift @col || 0,
-            critical => shift @col || 0,
-            glancing => shift @col || 0,
-            crushing => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            amount => shift @col,
+            school => hex shift @col,
+            resisted => shift @col,
+            blocked => shift @col,
+            absorbed => shift @col,
+            critical => shift @col,
+            glancing => shift @col,
+            crushing => shift @col,
         }
     } elsif( $result->{action} eq "DAMAGE_SHIELD_MISSED" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            misstype => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            misstype => shift @col,
         }
     } elsif( $result->{action} eq "ENCHANT_APPLIED" ) {
         $result->{extra} = {
-            spellname => shift @col || 0,
+            spellname => shift @col,
         }
     } elsif( $result->{action} eq "ENCHANT_REMOVED" ) {
         $result->{extra} = {
-            spellname => shift @col || 0,
+            spellname => shift @col,
         }
     } elsif( $result->{action} eq "ENVIRONMENTAL_DAMAGE" ) {
         $result->{extra} = {
-            environmentaltype => shift @col || 0,
-            amount => shift @col || 0,
-            school => hex shift @col || 0,
-            resisted => shift @col || 0,
-            blocked => shift @col || 0,
-            absorbed => shift @col || 0,
-            critical => shift @col || 0,
-            glancing => shift @col || 0,
-            crushing => shift @col || 0,
+            environmentaltype => shift @col,
+            amount => shift @col,
+            school => hex shift @col,
+            resisted => shift @col,
+            blocked => shift @col,
+            absorbed => shift @col,
+            critical => shift @col,
+            glancing => shift @col,
+            crushing => shift @col,
         }
     } elsif( $result->{action} eq "DAMAGE_SPLIT" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
-            amount => shift @col || 0,
-            school => hex shift @col || 0,
-            resisted => shift @col || 0,
-            blocked => shift @col || 0,
-            absorbed => shift @col || 0,
-            critical => shift @col || 0,
-            glancing => shift @col || 0,
-            crushing => shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            amount => shift @col,
+            school => hex shift @col,
+            resisted => shift @col,
+            blocked => shift @col,
+            absorbed => shift @col,
+            critical => shift @col,
+            glancing => shift @col,
+            crushing => shift @col,
         }
     } elsif( $result->{action} eq "UNIT_DIED" || $result->{action} eq "PARTY_KILL" || $result->{action} eq "UNIT_DESTROYED" ) {
         $result->{extra} = {};
     } elsif( $result->{action} eq "SPELL_SUMMON" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
         }
     } elsif( $result->{action} eq "SPELL_CREATE" ) {
         $result->{extra} = {
-            spellid => shift @col || 0,
-            spellname => shift @col || 0,
-            spellschool => hex shift @col || 0,
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
         }
     } else {
         # Unrecognized action
@@ -1620,7 +1620,7 @@ sub _split {
     my ($self, $line) = @_;
     my ($t, $rest) = $self->_pullStamp($line);
     
-    return $t, map { $_ eq "nil" ? undef : $_ } split /"?,(?=".*?"(?:,|$)|[^",]+(?:,|$))"?/, $rest;
+    return $t, map { $_ eq "nil" ? 0 : $_ } split /"?,(?=".*?"(?:,|$)|[^",]+(?:,|$))"?/, $rest;
 }
 
 sub _pullStamp {

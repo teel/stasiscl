@@ -471,15 +471,19 @@ sub new {
     my %params = @_;
     
     $params{scratch} = {};
-    $params{splits} = {};
+    $params{splits} = [];
     $params{nlog} = -1;
+    
+    # Callback args:
+    # at split start:   ( $short )
+    # at split end:     ( $short, $long, $kill, $start, $end )
+    $params{callback} ||= undef;
     
     bless \%params, $class;
 }
 
 sub process {
-    my $self = shift;
-    my $entry = shift;
+    my ($self, $entry) = @_;
     
     $self->{nlog} ++;
     return unless $entry->{action};
@@ -511,7 +515,10 @@ sub process {
                 $short =~ s/\s+.*$//;
                 $short =~ s/[^\w]//g;
                 
-                $self->{splits}{$splitname} = { short => $short, long => $splitname, start => $self->{scratch}{$kboss}{start}, end => $self->{scratch}{$kboss}{end}, startLine => $self->{scratch}{$kboss}{startLine}, endLine => $self->{scratch}{$kboss}{endLine}, kill => 0 } if $self->{scratch}{$kboss}{end} && $self->{scratch}{$kboss}{start};
+                push @{$self->{splits}}, { short => $short, long => $splitname, start => $self->{scratch}{$kboss}{start}, end => $self->{scratch}{$kboss}{end}, startLine => $self->{scratch}{$kboss}{startLine}, endLine => $self->{scratch}{$kboss}{endLine}, kill => 0 } if $self->{scratch}{$kboss}{end} && $self->{scratch}{$kboss}{start};
+                
+                # Callback.
+                $self->{callback}->( $short, $splitname, 0, $self->{scratch}{$kboss}{start}, $self->{scratch}{$kboss}{end} ) if( $self->{callback} );
                 
                 # Reset the start/end times for this fingerprint.
                 $self->{scratch}{$kboss}{start} = 0;
@@ -528,7 +535,10 @@ sub process {
                     $short =~ s/\s+.*$//;
                     $short =~ s/[^\w]//g;
 
-                    $self->{splits}{$kboss} = { short => $short, long => $kboss, start => $self->{scratch}{$kboss}{start}, end => $self->{scratch}{$kboss}{end}, startLine => $self->{scratch}{$kboss}{startLine}, endLine => $self->{scratch}{$kboss}{endLine}, kill => 1 };
+                    push @{$self->{splits}}, { short => $short, long => $kboss, start => $self->{scratch}{$kboss}{start}, end => $self->{scratch}{$kboss}{end}, startLine => $self->{scratch}{$kboss}{startLine}, endLine => $self->{scratch}{$kboss}{endLine}, kill => 1 };
+                    
+                    # Callback.
+                    $self->{callback}->( $short, $kboss, 1, $self->{scratch}{$kboss}{start}, $self->{scratch}{$kboss}{end} ) if( $self->{callback} );
 
                     # Reset the start/end times for this fingerprint.
                     $self->{scratch}{$kboss}{start} = 0;
@@ -545,6 +555,12 @@ sub process {
         $self->{scratch}{$fstart{$actor_id}}{end} = $entry->{t};
         $self->{scratch}{$fstart{$actor_id}}{startLine} = $self->{nlog};
         $self->{scratch}{$fstart{$actor_id}}{endLine} = $self->{nlog};
+        
+        # Callback.
+        my $short = $fingerprints{$fstart{$actor_id}}{short} || lc $fstart{$actor_id};
+        $short =~ s/\s+.*$//;
+        $short =~ s/[^\w]//g;
+        $self->{callback}->( $short ) if( $self->{callback} );
     }
     
     if( $fstart{$target_id} && !$self->{scratch}{$fstart{$target_id}}{start} && (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) ) {
@@ -553,6 +569,12 @@ sub process {
         $self->{scratch}{$fstart{$target_id}}{end} = $entry->{t};
         $self->{scratch}{$fstart{$target_id}}{startLine} = $self->{nlog};
         $self->{scratch}{$fstart{$target_id}}{endLine} = $self->{nlog};
+        
+        # Callback.
+        my $short = $fingerprints{$fstart{$target_id}}{short} || lc $fstart{$target_id};
+        $short =~ s/\s+.*$//;
+        $short =~ s/[^\w]//g;
+        $self->{callback}->( $short ) if( $self->{callback} );
     }
 }
 
@@ -575,66 +597,16 @@ sub finish {
             $short =~ s/[^\w]//g;
             
             if( $self->{scratch}{$boss}{end} && $self->{scratch}{$boss}{start} ) {
-                $self->{splits}{$splitname} = { short => $short, long => $splitname, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 0 };
+                push @{$self->{splits}}, { short => $short, long => $splitname, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 0 };
+                
+                # Callback.
+                $self->{callback}->( $short, $splitname, 0, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end} ) if( $self->{callback} );
             }
         }
     }
     
-    # Remove splits that make no sense.
-    foreach my $split (values %{$self->{splits}}) {
-        # Check zero or negative line length.
-        if( $split->{endLine} - $split->{startLine} <= 0 ) {
-            $split->{delete} = 1;
-        }
-        
-        # Check zero or negative time.
-        if( $split->{end} - $split->{start} <= 0 ) {
-            $split->{delete} = 1;
-        }
-    }
-    
-    # Remove smaller splits that intersect with larger ones.
-    foreach my $split1 (values %{$self->{splits}}) {
-        foreach my $split2 (values %{$self->{splits}}) {
-            # Don't process identical splits
-            next if $split1->{long} eq $split2->{long};
-            
-            # Don't process splits already marked for deletion.
-            next if $split1->{delete} || $split2->{delete};
-            
-            # If split2 is smaller than split1 and intersects, remove it.
-            my $size1 = $split1->{endLine} - $split1->{startLine};
-            my $size2 = $split2->{endLine} - $split2->{startLine};
-            if( 
-                $size1 >= $size2 && 
-                (
-                    (
-                        $split2->{startLine} <= $split1->{endLine} && 
-                        $split2->{startLine} >= $split1->{startLine}
-                    ) ||
-                    (
-                        $split2->{endLine} <= $split1->{endLine} && 
-                        $split2->{endLine} >= $split1->{startLine}
-                    )
-                )
-            )
-            {
-                $split2->{delete} = 1;
-            }
-        }
-    }
-    
-    my @splitret;
-    foreach my $split (values %{$self->{splits}}) {
-        if( !$split->{delete} ) {
-            push @splitret, $split;
-        }
-    }
-    
-    # Sort the splits chronologically.
-    return sort {
-        $a->{startLine} <=> $b->{startLine}
-    } @splitret;
+    # Return.
+    return @{$self->{splits}};
 }
 
 1;
