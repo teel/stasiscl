@@ -37,6 +37,7 @@ use Stasis::SpellPage;
 use Stasis::ActorGroup;
 use Stasis::PageMaker;
 use Stasis::DB;
+use Data::Dumper;
 use File::Find qw();
 use File::Path qw();
 use File::Spec qw();
@@ -101,14 +102,8 @@ Options:
     -trash     Include a parse for trash mobs (all sections of the log that
                were not part of a boss encounter).
                
-    -overall   Include a separate parse that rolls up everything else that 
-               was parsed. For example, if this option is specified alone
-               (without -trash or -attempt) this will include a parse that
-               rolls up all boss kills. If you specify -attempt and -overall
-               but not -trash, this will include a parse that rolls up all
-               boss kills and attempts. If you specify -trash, -attempt, 
-               and -overall this will include a parse that rolls up every
-               action in the log file.
+    -overall   Include a separate parse that rolls up everything in the log
+               file.
                
     -collapse  For boss attempts and kills, collapse all mobs that have the
                same NPC ID and all pets with the same name and owner. This
@@ -151,6 +146,16 @@ sub status($) {
     } else {
         print STDERR $msg . "\n";
     }
+}
+
+sub makeext() {
+    my $ret = {};
+    foreach (qw(Activity Damage Death Healing Aura Cast ExtraAttack Interrupt Power Presence Index)) {
+        $ret->{$_} = Stasis::Extension->factory($_);
+        $ret->{$_}->start();
+    }
+    
+    return $ret;
 }
 
 sub writedir($$$$$$$) {
@@ -315,15 +320,88 @@ if( $action eq "print" ) {
     status "Using directory: $opt_dir";
     
     # Assign classes to %raid and splits to @splits
-    status "Assigning classes and splitting bosses .. ";
+    status "Reading log .. ";
     
+    my @boss;
+    my %trash_exts = %{makeext()};
+    my %overall_exts = %{makeext()};
     my $classer = Stasis::ClassGuess->new( version => $opt_version );
-    my $splitter = Stasis::LogSplit->new( version => $opt_version );
+    my $splitter = Stasis::LogSplit->new( version => $opt_version, callback =>
+        # LogSplit callback
+        sub {
+            my ($short, $long, $kill, $start, $end) = @_;
+            if( ! defined $kill ) {
+                # Starting a new split.
+                push @boss, {
+                    exts => makeext,
+                    short => $short,
+                };
+            } else {
+                # Closing or deleting a split.
+                foreach (@boss) {
+                    if( !$_->{long} && $_->{short} eq $short ) {
+                        $_->{long} = $long;
+                        $_->{kill} = $kill;
+                        $_->{start} = $start;
+                        $_->{end} = $end;
+                        
+                        foreach my $e (values %{$_->{exts}}) {
+                            $e->finish();
+                        }
+                    }
+                }
+            }
+        }
+    );
+    
+    # Keep track of when the log started.
+    my $first = 0;
     
     while( defined( $_ = $opt_file ? <$fh> : $db->line() ) ) {
+        # Get the line.
         my $pline = $opt_file ? $parser->parse($_) : $_;
         $classer->process($pline);
         $splitter->process($pline);
+
+        if( !$first ) {
+            $first = $pline->{t};
+        }
+        
+        my $bosses = 0;
+        foreach my $b (@boss) {
+            next if defined $b->{kill};
+            
+            $bosses ++;
+            foreach my $ext (values %{$b->{exts}}) {
+                $ext->process($pline);
+            }
+        }
+        
+        if( !$bosses && $opt_trash ) {
+            # Do the trash parse if it was requested.
+            foreach my $ext (values %trash_exts) {
+                $ext->process($pline);
+            }
+        }
+        
+        # Add to the overall parse.
+        if( $opt_overall ) {
+            foreach my $ext (values %overall_exts) {
+                $ext->process($pline);
+            }
+        }
+    }
+    
+    if( $opt_trash ) {
+        foreach my $ext (values %trash_exts) {
+            $ext->finish();
+        }
+    }
+    
+    if( $opt_overall ) {
+        foreach my $ext (values %overall_exts) {
+            $ext->finish();
+        }
     }
     
     my %raid = $classer->finish();
@@ -332,6 +410,13 @@ if( $action eq "print" ) {
     # Remove these tools.
     undef $classer;
     undef $splitter;
+    
+    # Close the file.
+    if( $opt_file ) {
+        close $fh;
+    } else {
+        $db->disconnect();
+    }
     
     # Count the results so the user can see what's up.
     my $n_players = 0;
@@ -349,137 +434,39 @@ if( $action eq "print" ) {
             ", $n_pets pet" . ($n_pets == 1 ? "" : "s") . 
             ", and " . scalar(@splits) . " boss encounter" . (scalar(@splits) == 1 ? "" : "s") . ".";
     
-    # Create extensions.
-    my @ext_names = qw(Activity Damage Death Healing Aura Cast ExtraAttack Interrupt Power Presence Index);
-    my %exts;
-    foreach (@ext_names) {
-        $exts{$_} = Stasis::Extension->factory($_);
-    }
-    
-    # We need separate extensions for the trash and overall parses.
-    my %trash_exts;
-    if( $opt_trash ) {
-        foreach (@ext_names) {
-            $trash_exts{$_} = Stasis::Extension->factory($_);
-            $trash_exts{$_}->start();
-        }
-    }
-    
-    my %overall_exts;
-    if( $opt_overall ) {
-        foreach (@ext_names) {
-            $overall_exts{$_} = Stasis::Extension->factory($_);
-            $overall_exts{$_}->start();
-        }
-    }
-    
-    # Rewind the file.
-    if( $opt_file ) {
-        seek $fh, 0, 0;
-    } else {
-        $db->line(1);
-    }
-    
-    # Keep track of when this log file started.
-    my $first = 0;
-    
-    # Keep track of what line we're on.
-    my $nlog = -1;
-    
-    # First split.
-    my $split = shift @splits;
-    
-    # Process the file.
-    my $pline;
-    while( defined( my $line = $opt_file ? <$fh> : $db->line() ) ) {
-        if( !$first ) {
-            $pline = $opt_file ? $parser->parse($line) : $line;
-            $first = $pline->{t};
-        }
+    # Write boss encounters
+    foreach my $b (@boss) {
+        warn "possible error in log splitter" if !defined $b->{kill};
         
-        # Log lines are indexed starting from zero.
-        $nlog ++;
-        
-        if( $split && $nlog >= $split->{startLine} ) {
-            # We're inside $split.
-            
-            if( $opt_minlength && $split->{end} - $split->{start} < $opt_minlength ) {
-                # Check minlength option.
-                status sprintf "Skipping: %s (too short).", $split->{long} if $nlog == $split->{startLine};
-            } elsif( !$opt_attempts && !$split->{kill} ) {
-                # Check attempts option.
-                status sprintf "Skipping: %s (not a kill).", $split->{long}, $split->{end} - $split->{start} if $nlog == $split->{startLine};
-            } else {
-                # If we got this far, we should parse this encounter.
-                $pline = $opt_file ? $parser->parse($line) : $line;
+        if( $opt_minlength && $b->{end} - $b->{start} < $opt_minlength ) {
+            # Check minlength option.
+            status sprintf "Skipping: %s (too short).", $b->{long};
+        } elsif( !$opt_attempts && !$b->{kill} ) {
+            # Check attempts option.
+            status sprintf "Skipping: %s (not a kill).", $b->{long}, $b->{end} - $b->{start};
+        } else {
+            # If we got this far, we should write this encounter.
+            status sprintf "Writing: %s (sws-%s-%d) .. ", $b->{long}, $b->{short}, floor($b->{start});
 
-                # If this is the first line, start all the extensions.
-                if( $nlog == $split->{startLine} ) {
-                    foreach my $ext (values %exts) {
-                        $ext->start();
-                    }
-                }
+            # Find the directory name.
+            my $dname = sprintf "%s/sws-%s-%d", $opt_dir, $b->{short}, floor($b->{start});
+            my $dname_old = sprintf "%s/sws-%d", $opt_dir, floor($b->{start});
 
-                # Run this line through the extensions.
-                foreach my $ext (values %exts) {
-                    $ext->process($pline);
-                }
-
-                foreach my $overall_ext (values %overall_exts) {
-                    $overall_ext->process($pline);
-                }
-
-                # When we reach the last line, write this split out.
-                if( $split && $nlog >= $split->{endLine} ) {
-                    # Find the directory name.
-                    my $dname = sprintf "%s/sws-%s-%d", $opt_dir, $split->{short}, floor($split->{start});
-                    my $dname_old = sprintf "%s/sws-%d", $opt_dir, floor($split->{start});
-
-                    # End all the extensions.
-                    foreach my $ext (values %exts) {
-                        $ext->finish();
-                    }
-
-                    # Write the files for this split.
-                    unless( $opt_nowrite ) {
-                        eval {
-                            writedir $dname, $dname_old, $split->{long}, $split->{short}, \%raid, \%exts, $opt_collapse;
-                        }; if( $@ ) {
-                            bomb $@;
-                        }
-                    }
-
-                    status sprintf "Wrote: %s (sws-%s-%d).", $split->{long}, $split->{short}, floor($split->{start});
+            # Write the files for this split.
+            unless( $opt_nowrite ) {
+                eval {
+                    writedir $dname, $dname_old, $b->{long}, $b->{short}, \%raid, $b->{exts}, $opt_collapse;
+                }; if( $@ ) {
+                    bomb $@;
                 }
             }
-        } elsif( $opt_trash ) {
-            # We haven't yet reached $split, or we're past the last one.
-            $pline = $opt_file ? $parser->parse($line) : $line;
             
-            foreach my $trash_ext (values %trash_exts) {
-                $trash_ext->process($pline);
-            }
-            
-            foreach my $overall_ext (values %overall_exts) {
-                $overall_ext->process($pline);
-            }
-        }
-        
-        # When we reach the last line, move to the next split.
-        if( $split && $nlog >= $split->{endLine} ) {
-            $split = shift @splits;
+            status "done.";
         }
     }
     
-    # Close the file.
-    if( $opt_file ) {
-        close $fh;
-    } else {
-        $db->disconnect();
-    }
-    
-    # Write the files for the trash extensions.
-    if( $opt_trash ) {
+    # Write trash
+    if( $opt_trash && !$opt_nowrite ) {
         my $dname = sprintf "%s/sws-trash-%d", $opt_dir, floor($first);
         my $dname_old = $dname;
         
@@ -498,8 +485,8 @@ if( $action eq "print" ) {
         status sprintf "Wrote: Trash Mobs (sws-trash-%d).", floor($first);
     }
     
-    # Write the files for the overall extensions.
-    if( $opt_overall ) {
+    # Write overall
+    if( $opt_overall && !$opt_nowrite ) {
         my $dname = sprintf "%s/sws-overall-%d", $opt_dir, floor($first);
         my $dname_old = $dname;
         
@@ -517,6 +504,7 @@ if( $action eq "print" ) {
         
         status sprintf "Wrote: Overall (sws-overall-%d).", floor($first);
     }
+    
 } elsif( $action eq "history" ) {
     # Going to output in $opt_dir
     bomb "not a directory: $opt_dir" unless $opt_dir && -d $opt_dir;

@@ -49,7 +49,7 @@ sub process {
         $self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{count} += 1;
     }
     
-    if( 
+    elsif( 
         $entry->{action} eq "SPELL_ENERGIZE" || 
         $entry->{action} eq "SPELL_PERIODIC_ENERGIZE"
       ) 

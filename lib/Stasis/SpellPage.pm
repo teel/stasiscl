@@ -665,14 +665,19 @@ sub _damageOrHealingRows {
     my @rows;
     
     while( my ($kactor, $vactor) = each(%{ $ext->{actors}}) ) {
+        my $gactor;
+        my $kactor_use;
+        
         while( my ($kspell, $vspell) = each(%$vactor) ) {
             # Focus on our spell.
             next unless $kspell eq $spell;
             
             while( my ($ktarget, $vtarget) = each(%$vspell) ) {
                 # Figure out the key for this actor.
-                my $gactor = $self->{grouper}->group($kactor);
-                my $kactor_use = $gactor ? $self->{grouper}->captain($gactor) : $kactor;
+                if( !$kactor_use ) {
+                    $gactor = $self->{grouper}->group($kactor);
+                    $kactor_use = $gactor ? $self->{grouper}->captain($gactor) : $kactor;
+                }
                 
                 # Figure out the key for this target.
                 my $gtarget = $self->{grouper}->group($ktarget);
@@ -744,14 +749,19 @@ sub _castOrGainRows {
     my @rows;
     
     while( my ($kactor, $vactor) = each(%{ $ext->{actors}}) ) {
-        while( my ($kspell, $vspell) = each(%{ $ext->{actors}{$kactor} } ) ) {
+        my $gactor;
+        my $kactor_use;
+        
+        while( my ($kspell, $vspell) = each(%$vactor) ) {
             # Focus on our spell.
             next unless $kspell eq $spell;
             
             while( my ($ktarget, $vtarget) = each(%$vspell) ) {
-                # Figure out what the key for this actor is.
-                my $gactor = $self->{grouper}->group($kactor);
-                my $kactor_use = $gactor ? $self->{grouper}->captain($gactor) : $kactor;
+                # Figure out the key for this actor.
+                if( !$kactor_use ) {
+                    $gactor = $self->{grouper}->group($kactor);
+                    $kactor_use = $gactor ? $self->{grouper}->captain($gactor) : $kactor;
+                }
                 
                 # Figure out what the key for this target is.
                 my $gtarget = $self->{grouper}->group($ktarget);

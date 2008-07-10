@@ -28,6 +28,16 @@ use warnings;
 
 our @ISA = "Stasis::Extension";
 
+my %damage_actions = (
+    ENVIRONMENTAL_DAMAGE => 1,
+    SWING_DAMAGE => 1,
+    RANGE_DAMAGE => 1,
+    SPELL_DAMAGE => 1,
+    DAMAGE_SPLIT => 1,
+    SPELL_PERIODIC_DAMAGE => 1,
+    DAMAGE_SHIELD => 1,
+);
+
 sub start {
     my $self = shift;
     my %params = @_;
@@ -153,7 +163,7 @@ sub process {
             # Reset HP to zero (meaning full).
             $self->{ohtrack}{ $entry->{target} } = 0;
         }
-    } elsif( grep $entry->{action} eq $_, qw(ENVIRONMENTAL_DAMAGE SWING_DAMAGE RANGE_DAMAGE SPELL_DAMAGE DAMAGE_SPLIT SPELL_PERIODIC_DAMAGE DAMAGE_SHIELD) ) {
+    } elsif( $damage_actions{ $entry->{action} } ) {
             # If someone is taking damage we need to debit it for overheal tracking.
             $self->{ohtrack}{ $entry->{target} } -= $entry->{extra}{amount};
     }
