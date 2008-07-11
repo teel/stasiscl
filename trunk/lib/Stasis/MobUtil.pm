@@ -29,11 +29,8 @@ use Carp;
 
 # returns (type, npc, spawncount)
 sub splitguid {
-    my $self = shift;
-    my $guid = lc shift;
-    
-    if( $guid =~ /^0x([0-9a-f]{4})([0-9a-f]{6})([0-9a-f]{6})/ ) {
-        return ( hex("0x$1"), hex("0x$2"), hex("0x$3") );
+    if( length $_[0] == 18 && $_[0] =~ /^0x/ ) {
+        return ( hex( substr $_[0], 2, 4 ), hex( substr $_[0], 6, 6 ), hex( substr $_[0], 12, 6 ) );
     } else {
         return ( 0, 0, 0 );
     }

@@ -1625,13 +1625,24 @@ sub _split {
 
 sub _pullStamp {
     my ($self, $line) = @_;
+
+    $line =~ s/\s*$//m;
+
+    my $slash = index $line, "/";
+    my $space = index $line, " ", $slash if $slash > 0;
     
-    if( $line =~ /^([0-9]+)\/([0-9]+) ([0-9]+)\:([0-9]+):([0-9]+)\.([0-9]+)  (.+?)\s*$/ ) {
-        my $t = mktime( $5, $4, $3, $2, $1-1, $self->{year} - 1900 ) + $6 / 1000;
-        $line = "$7";
+    if( $slash > 0 && $space > $slash + 1 ) {
+        my $t = mktime( 
+            substr($line, $space+7, 2), # sec
+            substr($line, $space+4, 2), # min
+            substr($line, $space+1, 2), # hour
+            substr($line, $slash+1, $space-$slash-1), # mday
+            substr($line, 0, $slash), # mon
+            $self->{year} - 1900 # year
+        );
         
-        return ($t, $line);
-    } else { 
+        return ( $t + substr($line, $space+10, 3)/1000, substr($line, $space+15) );
+    } else {
         return (0, $line);
     }
 }
