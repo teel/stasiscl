@@ -1637,7 +1637,7 @@ sub _pullStamp {
             substr($line, $space+4, 2), # min
             substr($line, $space+1, 2), # hour
             substr($line, $slash+1, $space-$slash-1), # mday
-            substr($line, 0, $slash), # mon
+            substr($line, 0, $slash) - 1, # mon
             $self->{year} - 1900 # year
         );
         
