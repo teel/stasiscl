@@ -460,88 +460,100 @@ sub process1 {
 sub process2 {
     my ( $self, $entry ) = @_;
     
-    # Skip if actor is not set.
-    return unless $entry->{actor};
+    # Skip if actor and target are not set.
+    return unless $entry->{actor} && $entry->{target};
     
-    # Look closely at the actor and target.
-    my ($atype, $anpc, $aspawn ) = Stasis::MobUtil->splitguid( $entry->{actor} );
-    
-    # Check things that a player can do, if:
-    # 1) the actor looks like a player based on type
-    # 2) we haven't already classified the actor
-    if( $entry->{actor} && ($atype & 0x00F0) == 0 && !$self->{scratch2}{class}{ $entry->{actor} } && ($entry->{action} eq "SPELL_MISS" || $entry->{action} eq "SPELL_DAMAGE" || $entry->{action} eq "SPELL_PERIODIC_MISS" || $entry->{action} eq "SPELL_PERIODIC_DAMAGE" || $entry->{action} eq "SPELL_HEAL" || $entry->{action} eq "SPELL_PERIODIC_HEAL" || $entry->{action} eq "SPELL_CAST_SUCCESS") )
-    {
-        my $spell = Stasis::SpellUtil->spell( $entry->{extra}{spellid} );
-        if( $spell && $spell->{class} ) {
-            $self->{scratch2}{class}{ $entry->{actor} } = $spell->{class};
-        }
-    }
-    
-    # Check things that signify pet <=> owner relationships.
-    # Skip unless target is set, and different from actor.
-    return unless $entry->{target} && $entry->{target} ne $entry->{actor};
-    
-    # Summons
-    if( $entry->{action} eq "SPELL_SUMMON" ) {
-        $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+    # Think about classifying the actor.
+    if( !$self->{scratch2}{class}{ $entry->{actor} } ) {
+        # Get the type.
+        my ($atype, $anpc, $aspawn ) = Stasis::MobUtil::splitguid( $entry->{actor} );
         
-        # Shaman elemental totems (Fire and Earth respectively)
-        if( $entry->{extra}{spellid} == 2894 || $entry->{extra}{spellid} == 2062 ) {
-            # Associate totem with shaman by SPELL_SUMMON event.
-            $self->{scratch2}{totems}{ $entry->{target} } = $entry->{actor};
-        }
-    }
-    
-    # Mend Pet
-    elsif( $entry->{action} eq "SPELL_PERIODIC_HEAL" ) {
-        if( $entry->{extra}{spellid} == 27046 ) {
-            # Mend Pet
-            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
-        } elsif( $entry->{extra}{spellid} == 24529 ) {
-            # Spirit Bond
-            $self->{scratch2}{pets}{ $entry->{target} }{ $entry->{actor} } ++;
-        }
-    }
-    
-    # Feed Pet Effect
-    elsif( $entry->{action} eq "SPELL_PERIODIC_ENERGIZE" && $entry->{extra}{spellid} == 1539 ) {
-        $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
-    }
-    
-    # Go for the Throat
-    elsif( $entry->{action} eq "SPELL_ENERGIZE" && $entry->{extra}{spellid} == 34953 ) {
-        $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
-    }
-    
-    # Dark Pact
-    elsif( $entry->{action} eq "SPELL_LEECH" && $entry->{extra}{spellid} == 27265 ) {
-        $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
-    }
-    
-    # Demonic Sacrifice
-    elsif( $entry->{action} eq "SPELL_INSTAKILL" && $entry->{extra}{spellid} == 18788 ) {
-        $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
-    }
-    
-    # Soul Link
-    elsif( $entry->{action} eq "DAMAGE_SPLIT" && $entry->{extra}{spellid} == 25228 ) {
-        $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
-    }
-    
-    # Mana Feed
-    elsif( $entry->{action} eq "SPELL_ENERGIZE" && $entry->{extra}{spellid} == 32553 ) {
-        $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
-    }
-    
-    if( $anpc == 15438 || $anpc == 15352 ) {
-        while( my ($totemid, $shamanid) = each(%{$self->{scratch2}{totems}}) ) {
-            # Associate totem with this elemental by consecutive spawncount.
-            my @totem = Stasis::MobUtil->splitguid( $totemid );
-            my @elemental = Stasis::MobUtil->splitguid( $entry->{actor} );
-            if( $totem[2] + 1 == $elemental[2] ) {
-                $self->{scratch2}{pets}{ $shamanid }{ $entry->{actor} } ++;
-                $self->{scratch2}{class}{ $entry->{actor} } = "Pet";
+        # See if this actor is a player.
+        if( ($atype & 0x00F0) == 0 && ($entry->{action} eq "SPELL_MISS" || $entry->{action} eq "SPELL_DAMAGE" || $entry->{action} eq "SPELL_PERIODIC_MISS" || $entry->{action} eq "SPELL_PERIODIC_DAMAGE" || $entry->{action} eq "SPELL_HEAL" || $entry->{action} eq "SPELL_PERIODIC_HEAL" || $entry->{action} eq "SPELL_CAST_SUCCESS") )
+        {
+            my $spell = Stasis::SpellUtil->spell( $entry->{extra}{spellid} );
+            if( $spell && $spell->{class} ) {
+                $self->{scratch2}{class}{ $entry->{actor} } = $spell->{class};
             }
+        }
+        
+        # See if this actor is a pet. Make sure it wasn't identified in the previous block, though.
+        if( !$self->{scratch2}{class}{ $entry->{actor} } && $entry->{target} ne $entry->{actor} ) {
+            if( $entry->{action} eq "SPELL_PERIODIC_HEAL" && $entry->{extra}{spellid} == 24529 ) {
+                # Spirit Bond
+                $self->{scratch2}{class}{ $entry->{actor} } = "Pet";
+                $self->{scratch2}{pets}{ $entry->{target} }{ $entry->{actor} } ++;
+            }
+            
+            # Greater Fire and Earth elementals
+            if( $anpc == 15438 || $anpc == 15352 ) {
+                while( my ($totemid, $shamanid) = each(%{$self->{scratch2}{totems}}) ) {
+                    # Associate totem with this elemental by consecutive spawncount.
+                    my @totem = Stasis::MobUtil::splitguid( $totemid );
+                    my @elemental = Stasis::MobUtil::splitguid( $entry->{actor} );
+                    if( $totem[2] + 1 == $elemental[2] ) {
+                        $self->{scratch2}{class}{ $entry->{actor} } = "Pet";
+                        $self->{scratch2}{pets}{ $shamanid }{ $entry->{actor} } ++;
+                    }
+                }
+            }
+        }
+    }
+    
+    # Think about classifying the target as a pet.
+    if( !$self->{scratch2}{class}{ $entry->{target} } && $entry->{target} ne $entry->{actor} ) {
+        # Summons
+        if( $entry->{action} eq "SPELL_SUMMON" ) {
+            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
+            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+
+            # Shaman elemental totems (Fire and Earth respectively)
+            if( $entry->{extra}{spellid} == 2894 || $entry->{extra}{spellid} == 2062 ) {
+                # Associate totem with shaman by SPELL_SUMMON event.
+                $self->{scratch2}{totems}{ $entry->{target} } = $entry->{actor};
+            }
+        }
+        
+        # Mend Pet
+        elsif( $entry->{action} eq "SPELL_PERIODIC_HEAL" && $entry->{extra}{spellid} == 27046 ) {
+            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
+            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+        }
+
+        # Feed Pet Effect
+        elsif( $entry->{action} eq "SPELL_PERIODIC_ENERGIZE" && $entry->{extra}{spellid} == 1539 ) {
+            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
+            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+        }
+
+        # Go for the Throat
+        elsif( $entry->{action} eq "SPELL_ENERGIZE" && $entry->{extra}{spellid} == 34953 ) {
+            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
+            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+        }
+
+        # Dark Pact
+        elsif( $entry->{action} eq "SPELL_LEECH" && $entry->{extra}{spellid} == 27265 ) {
+            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
+            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+        }
+
+        # Demonic Sacrifice
+        elsif( $entry->{action} eq "SPELL_INSTAKILL" && $entry->{extra}{spellid} == 18788 ) {
+            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
+            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+        }
+
+        # Soul Link
+        elsif( $entry->{action} eq "DAMAGE_SPLIT" && $entry->{extra}{spellid} == 25228 ) {
+            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
+            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+        }
+
+        # Mana Feed
+        elsif( $entry->{action} eq "SPELL_ENERGIZE" && $entry->{extra}{spellid} == 32553 ) {
+            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
+            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
         }
     }
 }

@@ -476,7 +476,7 @@ sub new {
     
     # Callback args:
     # at split start:   ( $short )
-    # at split end:     ( $short, $long, $kill, $start, $end )
+    # at split end:     ( $short, $long, $kill, $start, $end, $startLine, $endLine )
     $params{callback} ||= undef;
     
     bless \%params, $class;
@@ -491,8 +491,8 @@ sub process {
     # Figure out what to use for the actor and target identifiers.
     # This will be either the name (version 1) or the NPC part of the ID (version 2)
     
-    my ($atype, $anpc, $aspawn ) = Stasis::MobUtil->splitguid( $entry->{actor} );
-    my ($ttype, $tnpc, $tspawn ) = Stasis::MobUtil->splitguid( $entry->{target} );
+    my ($atype, $anpc, $aspawn ) = Stasis::MobUtil::splitguid( $entry->{actor} );
+    my ($ttype, $tnpc, $tspawn ) = Stasis::MobUtil::splitguid( $entry->{target} );
     
     my $actor_id = $anpc || $entry->{actor};
     my $target_id = $tnpc || $entry->{target};
@@ -515,10 +515,10 @@ sub process {
                 $short =~ s/\s+.*$//;
                 $short =~ s/[^\w]//g;
                 
-                push @{$self->{splits}}, { short => $short, long => $splitname, start => $self->{scratch}{$kboss}{start}, end => $self->{scratch}{$kboss}{end}, startLine => $self->{scratch}{$kboss}{startLine}, endLine => $self->{scratch}{$kboss}{endLine}, kill => 0 } if $self->{scratch}{$kboss}{end} && $self->{scratch}{$kboss}{start};
+                push @{$self->{splits}}, { short => $short, long => $splitname, start => $self->{scratch}{$kboss}{start}, end => $self->{scratch}{$kboss}{end}, startLine => $self->{scratch}{$kboss}{startLine}, endLine => $self->{scratch}{$kboss}{endLine}, kill => 0 };
                 
                 # Callback.
-                $self->{callback}->( $short, $splitname, 0, $self->{scratch}{$kboss}{start}, $self->{scratch}{$kboss}{end} ) if( $self->{callback} );
+                $self->{callback}->( $short, $splitname, 0, $self->{scratch}{$kboss}{start}, $self->{scratch}{$kboss}{end}, $self->{scratch}{$kboss}{startLine}, $self->{scratch}{$kboss}{endLine} ) if( $self->{callback} );
                 
                 # Reset the start/end times for this fingerprint.
                 $self->{scratch}{$kboss}{start} = 0;
@@ -538,7 +538,7 @@ sub process {
                     push @{$self->{splits}}, { short => $short, long => $kboss, start => $self->{scratch}{$kboss}{start}, end => $self->{scratch}{$kboss}{end}, startLine => $self->{scratch}{$kboss}{startLine}, endLine => $self->{scratch}{$kboss}{endLine}, kill => 1 };
                     
                     # Callback.
-                    $self->{callback}->( $short, $kboss, 1, $self->{scratch}{$kboss}{start}, $self->{scratch}{$kboss}{end} ) if( $self->{callback} );
+                    $self->{callback}->( $short, $kboss, 1, $self->{scratch}{$kboss}{start}, $self->{scratch}{$kboss}{end}, $self->{scratch}{$kboss}{startLine}, $self->{scratch}{$kboss}{endLine} ) if( $self->{callback} );
 
                     # Reset the start/end times for this fingerprint.
                     $self->{scratch}{$kboss}{start} = 0;
@@ -600,7 +600,7 @@ sub finish {
                 push @{$self->{splits}}, { short => $short, long => $splitname, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 0 };
                 
                 # Callback.
-                $self->{callback}->( $short, $splitname, 0, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end} ) if( $self->{callback} );
+                $self->{callback}->( $short, $splitname, 0, $self->{scratch}{$boss}{start}, $self->{scratch}{$boss}{end}, $self->{scratch}{$boss}{startLine}, $self->{scratch}{$boss}{endLine} ) if( $self->{callback} );
             }
         }
     }

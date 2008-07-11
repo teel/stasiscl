@@ -84,6 +84,10 @@ sub page {
     $PAGE .= $pm->tabStart("Damage");
     $PAGE .= $pm->tableStart;
     
+    # Get the in/out rows.
+    my ($rows_dmgin, $rows_dmgout) = $self->_damageOrHealingRows( $self->{ext}{Damage}, $SPELL );
+    my ($rows_healin, $rows_healout) = $self->_damageOrHealingRows( $self->{ext}{Healing}, $SPELL );
+    
     {
         my @header = (
             "Source",
@@ -98,10 +102,9 @@ sub page {
             "MDPBARI %",
         );
         
-        # Group by ability.
-        my @rows = $self->_damageOrHealingRows( $self->{ext}{Damage}, $SPELL );
         
         # Sort @rows.
+        my @rows = @$rows_dmgout;
         @rows = sort { $b->{row}{total} <=> $a->{row}{total} } @rows;
         
         # Sort slaves.
@@ -160,10 +163,8 @@ sub page {
             "MDPBARI %",
         );
         
-        # Group by ability.
-        my @rows = $self->_damageOrHealingRows( $self->{ext}{Damage}, $SPELL, 1 );
-        
         # Sort @rows.
+        my @rows = @$rows_dmgin;
         @rows = sort { $b->{row}{total} <=> $a->{row}{total} } @rows;
         
         # Sort slaves.
@@ -228,10 +229,8 @@ sub page {
             "R-Overheal %",
         );
         
-        # Group by ability.
-        my @rows = $self->_damageOrHealingRows( $self->{ext}{Healing}, $SPELL );
-        
         # Sort @rows.
+        my @rows = @$rows_healout;
         @rows = sort { $b->{row}{effective} <=> $a->{row}{effective} } @rows;
         
         # Sort slaves.
@@ -290,10 +289,8 @@ sub page {
             "R-Overheal %",
         );
         
-        # Group by ability.
-        my @rows = $self->_damageOrHealingRows( $self->{ext}{Healing}, $SPELL, 1 );
-        
         # Sort @rows.
+        my @rows = @$rows_healin;
         @rows = sort { $b->{row}{effective} <=> $a->{row}{effective} } @rows;
         
         # Sort slaves.
@@ -655,14 +652,66 @@ sub page {
     return $PAGE;
 }
 
+sub _addDamageOrHealingRow {
+    my ($self, $rows, $mkey, $skey, $vtarget) = @_;
+    
+    # Figure out which row to add this to, or create a new one if appropriate.
+    my $row;
+    
+    foreach (@$rows) {
+        if( $_->{key} eq $mkey ) {
+            $row = $_;
+            last;
+        }
+    }
+    
+    if( $row ) {
+        # Add to an existing row.
+        Stasis::ActorPage->_sum( $row->{row}, $vtarget );
+        
+        # Either add to an existing slave, or create a new one.
+        my $slave;
+        foreach (@{$row->{slaves}}) {
+            if( $_->{key} eq $skey ) {
+                $slave = $_;
+                last;
+            }
+        }
+        
+        if( $slave ) {
+            # Add to an existing slave.
+            Stasis::ActorPage->_sum( $slave->{row}, $vtarget );
+        } else {
+            # Create a new slave.
+            push @{$row->{slaves}}, {
+                key => $skey,
+                row => Stasis::ActorPage->_copy( $vtarget ),
+            }
+        }
+    } else {
+        # Create a new row.
+        push @$rows, {
+            key => $mkey,
+            row => Stasis::ActorPage->_copy( $vtarget ),
+            slaves => [
+                {
+                    key => $skey,
+                    row => Stasis::ActorPage->_copy( $vtarget ),
+                }
+            ]
+        }
+    }
+}
+
 sub _damageOrHealingRows {
     my $self = shift;
     my $ext = shift;
     my $spell = shift;
     my $in = shift;
     
-    # Group by source.
-    my @rows;
+    # Groups of rows.
+    my @rows_in;
+    my @rows_out;
     
     while( my ($kactor, $vactor) = each(%{ $ext->{actors}}) ) {
         my $gactor;
@@ -673,7 +722,6 @@ sub _damageOrHealingRows {
             next unless $kspell eq $spell;
             
             while( my ($ktarget, $vtarget) = each(%$vspell) ) {
-                # Figure out the key for this actor.
                 if( !$kactor_use ) {
                     $gactor = $self->{grouper}->group($kactor);
                     $kactor_use = $gactor ? $self->{grouper}->captain($gactor) : $kactor;
@@ -683,61 +731,13 @@ sub _damageOrHealingRows {
                 my $gtarget = $self->{grouper}->group($ktarget);
                 my $ktarget_use = $gtarget ? $self->{grouper}->captain($gtarget) : $ktarget;
                 
-                # Figure out which key to use for the master row and the slave row.
-                my $mkey = $in ? $ktarget_use : $kactor_use;
-                my $skey = $in ? $kactor_use : $ktarget_use;
-                
-                # Figure out which row to add this to, or create a new one if appropriate.
-                my $row;
-                
-                foreach (@rows) {
-                    if( $_->{key} eq $mkey ) {
-                        $row = $_;
-                        last;
-                    }
-                }
-                
-                if( $row ) {
-                    # Add to an existing row.
-                    Stasis::ActorPage->_sum( $row->{row}, $vtarget );
-                    
-                    # Either add to an existing slave, or create a new one.
-                    my $slave;
-                    foreach (@{$row->{slaves}}) {
-                        if( $_->{key} eq $skey ) {
-                            $slave = $_;
-                            last;
-                        }
-                    }
-                    
-                    if( $slave ) {
-                        # Add to an existing slave.
-                        Stasis::ActorPage->_sum( $slave->{row}, $vtarget );
-                    } else {
-                        # Create a new slave.
-                        push @{$row->{slaves}}, {
-                            key => $skey,
-                            row => Stasis::ActorPage->_copy( $vtarget ),
-                        }
-                    }
-                } else {
-                    # Create a new row.
-                    push @rows, {
-                        key => $mkey,
-                        row => Stasis::ActorPage->_copy( $vtarget ),
-                        slaves => [
-                            {
-                                key => $skey,
-                                row => Stasis::ActorPage->_copy( $vtarget ),
-                            }
-                        ]
-                    }
-                }
+                $self->_addDamageOrHealingRow( \@rows_in, $ktarget_use, $kactor_use, $vtarget );
+                $self->_addDamageOrHealingRow( \@rows_out, $kactor_use, $ktarget_use, $vtarget );
             }
         }
     }
     
-    return @rows;
+    return (\@rows_in, \@rows_out);
 }
 
 sub _castOrGainRows {
