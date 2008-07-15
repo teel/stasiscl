@@ -33,6 +33,10 @@ sub start {
     $self->{actors} = {};
 }
 
+sub actions {
+    return qw(SPELL_CAST_SUCCESS);
+}
+
 sub process {
     my ($self, $entry) = @_;
     

@@ -31,6 +31,7 @@ use Stasis::Parser;
 use Stasis::LogSplit;
 use Stasis::ClassGuess;
 use Stasis::Extension;
+use Stasis::ExtensionRunner;
 use Stasis::ChartPage;
 use Stasis::ActorPage;
 use Stasis::SpellPage;
@@ -149,13 +150,10 @@ sub status($) {
 }
 
 sub makeext() {
-    my $ret = {};
-    foreach (qw(Activity Damage Death Healing Aura Cast ExtraAttack Interrupt Power Presence Index)) {
-        $ret->{$_} = Stasis::Extension->factory($_);
-        $ret->{$_}->start();
-    }
+    my $runner = Stasis::ExtensionRunner->new(qw(Activity Aura Cast Damage Death Dispel ExtraAttack Healing Index Interrupt Power Presence));
+    $runner->start();
     
-    return $ret;
+    return $runner;
 }
 
 sub writedir($$$$$$$) {
@@ -323,8 +321,8 @@ if( $action eq "print" ) {
     status "Reading log .. ";
     
     my @boss;
-    my %trash_exts = %{makeext()};
-    my %overall_exts = %{makeext()};
+    my $trash_exts = makeext;
+    my $overall_exts = makeext;
     my $classer = Stasis::ClassGuess->new( version => $opt_version );
     my $splitter = Stasis::LogSplit->new( version => $opt_version, callback =>
         # LogSplit callback
@@ -344,10 +342,7 @@ if( $action eq "print" ) {
                         $_->{kill} = $kill;
                         $_->{start} = $start;
                         $_->{end} = $end;
-                        
-                        foreach my $e (values %{$_->{exts}}) {
-                            $e->finish();
-                        }
+                        $_->{exts}->finish();
                     }
                 }
             }
@@ -372,36 +367,26 @@ if( $action eq "print" ) {
             next if defined $b->{kill};
             
             $bosses ++;
-            foreach my $ext (values %{$b->{exts}}) {
-                $ext->process($pline);
-            }
+            $b->{exts}->process($pline);
         }
         
         if( !$bosses && $opt_trash ) {
             # Do the trash parse if it was requested.
-            foreach my $ext (values %trash_exts) {
-                $ext->process($pline);
-            }
+            $trash_exts->process($pline);
         }
         
-        # Add to the overall parse.
         if( $opt_overall ) {
-            foreach my $ext (values %overall_exts) {
-                $ext->process($pline);
-            }
+            # Add to the overall parse.
+            $overall_exts->process($pline);
         }
     }
     
     if( $opt_trash ) {
-        foreach my $ext (values %trash_exts) {
-            $ext->finish();
-        }
+        $trash_exts->finish();
     }
     
     if( $opt_overall ) {
-        foreach my $ext (values %overall_exts) {
-            $ext->finish();
-        }
+        $overall_exts->finish();
     }
     
     my %raid = $classer->finish();
@@ -455,7 +440,7 @@ if( $action eq "print" ) {
             # Write the files for this split.
             unless( $opt_nowrite ) {
                 eval {
-                    writedir $dname, $dname_old, $b->{long}, $b->{short}, \%raid, $b->{exts}, $opt_collapse;
+                    writedir $dname, $dname_old, $b->{long}, $b->{short}, \%raid, $b->{exts}{exts}, $opt_collapse;
                 }; if( $@ ) {
                     bomb $@;
                 }
@@ -470,13 +455,9 @@ if( $action eq "print" ) {
         my $dname = sprintf "%s/sws-trash-%d", $opt_dir, floor($first);
         my $dname_old = $dname;
         
-        foreach my $ext (values %trash_exts) {
-            $ext->finish();
-        }
-        
         unless( $opt_nowrite ) {
             eval {
-                writedir $dname, $dname_old, "Trash Mobs", "trash", \%raid, \%trash_exts, 1;
+                writedir $dname, $dname_old, "Trash Mobs", "trash", \%raid, $trash_exts->{exts}, 1;
             }; if( $@ ) {
                 bomb $@;
             }
@@ -490,13 +471,9 @@ if( $action eq "print" ) {
         my $dname = sprintf "%s/sws-overall-%d", $opt_dir, floor($first);
         my $dname_old = $dname;
         
-        foreach my $ext (values %overall_exts) {
-            $ext->finish();
-        }
-        
         unless( $opt_nowrite ) {
             eval {
-                writedir $dname, $dname_old, "Overall", "overall", \%raid, \%overall_exts, 1;
+                writedir $dname, $dname_old, "Overall", "overall", \%raid, $overall_exts->{exts}, 1;
             }; if( $@ ) {
                 bomb $@;
             }

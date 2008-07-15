@@ -21,60 +21,66 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package Stasis::Extension;
+package Stasis::ExtensionRunner;
 
 use strict;
 use warnings;
-use Carp;
 
-# Meant to be called statically like:
-# Stasis::Extension->factory "Aura" 
-sub factory {
-    my ($self, $ext) = @_;
-    my $class = "Stasis::Extension::$ext";
-    
-    # Grab the file.
-    require "Stasis/Extension/$ext.pm" or return undef;
-    
-    # Create the object.
-    my $obj = $class->new();
-    
-    # Return it.
-    return $obj ? $obj : undef;
-}
-
-# Standard constructor.
 sub new {
     my $class = shift;
-    my %params = @_;
+    my %exts;
+    my %handlers;
+    
+    $handlers{ALL} ||= [];
+
+    foreach (@_) {
+        my $ext = Stasis::Extension->factory($_);
+        my @actions = $ext->actions();
+        
+        # Assign this to %exts
+        $exts{$_} = $ext;
+        
+        if( @actions ) {
+            # Only listening for certain actions.
+            foreach my $action (@actions) {
+                $handlers{$action} ||= [];
+                push @{$handlers{$action}}, $ext;
+            }
+        } else {
+            push @{$handlers{ALL}}, $ext;
+        }
+    }
     
     bless {
-        params => \%params
+        exts => \%exts,
+        handlers => \%handlers,
     }, $class;
 }
 
-# Subclasses may implement this function, which should return a list of
-# actions that they are interested in. Empty list means all actions.
-sub actions {
-    return ();
-}
-
-# Subclasses may implement this function, which will be called once at
-# the start of processing.
 sub start {
-    return 1;
+    foreach (values %{$_[0]->{exts}}) {
+        $_->start();
+    }
 }
 
-# Subclasses must implement this function, which will be called repeatedly
-# Each call will be a log entry from Stasis::Parser
 sub process {
-    croak "Not implemented.";
+    my ($self, $line) = @_;
+    
+    if( my $handlers = $self->{handlers}{ $line->{action} } ) {
+        foreach (@$handlers) {
+            $_->process($line);
+        } 
+    }
+    
+    foreach (@{$self->{handlers}{ALL}}) {
+        $_->process($line);
+    }
 }
 
-# Subclasses may implement this function, which will be called once at
-# the end of processing.
 sub finish {
-    return 1;
+    foreach (values %{$_[0]->{exts}}) {
+        $_->finish();
+    }
 }
 
 1;
