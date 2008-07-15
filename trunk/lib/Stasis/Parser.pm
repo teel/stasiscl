@@ -1331,23 +1331,6 @@ sub _parseMods {
     return \%result;
 }
 
-=head3 _stampTime
-
-This function returns a complete timestamp instead of the shortened Blizzard
-version.
-
-=cut
-
-sub _stampTime {
-    my ($self, $stamp) = @_;
-    
-    if( $stamp =~ /^([0-9]+)\/([0-9]+) ([0-9]+)\:([0-9]+):([0-9]+)\.([0-9]+)$/ ) {
-        return mktime( $5, $4, $3, $2, $1-1, $self->{year} - 1900 ) + $6 / 1000;
-    }
-    
-    return 0;
-}
-
 sub _powerName {
     my ($self, $code) = @_;
     
@@ -1616,34 +1599,28 @@ sub toString {
     return $text;
 }
 
+my $csv_regex = qr/"?,(?=".*?"(?:,|$)|[^",]+(?:,|$))"?/;
+my $stamp_regex = qr/^(\d+)\/(\d+) (\d+):(\d+):(\d+)\.(\d+)  (.*?)[\r\n]*$/s;
 sub _split {
     my ($self, $line) = @_;
-    my ($t, $rest) = $self->_pullStamp($line);
-    
-    return $t, map { $_ eq "nil" ? 0 : $_ } split /"?,(?=".*?"(?:,|$)|[^",]+(?:,|$))"?/, $rest;
-}
 
-sub _pullStamp {
-    my ($self, $line) = @_;
-
-    $line =~ s/\s*$//m;
-
-    my $slash = index $line, "/";
-    my $space = index $line, " ", $slash if $slash > 0;
-    
-    if( $slash > 0 && $space > $slash + 1 ) {
-        my $t = mktime( 
-            substr($line, $space+7, 2), # sec
-            substr($line, $space+4, 2), # min
-            substr($line, $space+1, 2), # hour
-            substr($line, $slash+1, $space-$slash-1), # mday
-            substr($line, 0, $slash) - 1, # mon
-            $self->{year} - 1900 # year
-        );
-        
-        return ( $t + substr($line, $space+10, 3)/1000, substr($line, $space+15) );
+    if( $line =~ $stamp_regex ) {
+        return 
+            POSIX::mktime( 
+                $5, # sec
+                $4, # min
+                $3, # hour
+                $2, # mday
+                $1 - 1, # mon
+                $self->{year} - 1900, # year
+                0, # wday
+                0, # yday
+                -1 # is_dst
+            ) + $6/1000,
+            map { $_ eq "nil" ? 0 : $_ } split $csv_regex, $7;
     } else {
-        return (0, $line);
+        # Couldn't recognize time
+        return 0, map { $_ eq "nil" ? 0 : $_ } split $csv_regex, $line;
     }
 }
 
