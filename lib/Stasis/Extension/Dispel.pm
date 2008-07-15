@@ -21,60 +21,31 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package Stasis::Extension;
+package Stasis::Extension::Dispel;
 
 use strict;
 use warnings;
-use Carp;
 
-# Meant to be called statically like:
-# Stasis::Extension->factory "Aura" 
-sub factory {
-    my ($self, $ext) = @_;
-    my $class = "Stasis::Extension::$ext";
-    
-    # Grab the file.
-    require "Stasis/Extension/$ext.pm" or return undef;
-    
-    # Create the object.
-    my $obj = $class->new();
-    
-    # Return it.
-    return $obj ? $obj : undef;
-}
+our @ISA = "Stasis::Extension";
 
-# Standard constructor.
-sub new {
-    my $class = shift;
-    my %params = @_;
-    
-    bless {
-        params => \%params
-    }, $class;
-}
-
-# Subclasses may implement this function, which should return a list of
-# actions that they are interested in. Empty list means all actions.
-sub actions {
-    return ();
-}
-
-# Subclasses may implement this function, which will be called once at
-# the start of processing.
 sub start {
-    return 1;
+    my $self = shift;
+    $self->{actors} = {};
 }
 
-# Subclasses must implement this function, which will be called repeatedly
-# Each call will be a log entry from Stasis::Parser
+sub actions {
+    return qw(SPELL_AURA_DISPELLED SPELL_AURA_STOLEN SPELL_DISPEL_FAILED);
+}
+
 sub process {
-    croak "Not implemented.";
-}
-
-# Subclasses may implement this function, which will be called once at
-# the end of processing.
-sub finish {
-    return 1;
+    my ($self, $entry) = @_;
+    
+    if( $entry->{action} eq "SPELL_AURA_DISPELLED" || $entry->{action} eq "SPELL_AURA_STOLEN" ) {
+        $self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{ $entry->{extra}{extraspellid} }{count} += 1;
+    } elsif( $entry->{action} eq "SPELL_DISPEL_FAILED" ) {
+        $self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{ $entry->{extra}{extraspellid} }{count} += 1;
+        $self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{ $entry->{extra}{extraspellid} }{resist} += 1;
+    }
 }
 
 1;

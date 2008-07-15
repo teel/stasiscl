@@ -33,11 +33,15 @@ sub start {
     $self->{actors} = {};
 }
 
+sub actions {
+    return qw(SPELL_INTERRUPT);
+}
+
 sub process {
     my ($self, $entry) = @_;
     
     if( $entry->{action} eq "SPELL_INTERRUPT" ) {
-        $self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{ $entry->{extra}{extraspellid} } += 1;
+        $self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{ $entry->{extra}{extraspellid} }{count} += 1;
     }
 }
 

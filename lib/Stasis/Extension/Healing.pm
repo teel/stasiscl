@@ -48,6 +48,10 @@ sub start {
     $self->{__eshield} = $params{eshield} || 0;
 }
 
+sub actions {
+    return qw(ENVIRONMENTAL_DAMAGE SWING_DAMAGE RANGE_DAMAGE SPELL_DAMAGE DAMAGE_SPLIT SPELL_PERIODIC_DAMAGE DAMAGE_SHIELD SPELL_HEAL SPELL_PERIODIC_HEAL);
+}
+
 sub process {
     my ($self, $entry) = @_;
     
@@ -164,8 +168,8 @@ sub process {
             $self->{ohtrack}{ $entry->{target} } = 0;
         }
     } elsif( $damage_actions{ $entry->{action} } ) {
-            # If someone is taking damage we need to debit it for overheal tracking.
-            $self->{ohtrack}{ $entry->{target} } -= $entry->{extra}{amount};
+        # If someone is taking damage we need to debit it for overheal tracking.
+        $self->{ohtrack}{ $entry->{target} } -= $entry->{extra}{amount};
     }
 }
 

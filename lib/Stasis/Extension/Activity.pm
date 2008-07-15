@@ -38,66 +38,68 @@ sub start {
     $self->{_dpstimeout} = 5;
 }
 
+sub actions {
+    return qw(ENVIRONMENTAL_DAMAGE SWING_DAMAGE SWING_MISSED RANGE_DAMAGE RANGE_MISSED SPELL_DAMAGE DAMAGE_SPLIT SPELL_MISSED SPELL_PERIODIC_DAMAGE SPELL_PERIODIC_MISSED DAMAGE_SHIELD DAMAGE_SHIELD_MISSED);
+}
+
 sub process {
     my ($self, $entry) = @_;
     
-    if( grep $entry->{action} eq $_, qw(ENVIRONMENTAL_DAMAGE SWING_DAMAGE SWING_MISSED RANGE_DAMAGE RANGE_MISSED SPELL_DAMAGE DAMAGE_SPLIT SPELL_MISSED SPELL_PERIODIC_DAMAGE SPELL_PERIODIC_MISSED DAMAGE_SHIELD DAMAGE_SHIELD_MISSED) ) {
-        # This was a damage event, or an attempted damage event.
+    # This was a damage event, or an attempted damage event.
+    
+    # We are going to take some liberties with environmental damage and white damage in order to get them
+    # into the neat actor > spell > target framework. Namely an abuse of actor IDs and spell IDs (using
+    # "0" as an actor ID for the environment and using "0" for the spell ID to signify a white hit). These
+    # will both fail to look up in Index, but that's okay.
+    my $actor;
+    my $spell;
+    if( $entry->{action} eq "ENVIRONMENTAL_DAMAGE" ) {
+        $actor = 0;
+        $spell = 0;
+    } elsif( $entry->{action} eq "SWING_DAMAGE" || $entry->{action} eq "SWING_MISSED" ) {
+        $actor = $entry->{actor};
+        $spell = 0;
+    } else {
+        $actor = $entry->{actor};
+        $spell = $entry->{extra}{spellid};
+    }
+    
+    my $target = $entry->{target};
+    
+    # Create a scratch hash for this actor/target pair if it does not exist already.
+    $self->{span_scratch}{ $actor }{ $target } ||= {
+        start => 0,
+        end => 0,
+    };
+    
+    # Track DPS time.
+    my $adata = $self->{span_scratch}{ $actor }{ $target };
+    if( !$adata->{start} ) {
+        # This is the first DPS action, so mark the start of a span.
+        $adata->{start} = $entry->{t};
+        $adata->{end} = $entry->{t};
+    } elsif( $adata->{end} + $self->{_dpstimeout} < $entry->{t} ) {
+        # The last span ended, add it.
+        $self->{actors}{ $actor }{ $target } ||= [];
         
-        # We are going to take some liberties with environmental damage and white damage in order to get them
-        # into the neat actor > spell > target framework. Namely an abuse of actor IDs and spell IDs (using
-        # "0" as an actor ID for the environment and using "0" for the spell ID to signify a white hit). These
-        # will both fail to look up in Index, but that's okay.
-        my $actor;
-        my $spell;
-        if( $entry->{action} eq "ENVIRONMENTAL_DAMAGE" ) {
-            $actor = 0;
-            $spell = 0;
-        } elsif( $entry->{action} eq "SWING_DAMAGE" || $entry->{action} eq "SWING_MISSED" ) {
-            $actor = $entry->{actor};
-            $spell = 0;
-        } else {
-            $actor = $entry->{actor};
-            $spell = $entry->{extra}{spellid};
-        }
-        
-        my $target = $entry->{target};
-        
-        # Create a scratch hash for this actor/target pair if it does not exist already.
-        $self->{span_scratch}{ $actor }{ $target } ||= {
-            start => 0,
-            end => 0,
+        my $span = {
+            start => $adata->{start},
+            end => $adata->{end} + $self->{_dpstimeout},
         };
         
-        # Track DPS time.
-        my $adata = $self->{span_scratch}{ $actor }{ $target };
-        if( !$adata->{start} ) {
-            # This is the first DPS action, so mark the start of a span.
-            $adata->{start} = $entry->{t};
-            $adata->{end} = $entry->{t};
-        } elsif( $adata->{end} + $self->{_dpstimeout} < $entry->{t} ) {
-            # The last span ended, add it.
-            $self->{actors}{ $actor }{ $target } ||= [];
-            
-            my $span = {
-                start => $adata->{start},
-                end => $adata->{end} + $self->{_dpstimeout},
-            };
-            
-            push @{$self->{actors}{ $actor }{ $target }}, $span;
-            
-            # Update last_scratch
-            if( !$self->{last_scratch}{$actor} || $span->{end} > $self->{last_scratch}{$actor}{end} ) {
-                $self->{last_scratch}{$actor} = $span;
-            }
-            
-            # Reset the start and end times to the current time.
-            $adata->{start} = $entry->{t};
-            $adata->{end} = $entry->{t};
-        } else {
-            # The last span is continuing.
-            $adata->{end} = $entry->{t};
+        push @{$self->{actors}{ $actor }{ $target }}, $span;
+        
+        # Update last_scratch
+        if( !$self->{last_scratch}{$actor} || $span->{end} > $self->{last_scratch}{$actor}{end} ) {
+            $self->{last_scratch}{$actor} = $span;
         }
+        
+        # Reset the start and end times to the current time.
+        $adata->{start} = $entry->{t};
+        $adata->{end} = $entry->{t};
+    } else {
+        # The last span is continuing.
+        $adata->{end} = $entry->{t};
     }
 }
 

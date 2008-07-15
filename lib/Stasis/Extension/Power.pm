@@ -33,6 +33,10 @@ sub start {
     $self->{actors} = {};
 }
 
+sub actions {
+    return qw(SPELL_LEECH SPELL_PERIODIC_LEECH SPELL_DRAIN SPELL_PERIODIC_DRAIN SPELL_ENERGIZE SPELL_PERIODIC_ENERGIZE);
+}
+
 sub process {
     my ($self, $entry) = @_;
     
