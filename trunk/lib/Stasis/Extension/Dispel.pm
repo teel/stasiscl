@@ -40,7 +40,7 @@ sub actions {
 sub process {
     my ($self, $entry) = @_;
     
-    if( $entry->{action} eq "SPELL_DISPEL" || $entry->{action} eq "SPELL_AURA_DISPELLED" || $entry->{action} eq "SPELL_AURA_STOLEN" || $result->{action} eq "SPELL_STOLEN" ) {
+    if( $entry->{action} eq "SPELL_DISPEL" || $entry->{action} eq "SPELL_AURA_DISPELLED" || $entry->{action} eq "SPELL_AURA_STOLEN" || $entry->{action} eq "SPELL_STOLEN" ) {
         $self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{ $entry->{extra}{extraspellid} }{count} += 1;
     } elsif( $entry->{action} eq "SPELL_DISPEL_FAILED" ) {
         $self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{ $entry->{extra}{extraspellid} }{count} += 1;
