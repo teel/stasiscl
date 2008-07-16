@@ -485,7 +485,7 @@ sub process2 {
                 $self->{scratch2}{pets}{ $entry->{target} }{ $entry->{actor} } ++;
             }
             
-            # Greater Fire and Earth elementals
+            # Greater Fire and Earth elementals (pre-2.4.3 code)
             if( $anpc == 15438 || $anpc == 15352 ) {
                 while( my ($totemid, $shamanid) = each(%{$self->{scratch2}{totems}}) ) {
                     # Associate totem with this elemental by consecutive spawncount.
@@ -505,7 +505,20 @@ sub process2 {
         # Summons
         if( $entry->{action} eq "SPELL_SUMMON" ) {
             $self->{scratch2}{class}{ $entry->{target} } = "Pet";
-            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+            
+            # Follow the pet chain.
+            my $owner = $entry->{actor};
+            while( $self->{scratch2}{class}{ $owner } && $self->{scratch2}{class}{ $owner } eq "Pet" ) {
+                # Find the pet's owner.
+                while( my ($kpet, $vpet) = each(%{$self->{scratch2}{pets}}) ) {
+                    if( $vpet->{ $owner } ) {
+                        $owner = $kpet;
+                        last;
+                    }
+                }
+            }
+            
+            $self->{scratch2}{pets}{ $owner }{ $entry->{target} } ++;
 
             # Shaman elemental totems (Fire and Earth respectively)
             if( $entry->{extra}{spellid} == 2894 || $entry->{extra}{spellid} == 2062 ) {
