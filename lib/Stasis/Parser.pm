@@ -1163,7 +1163,7 @@ sub parse2 {
             extraspellname => shift @col,
             extraspellschool => hex shift @col,
         }
-    } elsif( $result->{action} eq "SPELL_AURA_STOLEN" ) {
+    } elsif( $result->{action} eq "SPELL_AURA_STOLEN" || $result->{action} eq "SPELL_STOLEN" ) {
         $result->{extra} = {
             spellid => shift @col,
             spellname => shift @col,
@@ -1304,6 +1304,12 @@ sub parse2 {
             extraspellid => shift @col,
             extraspellname => shift @col,
             extraspellschool => hex shift @col,
+        }
+    } elsif( $result->{action} eq "SPELL_AURA_BROKEN" ) {
+        $result->{extra} = {
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
         }
     } elsif( $result->{action} eq "SPELL_DISPEL" ) {
         $result->{extra} = {
