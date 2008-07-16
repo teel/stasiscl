@@ -1290,6 +1290,30 @@ sub parse2 {
             spellname => shift @col,
             spellschool => hex shift @col,
         }
+    } elsif( $result->{action} eq "SPELL_AURA_REFRESH" ) {
+        $result->{extra} = {
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+        }
+    } elsif( $result->{action} eq "SPELL_AURA_BROKEN_SPELL" ) {
+        $result->{extra} = {
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            extraspellid => shift @col,
+            extraspellname => shift @col,
+            extraspellschool => hex shift @col,
+        }
+    } elsif( $result->{action} eq "SPELL_DISPEL" ) {
+        $result->{extra} = {
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+            extraspellid => shift @col,
+            extraspellname => shift @col,
+            extraspellschool => hex shift @col,
+        }
     } else {
         # Unrecognized action
         carp( "Unrecognized action: " . $result->{action} );
