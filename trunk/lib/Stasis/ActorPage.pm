@@ -278,7 +278,7 @@ sub page {
         );
         
         # Group by target.
-        my @rows = $self->_targetRows( $self->{ext}{Damage}, 0, @playpet );
+        my @rows = $self->_targetRowsOut( $self->{ext}{Damage}, @playpet );
         
         # Sort @rows.
         @rows = sort { $b->{row}{total} <=> $a->{row}{total} } @rows;
@@ -344,7 +344,7 @@ sub page {
         );
         
         # Group by source.
-        my @rows = $self->_targetRows( $self->{ext}{Damage}, 1, @playpet );
+        my @rows = $self->_targetRowsIn( $self->{ext}{Damage}, @playpet );
         
         # Sort @rows.
         @rows = sort { $b->{row}{total} <=> $a->{row}{total} } @rows;
@@ -474,7 +474,7 @@ sub page {
         );
         
         # Group by target.
-        my @rows = $self->_targetRows( $self->{ext}{Healing}, 0, @playpet );
+        my @rows = $self->_targetRowsOut( $self->{ext}{Healing}, @playpet );
         
         # Sum up all effective healing.
         my $eff_on_others;
@@ -548,7 +548,7 @@ sub page {
         );
         
         # Group by source.
-        my @rows = $self->_targetRows( $self->{ext}{Healing}, 1, @playpet );
+        my @rows = $self->_targetRowsIn( $self->{ext}{Healing}, @playpet );
         
         # Sum up all effective healing.
         my $eff_on_me;
@@ -626,7 +626,7 @@ sub page {
         );
         
         # Group by ability.
-        my @rows = $self->_castRows( $self->{ext}{Cast}, @PLAYER );
+        my @rows = $self->_castRowsOut( $self->{ext}{Cast}, @PLAYER );
         
         $PAGE .= $pm->tableHeader("Casts", @header);
         foreach my $row (@rows) {
@@ -679,7 +679,7 @@ sub page {
         );
         
         # Group by ability.
-        my @rows = $self->_castRows( $self->{ext}{Power}, @PLAYER );
+        my @rows = $self->_castRowsOut( $self->{ext}{Power}, @PLAYER );
         
         $PAGE .= $pm->tableHeader("Power Gains", @header);
         foreach my $row (@rows) {
@@ -737,7 +737,7 @@ sub page {
         );
         
         # Group by ability.
-        my @rows = $self->_castRows( $self->{ext}{ExtraAttack}, @PLAYER );
+        my @rows = $self->_castRowsOut( $self->{ext}{ExtraAttack}, @PLAYER );
         
         $PAGE .= $pm->tableHeader("Power Gains", @header) unless $self->_keyExists( $self->{ext}{Power}{actors}, @PLAYER );
         foreach my $row (@rows) {
@@ -948,86 +948,81 @@ sub _tidypct {
     }
 }
 
-sub _targetRows {
+sub _targetRowsIn {
     my $self = shift;
     my $ext = shift;
-    my $in = shift;
-    
-    my $group = $self->{grouper}->group($_[0]);
-    my @GROUP = $group ? @{$group->{members}} : ($_[0]);
     
     # Group by target.
     my @rows;
     
-    while( my ($kactor, $vactor) = each(%{ $ext->{actors}}) ) {
-        # If we're doing an out (!$in) then skip other actors.
-        next if !$in && !grep $_ eq $kactor, @_;
-                
-        while( my ($kspell, $vspell) = each(%$vactor) ) {
-            while( my ($ktarget, $vtarget) = each(%$vspell) ) {
-                # If we're coming in then skip other actors.
-                next if $in && !grep $_ eq $ktarget, @GROUP;
-                
-                # Figure out what the key for this actor is.
+    # my $vtarget;
+    # while( my ($kactor, $vactor) = each(%{ $ext->{actors}}) ) {
+    #     my $gactor;
+    #     my $kactor_use;
+    #     
+    #     while( my ($kspell, $vspell) = each(%$vactor) ) {
+    #         foreach my $ktarget (@GROUP) {
+    #             if( $vtarget = $vspell->{$ktarget} ) {
+    #                 if( !$kactor_use ) {
+    #                     # Figure out what the key for this actor is.
+    #                     $gactor = $self->{grouper}->group($kactor);
+    #                     $kactor_use = $gactor && $_[0] ne $kactor ? $self->{grouper}->captain($gactor) : $kactor;
+    #                 }
+    #                 
+    #                 # Figure out the key for this target.
+    #                 my $gtarget = $self->{grouper}->group($ktarget);
+    #                 my $ktarget_use = $gtarget ? $self->{grouper}->captain($gtarget) : $ktarget;
+    #                 
+    #                 # Add the row.
+    #                 $self->_rowadd( \@rows, $kactor_use, $kspell, $vtarget );
+    #             }
+    #         }
+    #     }
+    # }
+    
+    foreach my $ktarget (@_) {
+        # Figure out the key for this target.
+        my $gtarget = $self->{grouper}->group($ktarget);
+        my $ktarget_use = $gtarget ? $self->{grouper}->captain($gtarget) : $ktarget;
+        
+        while( my ($kspell, $vspell) = each(%{ $ext->{targets}{$ktarget} } ) ) {
+            while( my ($kactor, $vactor) = each(%$vspell) ) {
+                # Figure out the key for this actor.
                 my $gactor = $self->{grouper}->group($kactor);
                 my $kactor_use = $gactor && $_[0] ne $kactor ? $self->{grouper}->captain($gactor) : $kactor;
                 
-                # Figure out what the key for this spell is.
-                my $espell = $in ? $kspell : "$kactor_use: $kspell";
-                
+                # Add the row.
+                $self->_rowadd( \@rows, $kactor_use, $kspell, $vactor );
+            }
+        }
+    }
+    
+    return @rows;
+}
+
+sub _targetRowsOut {
+    my $self = shift;
+    my $ext = shift;
+    
+    # Group by target.
+    my @rows;
+    
+    foreach my $kactor (@_) {
+        # Actor keys.
+        my $gactor = $self->{grouper}->group($kactor);
+        my $kactor_use = $gactor && $_[0] ne $kactor ? $self->{grouper}->captain($gactor) : $kactor;
+        
+        while( my ($kspell, $vspell) = each(%{ $ext->{actors}{$kactor} } ) ) {
+            # Encoded spell name.
+            my $espell = "$kactor_use: $kspell";
+            
+            while( my ($ktarget, $vtarget) = each(%$vspell) ) {
                 # Figure out the key for this target.
                 my $gtarget = $self->{grouper}->group($ktarget);
                 my $ktarget_use = $gtarget ? $self->{grouper}->captain($gtarget) : $ktarget;
                 
-                # Key
-                my $key = $in ? $kactor_use : $ktarget_use;
-                
-                # Figure out which row to add this to, or create a new one if appropriate.
-                my $row;
-                
-                foreach (@rows) {
-                    if( $_->{key} eq $key ) {
-                        $row = $_;
-                        last;
-                    }
-                }
-                
-                if( $row ) {
-                    # Add to an existing row.
-                    $self->_sum( $row->{row}, $vtarget );
-                    
-                    # Either add to an existing slave, or create a new one.
-                    my $slave;
-                    foreach (@{$row->{slaves}}) {
-                        if( $_->{key} eq $espell ) {
-                            $slave = $_;
-                            last;
-                        }
-                    }
-                    
-                    if( $slave ) {
-                        # Add to an existing slave.
-                        $self->_sum( $slave->{row}, $vtarget );
-                    } else {
-                        # Create a new slave.
-                        push @{$row->{slaves}}, {
-                            key => $espell,
-                            row => $self->_copy( $vtarget ),
-                        }
-                    }
-                } else {
-                    # Create a new row.
-                    push @rows, {
-                        key => $key,
-                        row => $self->_copy( $vtarget ),
-                        slaves => [
-                            {
-                                key => $espell,
-                                row => $self->_copy( $vtarget ),
-                            }
-                        ]
-                    }
-                }
+                # Add the row.
+                $self->_rowadd( \@rows, $ktarget_use, $espell, $vtarget );
             }
         }
     }
@@ -1055,52 +1050,8 @@ sub _abilityRows {
                 my $gtarget = $self->{grouper}->group($ktarget);
                 my $ktarget_use = $gtarget ? $self->{grouper}->captain($gtarget) : $ktarget;
                 
-                # Figure out which row to add this to, or create a new one if appropriate.
-                my $row;
-                
-                foreach (@rows) {
-                    if( $_->{key} eq $espell ) {
-                        $row = $_;
-                        last;
-                    }
-                }
-                
-                if( $row ) {
-                    # Add to an existing row.
-                    $self->_sum( $row->{row}, $vtarget );
-                    
-                    # Either add to an existing slave, or create a new one.
-                    my $slave;
-                    foreach (@{$row->{slaves}}) {
-                        if( $_->{key} eq $ktarget_use ) {
-                            $slave = $_;
-                            last;
-                        }
-                    }
-                    
-                    if( $slave ) {
-                        # Add to an existing slave.
-                        $self->_sum( $slave->{row}, $vtarget );
-                    } else {
-                        # Create a new slave.
-                        push @{$row->{slaves}}, {
-                            key => $ktarget_use,
-                            row => $self->_copy( $vtarget ),
-                        }
-                    }
-                } else {
-                    # Create a new row.
-                    push @rows, {
-                        key => $espell,
-                        row => $self->_copy( $vtarget ),
-                        slaves => [
-                            {
-                                key => $ktarget_use,
-                                row => $self->_copy( $vtarget ),
-                            }
-                        ]
-                    }
-                }
+                # Add the row.
+                $self->_rowadd( \@rows, $espell, $ktarget_use, $vtarget );
             }
         }
     }
@@ -1108,7 +1059,39 @@ sub _abilityRows {
     return @rows;
 }
 
-sub _castRows {
+sub _castRowsIn {
+    my $self = shift;
+    my $ext = shift;
+
+    my @rows;
+    
+    while( my ($kactor, $vactor) = each(%{ $ext->{actors} } ) ) {
+        # Actor keys.
+        my $gactor = $self->{grouper}->group($kactor);
+        my $kactor_use = $gactor && $_[0] ne $kactor ? $self->{grouper}->captain($gactor) : $kactor;
+        
+        while( my ($kspell, $vspell) = each(%$vactor) ) {
+            while( my ($ktarget, $vtarget) = each(%$vspell) ) {
+                next unless grep $_ eq $ktarget, @_;
+
+                # Add the row.
+                $self->_rowadd( \@rows, $kspell, $kactor_use, $vtarget );
+            }
+        }
+    }
+    
+    # Sort @rows.
+    @rows = sort { $b->{row}{count} <=> $a->{row}{count} } @rows;
+    
+    # Sort slaves.
+    foreach my $row (@rows) {
+        $row->{slaves} = [ sort { $b->{row}{count} <=> $a->{row}{count} } @{$row->{slaves}} ]; 
+    }
+    
+    return @rows;
+}
+
+sub _castRowsOut {
     my $self = shift;
     my $ext = shift;
 
@@ -1121,54 +1104,8 @@ sub _castRows {
                 my $gtarget = $self->{grouper}->group($ktarget);
                 my $ktarget_use = $gtarget ? $self->{grouper}->captain($gtarget) : $ktarget;
 
-                # Figure out which row to add this to, or create a new one if appropriate.
-                my $row;
-
-                foreach (@rows) {
-                    if( $_->{key} eq $kspell ) {
-                        $row = $_;
-                        last;
-                    }
-                }
-            
-                if( $row ) {
-                    # Add to an existing row.
-                    $row->{row}{amount} += $vtarget->{amount} if $vtarget->{amount};
-                    $row->{row}{count} += $vtarget->{count} if $vtarget->{count};
-                
-                    # Either add to an existing slave, or create a new one.
-                    my $slave;
-                    foreach (@{$row->{slaves}}) {
-                        if( $_->{key} eq $ktarget_use ) {
-                            $slave = $_;
-                            last;
-                        }
-                    }
-                
-                    if( $slave ) {
-                        # Add to an existing slave.
-                        $slave->{row}{amount} += $vtarget->{amount} if $vtarget->{amount};
-                        $slave->{row}{count} += $vtarget->{count} if $vtarget->{count};
-                    } else {
-                        # Create a new slave.
-                        push @{$row->{slaves}}, {
-                            key => $ktarget_use,
-                            row => $self->_copy($vtarget),
-                        }
-                    }
-                } else {
-                    # Create a new row.
-                    push @rows, {
-                        key => $kspell,
-                        row => $self->_copy($vtarget),
-                        slaves => [
-                            {
-                                key => $ktarget_use,
-                                row => $self->_copy($vtarget),
-                            }
-                        ],
-                    }
-                }
+                # Add the row.
+                $self->_rowadd( \@rows, $kspell, $ktarget_use, $vtarget );
             }
         }
     }
@@ -1232,6 +1169,57 @@ sub _rowHealing {
     };
 }
 
+sub _rowadd {
+    my ($self, $rows, $mkey, $skey, $vtarget) = @_;
+    
+    # Figure out which row to add this to, or create a new one if appropriate.
+    my $row;
+    
+    foreach (@$rows) {
+        if( $_->{key} eq $mkey ) {
+            $row = $_;
+            last;
+        }
+    }
+    
+    if( $row ) {
+        # Add to an existing row.
+        _sum( "Stasis::ActorPage", $row->{row}, $vtarget );
+        
+        # Either add to an existing slave, or create a new one.
+        my $slave;
+        foreach (@{$row->{slaves}}) {
+            if( $_->{key} eq $skey ) {
+                $slave = $_;
+                last;
+            }
+        }
+        
+        if( $slave ) {
+            # Add to an existing slave.
+            _sum( "Stasis::ActorPage", $slave->{row}, $vtarget );
+        } else {
+            # Create a new slave.
+            push @{$row->{slaves}}, {
+                key => $skey,
+                row => _copy( "Stasis::ActorPage", $vtarget ),
+            }
+        }
+    } else {
+        # Create a new row.
+        push @$rows, {
+            key => $mkey,
+            row => _copy( "Stasis::ActorPage", $vtarget ),
+            slaves => [
+                {
+                    key => $skey,
+                    row => _copy( "Stasis::ActorPage", $vtarget ),
+                }
+            ]
+        }
+    }
+}
+
 sub _sum {
     my $self = shift;
     my $sd1 = shift;
@@ -1241,7 +1229,7 @@ sub _sum {
         while( my ($key, $val) = each (%$sd2) ) {
             $sd1->{$key} ||= 0;
             
-            if( $key =~ /[Mm](in|ax)$/ ) {
+            if( $key =~ /[Mm](?:in|ax)$/ ) {
                 # Minimum or maximum
                 if( lc $1 eq "in" && (!$sd1->{$key} || $val < $sd1->{$key}) ) {
                     $sd1->{$key} = $val;
@@ -1260,8 +1248,7 @@ sub _sum {
 }
 
 sub _copy {
-    my $self = shift;
-    my $ref = shift;
+    my ($self, $ref) = @_;
     
     # Shallow copy hashref $ref into $copy.
     my %copy;

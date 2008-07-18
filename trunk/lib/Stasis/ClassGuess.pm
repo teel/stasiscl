@@ -330,13 +330,11 @@ sub new {
 }
 
 sub process {
-    my ($self) = @_;
-    return $self->{version} == 1 ? process1(@_) : process2(@_);
+    return $_[0]->{version} == 1 ? process1(@_) : process2(@_);
 }
 
 sub finish {
-    my ($self) = @_;
-    return $self->{version} == 1 ? finish1(@_) : finish2(@_);
+    return $_[0]->{version} == 1 ? finish1(@_) : finish2(@_);
 }
 
 sub process1 {
