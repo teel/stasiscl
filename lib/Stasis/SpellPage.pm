@@ -652,61 +652,10 @@ sub page {
     return $PAGE;
 }
 
-sub _addDamageOrHealingRow {
-    my ($self, $rows, $mkey, $skey, $vtarget) = @_;
-    
-    # Figure out which row to add this to, or create a new one if appropriate.
-    my $row;
-    
-    foreach (@$rows) {
-        if( $_->{key} eq $mkey ) {
-            $row = $_;
-            last;
-        }
-    }
-    
-    if( $row ) {
-        # Add to an existing row.
-        Stasis::ActorPage->_sum( $row->{row}, $vtarget );
-        
-        # Either add to an existing slave, or create a new one.
-        my $slave;
-        foreach (@{$row->{slaves}}) {
-            if( $_->{key} eq $skey ) {
-                $slave = $_;
-                last;
-            }
-        }
-        
-        if( $slave ) {
-            # Add to an existing slave.
-            Stasis::ActorPage->_sum( $slave->{row}, $vtarget );
-        } else {
-            # Create a new slave.
-            push @{$row->{slaves}}, {
-                key => $skey,
-                row => Stasis::ActorPage->_copy( $vtarget ),
-            }
-        }
-    } else {
-        # Create a new row.
-        push @$rows, {
-            key => $mkey,
-            row => Stasis::ActorPage->_copy( $vtarget ),
-            slaves => [
-                {
-                    key => $skey,
-                    row => Stasis::ActorPage->_copy( $vtarget ),
-                }
-            ]
-        }
-    }
-}
-
 sub _damageOrHealingRows {
     my $self = shift;
     my $ext = shift;
-    my $spell = shift;
+    my $kspell = shift;
     my $in = shift;
     
     # Groups of rows.
@@ -714,25 +663,18 @@ sub _damageOrHealingRows {
     my @rows_out;
     
     while( my ($kactor, $vactor) = each(%{ $ext->{actors}}) ) {
-        my $gactor;
-        my $kactor_use;
-        
-        while( my ($kspell, $vspell) = each(%$vactor) ) {
-            # Focus on our spell.
-            next unless $kspell eq $spell;
+        if( my $vspell = $vactor->{$kspell} ) {
+            # Figure out the key for this actor.
+            my $gactor = $self->{grouper}->group($kactor);
+            my $kactor_use = $gactor ? $self->{grouper}->captain($gactor) : $kactor;
             
             while( my ($ktarget, $vtarget) = each(%$vspell) ) {
-                if( !$kactor_use ) {
-                    $gactor = $self->{grouper}->group($kactor);
-                    $kactor_use = $gactor ? $self->{grouper}->captain($gactor) : $kactor;
-                }
-                
                 # Figure out the key for this target.
                 my $gtarget = $self->{grouper}->group($ktarget);
                 my $ktarget_use = $gtarget ? $self->{grouper}->captain($gtarget) : $ktarget;
                 
-                $self->_addDamageOrHealingRow( \@rows_in, $ktarget_use, $kactor_use, $vtarget );
-                $self->_addDamageOrHealingRow( \@rows_out, $kactor_use, $ktarget_use, $vtarget );
+                Stasis::ActorPage->_rowadd( \@rows_in, $ktarget_use, $kactor_use, $vtarget );
+                Stasis::ActorPage->_rowadd( \@rows_out, $kactor_use, $ktarget_use, $vtarget );
             }
         }
     }
@@ -743,18 +685,16 @@ sub _damageOrHealingRows {
 sub _castOrGainRows {
     my $self = shift;
     my $ext = shift;
-    my $spell = shift;
+    my $kspell = shift;
     my $in = shift;
 
     my @rows;
     
     while( my ($kactor, $vactor) = each(%{ $ext->{actors}}) ) {
-        my $gactor;
-        my $kactor_use;
-        
-        while( my ($kspell, $vspell) = each(%$vactor) ) {
-            # Focus on our spell.
-            next unless $kspell eq $spell;
+        if( my $vspell = $vactor->{$kspell} ) {
+            # Figure out the key for this actor.
+            my $gactor = $self->{grouper}->group($kactor);
+            my $kactor_use = $gactor ? $self->{grouper}->captain($gactor) : $kactor;
             
             while( my ($ktarget, $vtarget) = each(%$vspell) ) {
                 # Figure out the key for this actor.
@@ -771,54 +711,7 @@ sub _castOrGainRows {
                 my $mkey = $in ? $ktarget_use : $kactor_use;
                 my $skey = $in ? $kactor_use : $ktarget_use;
                 
-                # Figure out which row to add this to, or create a new one if appropriate.
-                my $row;
-
-                foreach (@rows) {
-                    if( $_->{key} eq $mkey ) {
-                        $row = $_;
-                        last;
-                    }
-                }
-            
-                if( $row ) {
-                    # Add to an existing row.
-                    $row->{row}{amount} += $vtarget->{amount} if $vtarget->{amount};
-                    $row->{row}{count} += $vtarget->{count} if $vtarget->{count};
-                
-                    # Either add to an existing slave, or create a new one.
-                    my $slave;
-                    foreach (@{$row->{slaves}}) {
-                        if( $_->{key} eq $skey ) {
-                            $slave = $_;
-                            last;
-                        }
-                    }
-                
-                    if( $slave ) {
-                        # Add to an existing slave.
-                        $slave->{row}{amount} += $vtarget->{amount} if $vtarget->{amount};
-                        $slave->{row}{count} += $vtarget->{count} if $vtarget->{count};
-                    } else {
-                        # Create a new slave.
-                        push @{$row->{slaves}}, {
-                            key => $skey,
-                            row => Stasis::ActorPage->_copy($vtarget),
-                        }
-                    }
-                } else {
-                    # Create a new row.
-                    push @rows, {
-                        key => $mkey,
-                        row => Stasis::ActorPage->_copy($vtarget),
-                        slaves => [
-                            {
-                                key => $skey,
-                                row => Stasis::ActorPage->_copy($vtarget),
-                            }
-                        ],
-                    }
-                }
+                Stasis::ActorPage->_rowadd( \@rows, $mkey, $skey, $vtarget );
             }
         }
     }

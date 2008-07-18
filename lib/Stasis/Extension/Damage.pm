@@ -32,6 +32,7 @@ our @ISA = "Stasis::Extension";
 sub start {
     my $self = shift;
     $self->{actors} = {};
+    $self->{targets} = {};
 }
 
 sub actions {
@@ -109,7 +110,11 @@ sub process {
         }
     };
     
+    # Get the spell hash.
     my $ddata = $self->{actors}{ $actor }{ $spell }{ $entry->{target} };
+    
+    # Add to targets.
+    $self->{targets}{ $entry->{target} }{ $spell }{ $actor } ||= $ddata;
     
     # Check if this was a hit or a miss.
     if( $entry->{extra}{amount} ) {
