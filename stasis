@@ -335,7 +335,7 @@ if( $action eq "print" ) {
                     short => $short,
                 };
             } else {
-                # Closing or deleting a split.
+                # Closing a split.
                 foreach (@boss) {
                     if( !$_->{long} && $_->{short} eq $short ) {
                         $_->{long} = $long;
@@ -343,8 +343,11 @@ if( $action eq "print" ) {
                         $_->{start} = $start;
                         $_->{end} = $end;
                         $_->{exts}->finish();
+                        return;
                     }
                 }
+                
+                warn "possible error in log splitter";
             }
         }
     );

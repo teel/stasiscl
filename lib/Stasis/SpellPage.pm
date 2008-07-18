@@ -75,7 +75,7 @@ sub page {
     my $defaultTab;
     
     $PAGE .= "<br />";
-    $PAGE .= $pm->tabBar( "Damage", "Healing", "Casts and Gains" );
+    $PAGE .= $pm->tabBar( "Damage", "Healing", "Casts and Gains", "Dispels and Interrupts" );
     
     ##############
     # DAMAGE OUT #
@@ -644,6 +644,86 @@ sub page {
     $PAGE .= $pm->tableEnd;
     $PAGE .= $pm->tabEnd;
     
+    $PAGE .= $pm->tabStart("Dispels and Interrupts");
+    $PAGE .= $pm->tableStart;
+    
+    ###########
+    # DISPELS #
+    ###########
+    
+    {
+        my @header = (
+            "Name",
+            "R-Casts",
+            "R-Resists",
+        );
+        
+        my @rows = $self->_dispelOrInterruptRows( $self->{ext}{Dispel}, $SPELL );
+        
+        if( @rows ) {
+            $defaultTab ||= "Dispels and Interrupts";
+            
+            $PAGE .= $pm->tableHeader("Dispelled By", @header);
+            $PAGE .= $pm->tableRows(
+                header => \@header,
+                rows => \@rows,
+                master => sub {
+                    return {
+                        "Name" => $pm->actorLink( $_[0]->{key} ),
+                        "R-Casts" => $_[0]->{row}{count},
+                        "R-Resists" => $_[0]->{row}{resist},
+                    };
+                },
+                slave => sub {
+                    return {
+                        "Name" => $pm->spellLink( $_[0]->{key}, $self->{ext}{Index}->spellname($_[0]->{key}) ),
+                        "R-Casts" => $_[0]->{row}{count},
+                        "R-Resists" => $_[0]->{row}{resist},
+                    };
+                }
+            );
+        }
+    }
+    
+    ##############
+    # INTERRUPTS #
+    ##############
+    
+    {
+        my @header = (
+            "Name",
+            "R-Interrupts",
+            "",
+        );
+        
+        my @rows = $self->_dispelOrInterruptRows( $self->{ext}{Interrupt}, $SPELL );
+        
+        if( @rows ) {
+            $defaultTab ||= "Dispels and Interrupts";
+            
+            $PAGE .= $pm->tableHeader("Interrupted By", @header);
+            $PAGE .= $pm->tableRows(
+                header => \@header,
+                rows => \@rows,
+                master => sub {
+                    return {
+                        "Name" => $pm->actorLink( $_[0]->{key} ),
+                        "R-Interrupts" => $_[0]->{row}{count},
+                    };
+                },
+                slave => sub {
+                    return {
+                        "Name" => $pm->spellLink( $_[0]->{key}, $self->{ext}{Index}->spellname($_[0]->{key}) ),
+                        "R-Interrupts" => $_[0]->{row}{count},
+                    };
+                }
+            );
+        }
+    }
+    
+    $PAGE .= $pm->tableEnd;
+    $PAGE .= $pm->tabEnd;
+    
     $PAGE .= $pm->jsTab($defaultTab||"Damage");
     $PAGE .= $pm->tabBarEnd;
     
@@ -680,6 +760,39 @@ sub _damageOrHealingRows {
     }
     
     return (\@rows_in, \@rows_out);
+}
+
+sub _dispelOrInterruptRows {
+    my $self = shift;
+    my $ext = shift;
+    my $kextraspell = shift;
+
+    my @rows;
+    
+    while( my ($kactor, $vactor) = each(%{ $ext->{actors}}) ) {
+        while( my ($kspell, $vspell) = each(%$vactor ) ) {
+            while( my ($ktarget, $vtarget) = each(%$vspell) ) {
+                if( my $vextraspell = $vtarget->{$kextraspell} ) {
+                    # Figure out the key for this actor.
+                    my $gactor = $self->{grouper}->group($kactor);
+                    my $kactor_use = $gactor ? $self->{grouper}->captain($gactor) : $kactor;
+                    
+                    # Add the row.
+                    Stasis::ActorPage->_rowadd( \@rows, $kactor_use, $kspell, $vextraspell );
+                }
+            }
+        }
+    }
+    
+    # Sort @rows.
+    @rows = sort { $b->{row}{count} <=> $a->{row}{count} } @rows;
+    
+    # Sort slaves.
+    foreach my $row (@rows) {
+        $row->{slaves} = [ sort { $b->{row}{count} <=> $a->{row}{count} } @{$row->{slaves}} ]; 
+    }
+    
+    return @rows;
 }
 
 sub _castOrGainRows {

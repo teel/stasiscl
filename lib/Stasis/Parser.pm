@@ -1036,7 +1036,7 @@ sub parse2 {
             spellname => shift @col,
             spellschool => hex shift @col,
             amount => shift @col,
-            powertype => $self->_powerName( shift @col ),
+            powertype => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_PERIODIC_MISSED" ) {
         $result->{extra} = {                
@@ -1073,7 +1073,7 @@ sub parse2 {
             spellname => shift @col,
             spellschool => hex shift @col,
             amount => shift @col,
-            powertype => $self->_powerName( shift @col ),
+            powertype => shift @col,
             extraamount => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_PERIODIC_LEECH" ) {
@@ -1082,7 +1082,7 @@ sub parse2 {
             spellname => shift @col,
             spellschool => hex shift @col,
             amount => shift @col,
-            powertype => $self->_powerName( shift @col ),
+            powertype => shift @col,
             extraamount => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_PERIODIC_ENERGIZE" ) {
@@ -1091,7 +1091,7 @@ sub parse2 {
             spellname => shift @col,
             spellschool => hex shift @col,
             amount => shift @col,
-            powertype => $self->_powerName( shift @col ),
+            powertype => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_DRAIN" ) {
         $result->{extra} = {
@@ -1099,7 +1099,7 @@ sub parse2 {
             spellname => shift @col,
             spellschool => hex shift @col,
             amount => shift @col,
-            powertype => $self->_powerName( shift @col ),
+            powertype => shift @col,
             extraamount => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_LEECH" ) {
@@ -1108,7 +1108,7 @@ sub parse2 {
             spellname => shift @col,
             spellschool => hex shift @col,
             amount => shift @col,
-            powertype => $self->_powerName( shift @col ),
+            powertype => shift @col,
             extraamount => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_INTERRUPT" ) {
