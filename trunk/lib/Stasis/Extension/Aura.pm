@@ -115,6 +115,15 @@ sub process {
         
         # Update the type of this aura.
         $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{type} ||= $entry->{extra}{auratype};
+    } elsif( $entry->{action} eq "UNIT_DIED" && exists $self->{actors}{ $entry->{target} } ) {
+        # Forcibly fade all auras when a unit dies.
+        foreach my $vaura (values %{ $self->{actors}{ $entry->{target} } } ) {
+            if( $vaura->{start} ) {
+                # 'start' is set, so we should turn it off and add the time to this aura duration.
+                $vaura->{time} += $entry->{t} - $vaura->{start};
+                $vaura->{start} = 0;
+            }
+        }
     }
 }
 
