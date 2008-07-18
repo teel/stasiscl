@@ -149,9 +149,8 @@ sub tableRow {
             push @class, "f";
         }
         
-        $col =~ /^(R-|)([^\-]*)(|-W)$/;
-        push @class, "r" if $1;
-        push @class, "w" if $3;
+        push @class, "r" if "R-" eq substr $col, 0, 2;
+        push @class, "w" if "-W" eq substr $col, -2;
         
         if( @class ) {
             $align = " class=\"" . join( " ", @class ) . "\"";
@@ -178,7 +177,44 @@ sub tableRow {
     $result .= "</tr>";
 }
 
-# pageHeader( $title )
+sub tableRows {
+    my $self = shift;
+    my %params = @_;
+    
+    $params{header} ||= [];
+    $params{rows} ||= [];
+    $params{master} ||= undef;
+    $params{slave} ||= undef;
+    
+    my $result = "";
+    foreach my $row (@{$params{rows}}) {
+        # Print row.
+        $result .= $self->tableRow( 
+            header => $params{header},
+            data => $params{master} ? $params{master}->($row) : {
+                $params{header}->[0] => $row->{key},
+            },
+            type => "master",
+        );
+        
+        # Slave rows
+        foreach my $slave (@{ $row->{slaves} }) {
+            $result .= $self->tableRow( 
+                header => $params{header},
+                data => $params{slave} ? $params{slave}->($slave, $row) : {
+                    $params{header}->[0] => $slave->{key},
+                },
+                type => "slave",
+            );
+        }
+        
+        # JavaScript close
+        $result .= $self->jsClose();
+    }
+    
+    return $result;
+}
+
 sub pageHeader {
     my $self = shift;
     my $boss = shift;
@@ -257,10 +293,9 @@ sub vertBox {
 
 sub jsClose {
     my $self = shift;
-    my $section = shift;
     
     # Override $section
-    $section = $self->{id};
+    my $section = $self->{id};
     
     return <<END;
 <script type="text/javascript">

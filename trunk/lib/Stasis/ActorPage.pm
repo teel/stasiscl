@@ -27,6 +27,7 @@ use strict;
 use warnings;
 use POSIX;
 use HTML::Entities;
+use Stasis::Parser;
 use Stasis::PageMaker;
 use Stasis::ActorGroup;
 
@@ -188,7 +189,7 @@ sub page {
         $PAGE .= "<br />";
     }
     
-    my @tabs = ( "Damage", "Healing", "Casts and Gains" );
+    my @tabs = ( "Damage", "Healing", "Casts and Gains", "Dispels and Interrupts" );
     push @tabs, "Deaths" if $self->_keyExists( $self->{ext}{Death}{actors}, @PLAYER );
     
     $PAGE .= $pm->tabBar(@tabs);
@@ -228,34 +229,18 @@ sub page {
         # Print @rows.
         if( @rows ) {
             $PAGE .= $pm->tableHeader("Damage Out by Ability", @header);
-            foreach my $row (@rows) {
-                # JavaScript ID
-                my $id = $pm->tameText( $row->{key} );
-                
-                # Decode spell name
-                my ($spellactor, $spellname, $spellid) = $self->_decodespell($row->{key}, $pm, @PLAYER);
-                
-                # Master row
-                $PAGE .= $pm->tableRow( 
-                    header => \@header,
-                    data => $self->_rowDamage( $row->{row}, $spellname ),
-                    type => "master",
-                    name => "damage_$id",
-                );
-                
-                # Slave rows
-                foreach my $slave (@{ $row->{slaves} }) {
-                    $PAGE .= $pm->tableRow( 
-                        header => \@header,
-                        data => $self->_rowDamage( $slave->{row}, $pm->actorLink( $slave->{key} ) ),
-                        type => "slave",
-                        name => "damage_$id",
-                    );
+            $PAGE .= $pm->tableRows(
+                header => \@header,
+                rows => \@rows,
+                master => sub {
+                    my ($spellactor, $spellname, $spellid) = $self->_decodespell($_[0]->{key}, $pm, @PLAYER);
+                    return $self->_rowDamage( $_[0]->{row}, $spellname );
+                },
+                slave => sub {
+                    my ($spellactor, $spellname, $spellid) = $self->_decodespell($_[1]->{key}, $pm, @PLAYER);
+                    return $self->_rowDamage( $_[0]->{row}, $pm->actorLink( $_[0]->{key} ) );
                 }
-                
-                # JavaScript close
-                $PAGE .= $pm->jsClose("damage_$id");
-            }
+            );
         }
     }
     
@@ -291,37 +276,20 @@ sub page {
         # Print @rows.
         if( @rows ) {
             $PAGE .= $pm->tableHeader("Damage Out by Target", @header);
-            foreach my $row (@rows) {
-                # JavaScript ID
-                my $id = $pm->tameText( $row->{key} );
-                
-                my $group = $self->{grouper}->group( $row->{key} );
-                my $dpsTime = $self->{ext}{Activity}->activity( actor => \@playpet, target => [ $group ? @{$group->{members}} : ($row->{key}) ] );
-                
-                # Master row
-                $PAGE .= $pm->tableRow( 
-                    header => \@header,
-                    data => $self->_rowDamage( $row->{row}, $pm->actorLink( $row->{key} ), "Target", $dpsTime ),
-                    type => "master",
-                    name => "dmgout_$id",
-                );
-                
-                # Slave rows
-                foreach my $slave (@{ $row->{slaves} }) {
-                    # Decode spell name
-                    my ($spellactor, $spellname, $spellid) = $self->_decodespell($slave->{key}, $pm, @PLAYER);
+            $PAGE .= $pm->tableRows(
+                header => \@header,
+                rows => \@rows,
+                master => sub {
+                    my $group = $self->{grouper}->group( $_[0]->{key} );
+                    my $dpsTime = $self->{ext}{Activity}->activity( actor => \@playpet, target => [ $group ? @{$group->{members}} : ($_[0]->{key}) ] );
                     
-                    $PAGE .= $pm->tableRow( 
-                        header => \@header,
-                        data => $self->_rowDamage( $slave->{row}, $spellname, "Target" ),
-                        type => "slave",
-                        name => "dmgout_$id",
-                    );
+                    return $self->_rowDamage( $_[0]->{row}, $pm->actorLink( $_[0]->{key} ), "Target", $dpsTime );
+                },
+                slave => sub {
+                    my ($spellactor, $spellname, $spellid) = $self->_decodespell($_[0]->{key}, $pm, @PLAYER);
+                    return $self->_rowDamage( $_[0]->{row}, $spellname, "Target" );
                 }
-                
-                # JavaScript close
-                $PAGE .= $pm->jsClose("dmgout_$id");
-            }
+            );
         }
     }
     
@@ -357,37 +325,20 @@ sub page {
         # Print @rows.
         if( @rows ) {
             $PAGE .= $pm->tableHeader("Damage In by Source", @header);
-            foreach my $row (@rows) {
-                # JavaScript ID
-                my $id = $pm->tameText( $row->{key} );
-                
-                my $group = $self->{grouper}->group( $row->{key} );
-                my $dpsTime = $self->{ext}{Activity}->activity( target => \@PLAYER, actor => [ $group ? @{$group->{members}} : ($row->{key}) ] );
-                
-                # Master row
-                $PAGE .= $pm->tableRow( 
-                    header => \@header,
-                    data => $self->_rowDamage( $row->{row}, $pm->actorLink( $row->{key} ), "Source", $dpsTime ),
-                    type => "master",
-                    name => "dmgin_$id",
-                );
-                
-                # Slave rows
-                foreach my $slave (@{ $row->{slaves} }) {
-                    # Decode spell name
-                    my ($spellactor, $spellname, $spellid) = $self->_decodespell($slave->{key}, $pm, @PLAYER);
+            $PAGE .= $pm->tableRows(
+                header => \@header,
+                rows => \@rows,
+                master => sub {
+                    my $group = $self->{grouper}->group( $_[0]->{key} );
+                    my $dpsTime = $self->{ext}{Activity}->activity( target => \@PLAYER, actor => [ $group ? @{$group->{members}} : ($_[0]->{key}) ] );
                     
-                    $PAGE .= $pm->tableRow( 
-                        header => \@header,
-                        data => $self->_rowDamage( $slave->{row}, $spellname, "Source" ),
-                        type => "slave",
-                        name => "dmgin_$id",
-                    );
+                    return $self->_rowDamage( $_[0]->{row}, $pm->actorLink( $_[0]->{key} ), "Source", $dpsTime );
+                },
+                slave => sub {
+                    my ($spellactor, $spellname, $spellid) = $self->_decodespell($_[0]->{key}, $pm, @PLAYER);
+                    return $self->_rowDamage( $_[0]->{row}, $spellname, "Source" );
                 }
-                
-                # JavaScript close
-                $PAGE .= $pm->jsClose("dmgin_$id");
-            }
+            );
         }
     }
     
@@ -429,34 +380,18 @@ sub page {
         # Print @rows.
         if( @rows ) {
             $PAGE .= $pm->tableHeader("Healing Out by Ability", @header);
-            foreach my $row (@rows) {
-                # JavaScript ID
-                my $id = $pm->tameText( $row->{key} );
-                
-                # Decode spell name
-                my ($spellactor, $spellname, $spellid) = $self->_decodespell($row->{key}, $pm, @PLAYER);
-                
-                # Master row
-                $PAGE .= $pm->tableRow( 
-                    header => \@header,
-                    data => $self->_rowHealing( $row->{row}, $spellname ),
-                    type => "master",
-                    name => "healing_$id",
-                );
-                
-                # Slave rows
-                foreach my $slave (@{ $row->{slaves} }) {
-                    $PAGE .= $pm->tableRow( 
-                        header => \@header,
-                        data => $self->_rowHealing( $slave->{row}, $pm->actorLink( $slave->{key} ) ),
-                        type => "slave",
-                        name => "healing_$id",
-                    );
+            $PAGE .= $pm->tableRows(
+                header => \@header,
+                rows => \@rows,
+                master => sub {
+                    my ($spellactor, $spellname, $spellid) = $self->_decodespell($_[0]->{key}, $pm, @PLAYER);
+                    return $self->_rowHealing( $_[0]->{row}, $spellname );
+                },
+                slave => sub {
+                    my ($spellactor, $spellname, $spellid) = $self->_decodespell($_[1]->{key}, $pm, @PLAYER);
+                    return $self->_rowHealing( $_[0]->{row}, $pm->actorLink( $_[0]->{key} ) );
                 }
-                
-                # JavaScript close
-                $PAGE .= $pm->jsClose("healing_$id");
-            }
+            );
         }
     }
     
@@ -491,46 +426,30 @@ sub page {
         # Print @rows.
         if( @rows ) {
             $PAGE .= $pm->tableHeader("Healing Out by Target", @header);
-            foreach my $row (@rows) {
-                # JavaScript ID
-                my $id = $pm->tameText( $row->{key} );
-                
-                # Master row
-                $PAGE .= $pm->tableRow( 
-                    header => \@header,
-                    data => {
-                        "Target" => $pm->actorLink( $row->{key} ),
-                        "R-Eff. Heal" => $row->{row}{effective},
-                        "R-Count" => $row->{row}{count},
-                        "R-Overheal %" => $row->{row}{total} && sprintf( "%0.1f%%", ( $row->{row}{total} - $row->{row}{effective} ) / $row->{row}{total} * 100 ),
-                        "R-Eff. Out %" => $eff_on_others && sprintf( "%0.1f%%", $row->{row}{effective} / $eff_on_others * 100 ),
-                    },
-                    type => "master",
-                    name => "healout_$id",
-                );
-                
-                # Slave rows
-                foreach my $slave (@{ $row->{slaves} }) {
-                    # Decode spell name
-                    my ($spellactor, $spellname, $spellid) = $self->_decodespell($slave->{key}, $pm, $MOB);
+            $PAGE .= $pm->tableRows(
+                header => \@header,
+                rows => \@rows,
+                master => sub {
+                    return {
+                        "Target" => $pm->actorLink( $_[0]->{key} ),
+                        "R-Eff. Heal" => $_[0]->{row}{effective},
+                        "R-Count" => $_[0]->{row}{count},
+                        "R-Overheal %" => $_[0]->{row}{total} && sprintf( "%0.1f%%", ( $_[0]->{row}{total} - $_[0]->{row}{effective} ) / $_[0]->{row}{total} * 100 ),
+                        "R-Eff. Out %" => $eff_on_others && sprintf( "%0.1f%%", $_[0]->{row}{effective} / $eff_on_others * 100 ),
+                    };
+                },
+                slave => sub {
+                    my ($spellactor, $spellname, $spellid) = $self->_decodespell($_[0]->{key}, $pm, @PLAYER);
                     
-                    $PAGE .= $pm->tableRow( 
-                        header => \@header,
-                        data => {
-                            "Target" => $spellname,
-                            "R-Eff. Heal" => $slave->{row}{effective},
-                            "R-Count" => $slave->{row}{count},
-                            "R-Overheal %" => $slave->{row}{total} && sprintf( "%0.1f%%", ( $slave->{row}{total} - $slave->{row}{effective} ) / $slave->{row}{total} * 100 ),
-                            "R-Eff. Out %" => $row->{row}{total} && sprintf( "%0.1f%%", $slave->{row}{effective} / $row->{row}{total} * 100 ),
-                        },
-                        type => "slave",
-                        name => "healout_$id",
-                    );
+                    return {
+                        "Target" => $spellname,
+                        "R-Eff. Heal" => $_[0]->{row}{effective},
+                        "R-Count" => $_[0]->{row}{count},
+                        "R-Overheal %" => $_[0]->{row}{total} && sprintf( "%0.1f%%", ( $_[0]->{row}{total} - $_[0]->{row}{effective} ) / $_[0]->{row}{total} * 100 ),
+                        "R-Eff. Out %" => $_[1]->{row}{total} && sprintf( "%0.1f%%", $_[0]->{row}{effective} / $_[1]->{row}{total} * 100 ),
+                    };
                 }
-                
-                # JavaScript close
-                $PAGE .= $pm->jsClose("healout_$id");
-            }
+            );
         }
     }
     
@@ -565,43 +484,28 @@ sub page {
         # Print @rows.
         if( @rows ) {
             $PAGE .= $pm->tableHeader("Healing In by Source", @header);
-            foreach my $row (@rows) {
-                # JavaScript ID
-                my $id = $pm->tameText( $row->{key} );
-                
-                # Master row
-                $PAGE .= $pm->tableRow( 
-                    header => \@header,
-                    data => {
-                        "Source" => $pm->actorLink( $row->{key} ),
-                        "R-Eff. Heal" => $row->{row}{effective},
-                        "R-Count" => $row->{row}{count},
-                        "R-Overheal %" => $row->{row}{total} && sprintf( "%0.1f%%", ( $row->{row}{total} - $row->{row}{effective} ) / $row->{row}{total} * 100 ),
-                        "R-Eff. In %" => $eff_on_me && sprintf( "%0.1f%%", $row->{row}{effective} / $eff_on_me * 100 ),
-                    },
-                    type => "master",
-                    name => "healin_$id",
-                );
-                
-                # Slave rows
-                foreach my $slave (@{ $row->{slaves} }) {
-                    $PAGE .= $pm->tableRow( 
-                        header => \@header,
-                        data => {
-                            "Source" => $pm->spellLink( $slave->{key}, $self->{ext}{Index}->spellname( $slave->{key} ) ),
-                            "R-Eff. Heal" => $slave->{row}{effective},
-                            "R-Count" => $slave->{row}{count},
-                            "R-Overheal %" => $slave->{row}{total} && sprintf( "%0.1f%%", ( $slave->{row}{total} - $slave->{row}{effective} ) / $slave->{row}{total} * 100 ),
-                            "R-Eff. In %" => $row->{row}{total} && sprintf( "%0.1f%%", $slave->{row}{effective} / $row->{row}{total} * 100 ),
-                        },
-                        type => "slave",
-                        name => "healin_$id",
-                    );
+            $PAGE .= $pm->tableRows(
+                header => \@header,
+                rows => \@rows,
+                master => sub {
+                    return {
+                        "Source" => $pm->actorLink( $_[0]->{key} ),
+                        "R-Eff. Heal" => $_[0]->{row}{effective},
+                        "R-Count" => $_[0]->{row}{count},
+                        "R-Overheal %" => $_[0]->{row}{total} && sprintf( "%0.1f%%", ( $_[0]->{row}{total} - $_[0]->{row}{effective} ) / $_[0]->{row}{total} * 100 ),
+                        "R-Eff. In %" => $eff_on_me && sprintf( "%0.1f%%", $_[0]->{row}{effective} / $eff_on_me * 100 ),
+                    };
+                },
+                slave => sub {
+                    return {
+                        "Source" => $pm->spellLink( $_[0]->{key}, $self->{ext}{Index}->spellname( $_[0]->{key} ) ),
+                        "R-Eff. Heal" => $_[0]->{row}{effective},
+                        "R-Count" => $_[0]->{row}{count},
+                        "R-Overheal %" => $_[0]->{row}{total} && sprintf( "%0.1f%%", ( $_[0]->{row}{total} - $_[0]->{row}{effective} ) / $_[0]->{row}{total} * 100 ),
+                        "R-Eff. In %" => $_[1]->{row}{total} && sprintf( "%0.1f%%", $_[0]->{row}{effective} / $_[1]->{row}{total} * 100 ),
+                    };
                 }
-                
-                # JavaScript close
-                $PAGE .= $pm->jsClose("healin_$id");
-            }
+            );
         }
     }
     
@@ -629,39 +533,24 @@ sub page {
         my @rows = $self->_castRowsOut( $self->{ext}{Cast}, @PLAYER );
         
         $PAGE .= $pm->tableHeader("Casts", @header);
-        foreach my $row (@rows) {
-            my $id = lc $row->{key};
-            $id = $pm->tameText($id);
-
-            # Print row.
-            $PAGE .= $pm->tableRow( 
-                header => \@header,
-                data => {
-                    "Name" => $pm->spellLink( $row->{key}, $self->{ext}{Index}->spellname($row->{key}) ),
-                    "R-Targets" => scalar @{$row->{slaves}},
-                    "R-Casts" => $row->{row}{count},
-                },
-                type => "master",
-                name => "cast_$id",
-            );
-            
-            # Slave rows
-            foreach my $slave (@{ $row->{slaves} }) {
-                $PAGE .= $pm->tableRow( 
-                    header => \@header,
-                    data => {
-                        "Name" => $pm->actorLink( $slave->{key} ),
-                        "R-Targets" => "",
-                        "R-Casts" => $slave->{row}{count},
-                    },
-                    type => "slave",
-                    name => "cast_$id",
-                );
+        $PAGE .= $pm->tableRows(
+            header => \@header,
+            rows => \@rows,
+            master => sub {
+                return {
+                    "Name" => $pm->spellLink( $_[0]->{key}, $self->{ext}{Index}->spellname($_[0]->{key}) ),
+                    "R-Targets" => scalar @{$_[0]->{slaves}},
+                    "R-Casts" => $_[0]->{row}{count},
+                };
+            },
+            slave => sub {
+                return {
+                    "Name" => $pm->actorLink( $_[0]->{key} ),
+                    "R-Targets" => "",
+                    "R-Casts" => $_[0]->{row}{count},
+                };
             }
-            
-            # JavaScript close
-            $PAGE .= $pm->jsClose("cast_$id");
-        }
+        );
     }
     
     #########
@@ -678,48 +567,32 @@ sub page {
             "R-Per 5",
         );
         
-        # Group by ability.
         my @rows = $self->_castRowsOut( $self->{ext}{Power}, @PLAYER );
         
         $PAGE .= $pm->tableHeader("Power Gains", @header);
-        foreach my $row (@rows) {
-            my $id = lc $row->{key};
-            $id = $pm->tameText($id);
-
-            # Print row.
-            $PAGE .= $pm->tableRow( 
-                header => \@header,
-                data => {
-                    "Name" => $pm->spellLink( $row->{key}, $self->{ext}{Index}->spellname($row->{key}) . " (" . $row->{row}{type} . ")" ),
-                    "R-Sources" => scalar @{$row->{slaves}},
-                    "R-Gained" => $row->{row}{amount},
-                    "R-Ticks" => $row->{row}{count},
-                    "R-Avg" => $row->{row}{count} && sprintf( "%d", $row->{row}{amount} / $row->{row}{count} ),
-                    "R-Per 5" => $ptime && sprintf( "%0.1f", $row->{row}{amount} / $ptime * 5 ),
-                },
-                type => "master",
-                name => "power_$id",
-            );
-            
-            # Slave rows
-            foreach my $slave (@{ $row->{slaves} }) {
-                $PAGE .= $pm->tableRow( 
-                    header => \@header,
-                    data => {
-                        "Name" => $pm->actorLink( $slave->{key} ),
-                        "R-Gained" => $slave->{row}{amount},
-                        "R-Ticks" => $slave->{row}{count},
-                        "R-Avg" => $slave->{row}{count} && sprintf( "%d", $slave->{row}{amount} / $slave->{row}{count} ),
-                        "R-Per 5" => $ptime && sprintf( "%0.1f", $slave->{row}{amount} / $ptime * 5 ),
-                    },
-                    type => "slave",
-                    name => "power_$id",
-                );
+        $PAGE .= $pm->tableRows(
+            header => \@header,
+            rows => \@rows,
+            master => sub {
+                return {
+                    "Name" => $pm->spellLink( $_[0]->{key}, $self->{ext}{Index}->spellname($_[0]->{key}) . " (" . Stasis::Parser->_powerName( $_[0]->{row}{type} ) . ")" ),
+                    "R-Sources" => scalar @{$_[0]->{slaves}},
+                    "R-Gained" => $_[0]->{row}{amount},
+                    "R-Ticks" => $_[0]->{row}{count},
+                    "R-Avg" => $_[0]->{row}{count} && sprintf( "%d", $_[0]->{row}{amount} / $_[0]->{row}{count} ),
+                    "R-Per 5" => $ptime && sprintf( "%0.1f", $_[0]->{row}{amount} / $ptime * 5 ),
+                };
+            },
+            slave => sub {
+                return {
+                    "Name" => $pm->actorLink( $_[0]->{key} ),
+                    "R-Gained" => $_[0]->{row}{amount},
+                    "R-Ticks" => $_[0]->{row}{count},
+                    "R-Avg" => $_[0]->{row}{count} && sprintf( "%d", $_[0]->{row}{amount} / $_[0]->{row}{count} ),
+                    "R-Per 5" => $ptime && sprintf( "%0.1f", $_[0]->{row}{amount} / $ptime * 5 ),
+                };
             }
-            
-            # JavaScript close
-            $PAGE .= $pm->jsClose("power_$id");
-        }
+        );
     }
     
     #################
@@ -736,48 +609,32 @@ sub page {
             "R-Per 5",
         );
         
-        # Group by ability.
         my @rows = $self->_castRowsOut( $self->{ext}{ExtraAttack}, @PLAYER );
         
         $PAGE .= $pm->tableHeader("Power Gains", @header) unless $self->_keyExists( $self->{ext}{Power}{actors}, @PLAYER );
-        foreach my $row (@rows) {
-            my $id = lc $row->{key};
-            $id = $pm->tameText($id);
-
-            # Print row.
-            $PAGE .= $pm->tableRow( 
-                header => \@header,
-                data => {
-                    "Name" => $pm->spellLink( $row->{key}, $self->{ext}{Index}->spellname($row->{key}) . " (extra attacks)" ),
-                    "R-Sources" => scalar @{$row->{slaves}},
-                    "R-Gained" => $row->{row}{amount},
-                    "R-Ticks" => $row->{row}{count},
-                    "R-Avg" => $row->{row}{count} && sprintf( "%d", $row->{row}{amount} / $row->{row}{count} ),
-                    "R-Per 5" => $ptime && sprintf( "%0.1f", $row->{row}{amount} / $ptime * 5 ),
-                },
-                type => "master",
-                name => "ea_$id",
-            );
-            
-            # Slave rows
-            foreach my $slave (@{ $row->{slaves} }) {
-                $PAGE .= $pm->tableRow( 
-                    header => \@header,
-                    data => {
-                        "Name" => $pm->actorLink( $slave->{key} ),
-                        "R-Gained" => $slave->{row}{amount},
-                        "R-Ticks" => $slave->{row}{count},
-                        "R-Avg" => $slave->{row}{count} && sprintf( "%d", $slave->{row}{amount} / $slave->{row}{count} ),
-                        "R-Per 5" => $ptime && sprintf( "%0.1f", $slave->{row}{amount} / $ptime * 5 ),
-                    },
-                    type => "slave",
-                    name => "ea_$id",
-                );
+        $PAGE .= $pm->tableRows(
+            header => \@header,
+            rows => \@rows,
+            master => sub {
+                return {
+                    "Name" => $pm->spellLink( $_[0]->{key}, $self->{ext}{Index}->spellname($_[0]->{key}) . " (extra attacks)" ),
+                    "R-Sources" => scalar @{$_[0]->{slaves}},
+                    "R-Gained" => $_[0]->{row}{amount},
+                    "R-Ticks" => $_[0]->{row}{count},
+                    "R-Avg" => $_[0]->{row}{count} && sprintf( "%d", $_[0]->{row}{amount} / $_[0]->{row}{count} ),
+                    "R-Per 5" => $ptime && sprintf( "%0.1f", $_[0]->{row}{amount} / $ptime * 5 ),
+                };
+            },
+            slave => sub {
+                return {
+                    "Name" => $pm->actorLink( $_[0]->{key} ),
+                    "R-Gained" => $_[0]->{row}{amount},
+                    "R-Ticks" => $_[0]->{row}{count},
+                    "R-Avg" => $_[0]->{row}{count} && sprintf( "%d", $_[0]->{row}{amount} / $_[0]->{row}{count} ),
+                    "R-Per 5" => $ptime && sprintf( "%0.1f", $_[0]->{row}{amount} / $ptime * 5 ),
+                };
             }
-            
-            # JavaScript close
-            $PAGE .= $pm->jsClose("ea_$id");
-        }
+        );
     }
     
     #########
@@ -817,6 +674,152 @@ sub page {
                 },
                 type => "",
                 name => "aura_$id",
+            );
+        }
+    }
+    
+    $PAGE .= $pm->tableEnd;
+    $PAGE .= $pm->tabEnd;
+    
+    $PAGE .= $pm->tabStart("Dispels and Interrupts");
+    $PAGE .= $pm->tableStart;
+    
+    ###############
+    # DISPELS OUT #
+    ###############
+    
+    {
+        my @header = (
+            "Name",
+            "R-Casts",
+            "R-Resists",
+        );
+        
+        my @rows = $self->_dispelRowsOut( $self->{ext}{Dispel}, @PLAYER );
+        
+        if( @rows ) {
+            $PAGE .= $pm->tableHeader("Dispels Out", @header);
+            $PAGE .= $pm->tableRows(
+                header => \@header,
+                rows => \@rows,
+                master => sub {
+                    return {
+                        "Name" => $pm->actorLink( $_[0]->{key} ),
+                        "R-Casts" => $_[0]->{row}{count},
+                        "R-Resists" => $_[0]->{row}{resist},
+                    };
+                },
+                slave => sub {
+                    return {
+                        "Name" => $pm->spellLink( $_[0]->{key}, $self->{ext}{Index}->spellname($_[0]->{key}) ),
+                        "R-Casts" => $_[0]->{row}{count},
+                        "R-Resists" => $_[0]->{row}{resist},
+                    };
+                }
+            );
+        }
+    }
+    
+    ##############
+    # DISPELS IN #
+    ##############
+    
+    {
+        my @header = (
+            "Name",
+            "R-Casts",
+            "R-Resists",
+        );
+        
+        my @rows = $self->_dispelRowsIn( $self->{ext}{Dispel}, @PLAYER );
+        
+        if( @rows ) {
+            $PAGE .= $pm->tableHeader("Dispels In", @header);
+            $PAGE .= $pm->tableRows(
+                header => \@header,
+                rows => \@rows,
+                master => sub {
+                    return {
+                        "Name" => $pm->actorLink( $_[0]->{key} ),
+                        "R-Casts" => $_[0]->{row}{count},
+                        "R-Resists" => $_[0]->{row}{resist},
+                    };
+                },
+                slave => sub {
+                    return {
+                        "Name" => $pm->spellLink( $_[0]->{key}, $self->{ext}{Index}->spellname($_[0]->{key}) ),
+                        "R-Casts" => $_[0]->{row}{count},
+                        "R-Resists" => $_[0]->{row}{resist},
+                    };
+                }
+            );
+        }
+    }
+    
+    ##################
+    # INTERRUPTS OUT #
+    ##################
+    
+    {
+        my @header = (
+            "Name",
+            "R-Interrupts",
+            "",
+        );
+        
+        my @rows = $self->_dispelRowsOut( $self->{ext}{Interrupt}, @PLAYER );
+        
+        if( @rows ) {
+            $PAGE .= $pm->tableHeader("Interrupts Out", @header);
+            $PAGE .= $pm->tableRows(
+                header => \@header,
+                rows => \@rows,
+                master => sub {
+                    return {
+                        "Name" => $pm->actorLink( $_[0]->{key} ),
+                        "R-Interrupts" => $_[0]->{row}{count},
+                    };
+                },
+                slave => sub {
+                    return {
+                        "Name" => $pm->spellLink( $_[0]->{key}, $self->{ext}{Index}->spellname($_[0]->{key}) ),
+                        "R-Interrupts" => $_[0]->{row}{count},
+                    };
+                }
+            );
+        }
+    }
+    
+    #################
+    # INTERRUPTS IN #
+    #################
+    
+    {
+        my @header = (
+            "Name",
+            "R-Interrupts",
+            "",
+        );
+        
+        my @rows = $self->_dispelRowsIn( $self->{ext}{Interrupt}, @PLAYER );
+        
+        if( @rows ) {
+            $PAGE .= $pm->tableHeader("Interrupts In", @header);
+            $PAGE .= $pm->tableRows(
+                header => \@header,
+                rows => \@rows,
+                master => sub {
+                    return {
+                        "Name" => $pm->actorLink( $_[0]->{key} ),
+                        "R-Interrupts" => $_[0]->{row}{count},
+                    };
+                },
+                slave => sub {
+                    return {
+                        "Name" => $pm->spellLink( $_[0]->{key}, $self->{ext}{Index}->spellname($_[0]->{key}) ),
+                        "R-Interrupts" => $_[0]->{row}{count},
+                    };
+                }
             );
         }
     }
@@ -1106,6 +1109,73 @@ sub _castRowsOut {
 
                 # Add the row.
                 $self->_rowadd( \@rows, $kspell, $ktarget_use, $vtarget );
+            }
+        }
+    }
+    
+    # Sort @rows.
+    @rows = sort { $b->{row}{count} <=> $a->{row}{count} } @rows;
+    
+    # Sort slaves.
+    foreach my $row (@rows) {
+        $row->{slaves} = [ sort { $b->{row}{count} <=> $a->{row}{count} } @{$row->{slaves}} ]; 
+    }
+    
+    return @rows;
+}
+
+sub _dispelRowsIn {
+    my $self = shift;
+    my $ext = shift;
+
+    my @rows;
+    
+    while( my ($kactor, $vactor) = each(%{ $ext->{actors} } ) ) {
+        # Actor keys.
+        my $gactor = $self->{grouper}->group($kactor);
+        my $kactor_use = $gactor && $_[0] ne $kactor ? $self->{grouper}->captain($gactor) : $kactor;
+        
+        while( my ($kspell, $vspell) = each(%$vactor) ) {
+            while( my ($ktarget, $vtarget) = each(%$vspell) ) {
+                # Skip targets other than us.
+                next unless grep $_ eq $ktarget, @_;
+                
+                while( my ($kextraspell, $vextraspell) = each (%$vtarget) ) {
+                    # Add the row.
+                    $self->_rowadd( \@rows, $kactor_use, $kextraspell, $vextraspell );
+                }
+            }
+        }
+    }
+    
+    # Sort @rows.
+    @rows = sort { $b->{row}{count} <=> $a->{row}{count} } @rows;
+    
+    # Sort slaves.
+    foreach my $row (@rows) {
+        $row->{slaves} = [ sort { $b->{row}{count} <=> $a->{row}{count} } @{$row->{slaves}} ]; 
+    }
+    
+    return @rows;
+}
+
+sub _dispelRowsOut {
+    my $self = shift;
+    my $ext = shift;
+
+    my @rows;
+    
+    foreach my $kactor (@_) {
+        while( my ($kspell, $vspell) = each(%{ $ext->{actors}{$kactor} } ) ) {
+            while( my ($ktarget, $vtarget) = each(%$vspell) ) {
+                # $vtarget is a spell hash.
+                my $gtarget = $self->{grouper}->group($ktarget);
+                my $ktarget_use = $gtarget ? $self->{grouper}->captain($gtarget) : $ktarget;
+
+                while( my ($kextraspell, $vextraspell) = each (%$vtarget) ) {
+                    # Add the row.
+                    $self->_rowadd( \@rows, $ktarget_use, $kextraspell, $vextraspell );
+                }
             }
         }
     }
