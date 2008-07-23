@@ -127,7 +127,6 @@ use Stasis::SpellPage;
 use Stasis::ActorGroup;
 use Stasis::PageMaker;
 use Stasis::DB;
-use Data::Dumper;
 use File::Find qw();
 use File::Path qw();
 use File::Spec qw();
