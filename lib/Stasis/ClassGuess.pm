@@ -508,8 +508,8 @@ sub process2 {
             my $owner = $entry->{actor};
             while( $self->{scratch2}{class}{ $owner } && $self->{scratch2}{class}{ $owner } eq "Pet" ) {
                 # Find the pet's owner.
-                while( my ($kpet, $vpet) = each(%{$self->{scratch2}{pets}}) ) {
-                    if( $vpet->{ $owner } ) {
+                foreach my $kpet (keys %{$self->{scratch2}{pets}}) {
+                    if( $self->{scratch2}{pets}{ $kpet }{ $owner } ) {
                         $owner = $kpet;
                         last;
                     }
@@ -570,7 +570,7 @@ sub process2 {
 }
 
 sub finish1 {
-    my $self = shift;
+    my ( $self ) = @_;
     
     # We will eventually return this list of raid members.
     # Keys will be raid member IDs and values will be two element hashes
@@ -624,7 +624,7 @@ sub finish1 {
 }
 
 sub finish2 {
-    my $self = shift;
+    my ( $self ) = @_;
     
     # We will eventually return this list of raid members.
     # Keys will be raid member IDs and values will be two element hashes
@@ -647,7 +647,6 @@ sub finish2 {
             foreach my $petid (keys %$pethash) {
                 $raid{$petid}{class} = "Pet";
             }
-            
         }
     }
     
