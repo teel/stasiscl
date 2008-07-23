@@ -11,7 +11,7 @@ cd stasiscl
 
   When you want to update the code from the latest version in the trunk, run `svn update`.
 
-  * You may need to install some perl modules from CPAN if you don't have all the ones on the front page list. If this is true then run `sudo perl -MCPAN -eshell`, possibly do some setup, and then type `install X` for the various modules you are missing (the least likely one for you to have is `Text::CSV_XS`)
+  * You may need to install some perl modules from CPAN if you don't have all the ones on the front page list. If this is true then run `sudo perl -MCPAN -eshell`, possibly do some setup, and then type `install X` for the various modules you are missing (the least likely one for you to have is `File::Tail`)
 
   * Create a folder on your machine that you would like to store your guild's web stats in. For purposes of the quick start I will use `/home/jqpublic/sws`. Once this is done you must copy the folder `extras` from the subversion trunk into the folder you just made. This should contain a `.js` and a `.css` file which are necessary for proper display.
 
