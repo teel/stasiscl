@@ -1,5 +1,7 @@
 #summary New actions seen on PTRs or WLK beta.
 
+To be removed when added to the parser.
+
 SPELL_RESURRECT, WLK beta, unknown build
 
 {{{
