@@ -1629,8 +1629,31 @@ sub toString {
     return $text;
 }
 
-my $csv_regex = qr/"?,(?=".*?"(?:,|$)|[^",]+(?:,|$))"?/;
 my $stamp_regex = qr/^(\d+)\/(\d+) (\d+):(\d+):(\d+)\.(\d+)  (.*?)[\r\n]*$/s;
+sub _pullStamp {
+    my ($self, $line) = @_;
+    
+    if( $line =~ $stamp_regex ) {
+        return 
+            POSIX::mktime( 
+                $5, # sec
+                $4, # min
+                $3, # hour
+                $2, # mday
+                $1 - 1, # mon
+                $self->{year} - 1900, # year
+                0, # wday
+                0, # yday
+                -1 # is_dst
+            ) + $6/1000,
+            $7;
+    } else {
+        # Couldn't recognize time
+        return (0, $line);
+    }
+}
+
+my $csv_regex = qr/"?,(?=".*?"(?:,|$)|[^",]+(?:,|$))"?/;
 sub _split {
     my ($self, $line) = @_;
 
