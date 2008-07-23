@@ -1,0 +1,7 @@
+#summary New actions seen on PTRs or WLK beta.
+
+SPELL_RESURRECT, WLK beta, unknown build
+
+{{{
+7/22 04:25:10.723  SPELL_RESURRECT,0x0000000000054E92,"Gordita",0x511,0x0000000000057B3E,"Kerym",0x10512,20773,"Redemption",0x2
+}}}
