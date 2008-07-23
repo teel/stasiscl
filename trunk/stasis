@@ -101,8 +101,8 @@ B<-overall>   Include a separate parse that rolls up everything in the log
            
 B<-collapse>  For boss attempts and kills, collapse all mobs that have the
            same NPC ID and all pets with the same name and owner. This
-           is always done for trash parses to save space, but by default
-           is not done for boss parses.
+           is always done for trash parses to save space, but by
+           default is not done for boss parses.
 
 =head1 BUGS
 
