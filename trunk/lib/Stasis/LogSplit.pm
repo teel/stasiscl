@@ -427,6 +427,7 @@ my %fingerprints = (
     mobContinue => [ "25166", "25165" ],
     mobEnd => [],
     timeout => 30,
+    short => "twins",
 },
 
 "M'uru" => {
@@ -475,8 +476,8 @@ sub new {
     $params{nlog} = -1;
     
     # Callback args:
-    # at split start:   ( $short )
-    # at split end:     ( $short, $long, $kill, $start, $end, $startLine, $endLine )
+    # at split start:   ( $short, $start )
+    # at split end:     ( $short, $start, $long, $kill, $end, $startLine, $endLine )
     $params{callback} ||= undef;
     
     bless \%params, $class;
@@ -518,7 +519,7 @@ sub process {
                 push @{$self->{splits}}, { short => $short, long => $splitname, start => $self->{scratch}{$kboss}{start}, end => $self->{scratch}{$kboss}{end}, startLine => $self->{scratch}{$kboss}{startLine}, endLine => $self->{scratch}{$kboss}{endLine}, kill => 0 };
                 
                 # Callback.
-                $self->{callback}->( $short, $splitname, 0, $self->{scratch}{$kboss}{start}, $self->{scratch}{$kboss}{end}, $self->{scratch}{$kboss}{startLine}, $self->{scratch}{$kboss}{endLine} ) if( $self->{callback} );
+                $self->{callback}->( $short, $self->{scratch}{$kboss}{start}, $splitname, 0, $self->{scratch}{$kboss}{end}, $self->{scratch}{$kboss}{startLine}, $self->{scratch}{$kboss}{endLine} ) if( $self->{callback} );
                 
                 # Reset the start/end times for this fingerprint.
                 $self->{scratch}{$kboss}{start} = 0;
@@ -538,7 +539,7 @@ sub process {
                     push @{$self->{splits}}, { short => $short, long => $kboss, start => $self->{scratch}{$kboss}{start}, end => $self->{scratch}{$kboss}{end}, startLine => $self->{scratch}{$kboss}{startLine}, endLine => $self->{scratch}{$kboss}{endLine}, kill => 1 };
                     
                     # Callback.
-                    $self->{callback}->( $short, $kboss, 1, $self->{scratch}{$kboss}{start}, $self->{scratch}{$kboss}{end}, $self->{scratch}{$kboss}{startLine}, $self->{scratch}{$kboss}{endLine} ) if( $self->{callback} );
+                    $self->{callback}->( $short, $self->{scratch}{$kboss}{start}, $kboss, 1, $self->{scratch}{$kboss}{end}, $self->{scratch}{$kboss}{startLine}, $self->{scratch}{$kboss}{endLine} ) if( $self->{callback} );
 
                     # Reset the start/end times for this fingerprint.
                     $self->{scratch}{$kboss}{start} = 0;
@@ -560,7 +561,7 @@ sub process {
         my $short = $fingerprints{$fstart{$actor_id}}{short} || lc $fstart{$actor_id};
         $short =~ s/\s+.*$//;
         $short =~ s/[^\w]//g;
-        $self->{callback}->( $short ) if( $self->{callback} );
+        $self->{callback}->( $short, $entry->{t} ) if( $self->{callback} );
     }
     
     if( $fstart{$target_id} && !$self->{scratch}{$fstart{$target_id}}{start} && (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) ) {
@@ -574,7 +575,7 @@ sub process {
         my $short = $fingerprints{$fstart{$target_id}}{short} || lc $fstart{$target_id};
         $short =~ s/\s+.*$//;
         $short =~ s/[^\w]//g;
-        $self->{callback}->( $short ) if( $self->{callback} );
+        $self->{callback}->( $short, $entry->{t} ) if( $self->{callback} );
     }
 }
 
@@ -600,7 +601,7 @@ sub finish {
                 push @{$self->{splits}}, { short => $short, long => $splitname, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 0 };
                 
                 # Callback.
-                $self->{callback}->( $short, $splitname, 0, $self->{scratch}{$boss}{start}, $self->{scratch}{$boss}{end}, $self->{scratch}{$boss}{startLine}, $self->{scratch}{$boss}{endLine} ) if( $self->{callback} );
+                $self->{callback}->( $short, $self->{scratch}{$boss}{start}, $splitname, 0, $self->{scratch}{$boss}{end}, $self->{scratch}{$boss}{startLine}, $self->{scratch}{$boss}{endLine} ) if( $self->{callback} );
             }
         }
     }

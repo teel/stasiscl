@@ -23,6 +23,95 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+=head1 NAME
+
+stasis - WoW combat log parser
+
+=head1 DESCRIPTION
+
+This program will read in a WoW combat log and then perform some action that
+you specify. Generally this will be 'add', which runs some calculations on
+the log and writes out HTML, or 'print' which prints out the log in a nicer
+format.
+
+For more information visit I<http://code.google.com/p/stasiscl/>.
+
+=head1 SYNOPSIS
+
+Write HTML for boss kills in the directory C</var/www/sws>:
+    stasis add -dir /var/www/sws -file WoWCombatLog.txt
+
+Write HTML for kills and attempts:
+    stasis add -dir /var/www/sws -file WoWCombatLog.txt -attempt
+
+Update the wws-history/data.xml:
+    stasis history -dir /var/www/sws
+
+=head1 USAGE
+
+    stasis action [options]
+
+=head2 Actions
+
+You must provide one of these as the first command-line argument.
+
+B<add>        Read a combat log and write out parsed HTML corresponding
+           to the encounters found within in.
+
+B<print>      Display a pretty-printed version of the combat log.
+                      
+B<history>    Updates the wws-history/data.xml in the specified
+           directory with all accumulated data of all sws-* dirs.
+
+
+B<convert>    Convert a combat log into a SQLite database.
+           WARNING: This feature is experimental and subject to change!
+
+=head2 Options
+
+You may provide various options after the action. Some of them will be
+required and some will be optional, depending on what action you select.
+
+B<-file>      Specifies the combat log to read.
+
+B<-dir>       Specifies in which directory the generated HTML is living
+           or will be written, depending on action. Default is the
+           current directory.
+           
+B<-server>    If present, Armory links will be included using this server.
+           Only works with the US armory for now.
+
+B<-version>   Either 1 or 2. Pre-2.4 combatlogs should be parsed with
+           version = 1, post-2.4 combatlogs with 2. Default is '2',
+           the new post-2.4 style.
+
+B<-logger>    Name of the logger, optional argument only used when parsing
+           version 1 combat logs. Default is 'You'.
+
+B<-minlength> Exclude encounters less than this amount of seconds.
+           Defaults to 30 seconds.
+           
+B<-attempt>  Include a parse for boss attempts (not just kills).
+               
+B<-trash>     Include a parse for trash mobs (all sections of the log that
+           were not part of a boss encounter).
+           
+B<-overall>   Include a separate parse that rolls up everything in the log
+           file.
+           
+B<-collapse>  For boss attempts and kills, collapse all mobs that have the
+           same NPC ID and all pets with the same name and owner. This
+           is always done for trash parses to save space, but by default
+           is not done for boss parses.
+
+=head1 BUGS
+
+http://code.google.com/p/stasiscl/
+
+Use the "Issues" tab.
+
+=cut
+
 use strict;
 use warnings;
 use lib 'lib';
@@ -61,6 +150,7 @@ my $opt_trash;
 my $opt_overall;
 my $opt_server;
 my $opt_collapse;
+my $opt_tail;
 
 ## SUBS ##
 
@@ -71,56 +161,10 @@ sub usage {
     my $me = $0;
     $me =~ s/^.*\///;
     print STDERR <<USAGE;
-Usage:
-    $me action [options]
-
-There are 2 main actions:
-    history    Updates the wws-history/data.xml in the specified
-               directory with all accumulated data of all sws-* dirs.
-
-    add        Read a combat log and write out parsed HTML corresponding
-               to the encounters found within in.
-
-Options:
-    -file      Specifies the combat log to read.
-
-    -dir       Specifies in which directory the generated HTML is living
-               or will be written, depending on action. Default is the
-               current directory.
-
-    -version   Either 1 or 2. Pre-2.4 combatlogs should be parsed with
-               version = 1, post-2.4 combatlogs with 2. Default is '2',
-               the new post-2.4 style.
-
-    -logger    Name of the logger, optional argument only used when parsing
-               version 1 combat logs. Default is 'You'.
-
-    -minlength Exclude encounters less than this amount of seconds in length.
-               Defaults to 30 seconds.
-               
-    -attempts  Include a parse for boss attempts (not just kills).
-                   
-    -trash     Include a parse for trash mobs (all sections of the log that
-               were not part of a boss encounter).
-               
-    -overall   Include a separate parse that rolls up everything in the log
-               file.
-               
-    -collapse  For boss attempts and kills, collapse all mobs that have the
-               same NPC ID and all pets with the same name and owner. This
-               is always done for trash parses to save space, but by default
-               is not done for boss parses.
-
-Example for parsing boss kills only:
-    $me add -dir /var/www/sws -file WoWCombatLog.txt
-
-Example for parsing every single line in a log:
-    $me add -dir /var/www/sws -file WoWCombatLog.txt -attempt -trash -overall
-
-Example for updating the wws-history/data.xml:
-    $me history -dir /var/www/swstats.domain.com
-
+Usage: $me action [options]
+See 'perldoc stasis'.
 USAGE
+
     exit $exitvalue;
 }
 
@@ -223,6 +267,34 @@ sub writedir($$$$$$$) {
     close DATAXML;
 }
 
+sub lagstring($) {
+    my $lag = shift;
+    
+    my $lagstring;
+    if( $lag < 0 ) {
+		$lagstring = " in the future";
+		$lag *= -1;
+	} else {
+		$lagstring = " ago";
+	}
+    
+	if( $lag < 60 ) {
+		$lagstring = sprintf "%d second%s%s", $lag, $lag == 1 ? '' : 's', $lagstring;
+	} elsif( $lag < 60*60 ) {
+		$lagstring = sprintf "%d minute%s%s", int($lag/60), int($lag/60) == 1 ? '' : 's', $lagstring;
+	} elsif( $lag < 60*60*5 ) {
+		$lagstring = sprintf "%d hour%s and %d minute%s%s", int($lag/60/60), int($lag/60/60) == 1 ? '' : 's', ($lag/60%60), $lag/60%60 == 1 ? '' : 's', $lagstring;
+	} elsif( $lag < 60*60*24 ) {
+		$lagstring = sprintf "%d hour%s%s", int($lag/60/60), int($lag/60/60) == 1 ? '' : 's', $lagstring;
+	} elsif( $lag < 60*60*24*3 ) {
+		$lagstring = sprintf "%d day%s and %d hour%s%s", int($lag/60/60/24), int($lag/60/60/24) == 1 ? '' : 's', $lag/60/60%24, $lag/60/60%24 == 1 ? '' : 's', $lagstring;
+	} else {
+		$lagstring = sprintf "%d day%s%s", int($lag/60/60/24), int($lag/60/60/24) == 1 ? '' : 's', $lagstring;
+	}
+	
+	return $lagstring;
+}
+
 # For File::Find later
 my @dataxmls;
 sub wantedDataXML {
@@ -253,6 +325,7 @@ my $rc = GetOptions(
     "overall"       => \$opt_overall,
     "server=s"      => \$opt_server,
     "collapse"      => \$opt_collapse,
+    "tail"          => \$opt_tail,
 );
 
 # Clean up opt_dir
@@ -276,14 +349,46 @@ if( $action eq "print" ) {
     
     if( $opt_file ) {
         # Get a filehandle.
-        open $fh, $opt_file or bomb "could not open file: $opt_file";
+        
+        if( $opt_tail ) {
+            # See if we have File::Tail
+            eval {
+                require File::Tail;
+                import File::Tail;
+            }; if( $@ ) {
+                bomb "please install File::Tail from CPAN or try again without -tail";
+            }
+            
+            tie *TAILFH, "File::Tail", ( 
+                name => $opt_file,
+
+                # Never wait more than 1 second between checks.
+                maxinterval => 1,
+
+                # Tail from the end of the file, don't read in pre-existing data.
+                tail => 0,
+
+                # If the file is moved out of the way and replaced, read its entire replacement.
+                reset_tail => 1,
+            );
+            
+            $fh = \*TAILFH;
+            status "WARNING: -tail is an experimental option, please report any strange behavior";
+        } else {
+            open $fh, $opt_file or bomb "could not open file: $opt_file";
+        }
     } elsif( $opt_sfile ) {
         # Get a database connection.
-        status "WARNING: SQLite mode is experimental, and the file format is subject to change!";
-        $db = Stasis::DB->new( db => $opt_sfile );
-        $db->line(1);
+        
+        if( $opt_tail ) {
+            bomb "SQLite mode is not supported with -tail.";
+        } else {
+            status "WARNING: SQLite mode is experimental, and the file format is subject to change!";
+            $db = Stasis::DB->new( db => $opt_sfile );
+            $db->line(1);
+        }
     } else {
-        bomb "STDIN is no longer supported, please use -file or -sfile (see 'stasis help' for more details)";
+        bomb "STDIN is no longer supported, please use -file or -sfile (see 'perldoc stasis' for more details)";
     }
     
     while( defined( $_ = $opt_file ? <$fh> : $db->line() ) ) {
@@ -303,14 +408,52 @@ if( $action eq "print" ) {
     
     if( $opt_file ) {
         # Get a filehandle.
-        open $fh, $opt_file or bomb "could not open file: $opt_file";
+        
+        if( $opt_tail ) {
+            # See if we have File::Tail
+            eval {
+                require File::Tail;
+                import File::Tail;
+            }; if( $@ ) {
+                bomb "please install File::Tail from CPAN or try again without -tail";
+            }
+            
+            # Can't do trash or overall with -tail
+            if( $opt_trash || $opt_overall ) {
+                bomb "-trash and -overall are not supported with -tail"
+            }
+            
+            tie *TAILFH, "File::Tail", ( 
+                name => $opt_file,
+
+                # Never wait more than 1 second between checks.
+                interval => 1,
+                maxinterval => 1,
+
+                # Tail from the end of the file, don't read in pre-existing data.
+                tail => 0,
+
+                # If the file is moved out of the way and replaced, read its entire replacement.
+                reset_tail => 1,
+            );
+            
+            $fh = \*TAILFH;
+            status "WARNING: -tail is an experimental option, please report any strange behavior";
+        } else {
+            open $fh, $opt_file or bomb "could not open file: $opt_file";
+        }
     } elsif( $opt_sfile ) {
         # Get a database connection.
-        status "WARNING: SQLite mode is experimental, and the file format is subject to change!";
-        $db = Stasis::DB->new( db => $opt_sfile );
-        $db->line(1);
+        
+        if( $opt_tail ) {
+            bomb "SQLite mode is not supported with -tail";
+        } else {
+            status "WARNING: SQLite mode is experimental, and the file format is subject to change!";
+            $db = Stasis::DB->new( db => $opt_sfile );
+            $db->line(1);
+        }
     } else {
-        bomb "STDIN is no longer supported, please use -file or -sfile (see 'stasis help' for more details)";
+        bomb "STDIN is no longer supported, please use -file or -sfile (see 'perldoc stasis' for more details)";
     }
     
     # Going to output in $opt_dir
@@ -318,7 +461,7 @@ if( $action eq "print" ) {
     status "Using directory: $opt_dir";
     
     # Assign classes to %raid and splits to @splits
-    status "Reading log .. ";
+    status "Reading log .. " if !$opt_tail;
     
     my @boss;
     my $trash_exts = makeext;
@@ -327,22 +470,67 @@ if( $action eq "print" ) {
     my $splitter = Stasis::LogSplit->new( version => $opt_version, callback =>
         # LogSplit callback
         sub {
-            my ($short, $long, $kill, $start, $end) = @_;
+            my ($short, $start, $long, $kill, $end) = @_;
             if( ! defined $kill ) {
                 # Starting a new split.
                 push @boss, {
                     exts => makeext,
                     short => $short,
+                    start => $start,
                 };
+                
+                # If we're in -tail mode, let the user know we saw a boss start.
+                if( $opt_tail ) {
+                    $start =~ /^(\d+)(\.(\d+)|)$/;
+                    my @t = localtime $1;
+                    status sprintf "Detected encounter start: %s at %d/%d %02d:%02d:%02d\.%03d (%s) .. ", $short, $t[4]+1, $t[3], $t[2], $t[1], $t[0], $2?$3:0, lagstring(time-int($start));
+                }
             } else {
                 # Closing a split.
-                foreach (@boss) {
-                    if( !$_->{long} && $_->{short} eq $short ) {
-                        $_->{long} = $long;
-                        $_->{kill} = $kill;
-                        $_->{start} = $start;
-                        $_->{end} = $end;
-                        $_->{exts}->finish();
+                foreach my $b (@boss) {
+                    if( !$b->{long} && $b->{short} eq $short && $b->{start} eq $start ) {
+                        $b->{long} = $long;
+                        $b->{kill} = $kill;
+                        $b->{start} = $start;
+                        $b->{end} = $end;
+                        $b->{exts}->finish();
+                        
+                        # If we're in tail mode, we need to write this out immediately.
+                        if( $opt_tail ) {
+                            # Remove the exts.
+                            my $exts = delete $b->{exts};
+                            
+                            if( $opt_minlength && $b->{end} - $b->{start} < $opt_minlength ) {
+                                # Check minlength option.
+                                status sprintf "skipping (too short).", $b->{long};
+                            } elsif( !$opt_attempts && !$b->{kill} ) {
+                                # Check attempts option.
+                                status sprintf "skipping (not a kill).", $b->{long}, $b->{end} - $b->{start};
+                            } else {
+                                # If we got this far, we should write this encounter.
+                                
+                                # Get whatever the class guesser has figured out by now.
+                                my %raid = $classer->finish();
+                                
+                                status sprintf "writing %s (sws-%s-%d) .. ", $b->{long}, $b->{short}, floor($b->{start});
+
+                                # Find the directory name.
+                                my $dname = sprintf "%s/sws-%s-%d", $opt_dir, $b->{short}, floor($b->{start});
+                                my $dname_old = sprintf "%s/sws-%d", $opt_dir, floor($b->{start});
+
+                                # Write the files for this split.
+                                unless( $opt_nowrite ) {
+                                    eval {
+                                        writedir $dname, $dname_old, $b->{long}, $b->{short}, \%raid, $exts->{exts}, $opt_collapse;
+                                    }; if( $@ ) {
+                                        bomb $@;
+                                    }
+                                }
+
+                                status "done.";
+                            }
+                        }
+                        
                         return;
                     }
                 }
@@ -382,6 +570,12 @@ if( $action eq "print" ) {
             # Add to the overall parse.
             $overall_exts->process($pline);
         }
+    }
+    
+    if( $opt_tail ) {
+        # Shouldn't do any of this other junk.
+        status "Ending.";
+        exit(0);
     }
     
     if( $opt_trash ) {
@@ -484,7 +678,6 @@ if( $action eq "print" ) {
         
         status sprintf "Wrote: Overall (sws-overall-%d).", floor($first);
     }
-    
 } elsif( $action eq "history" ) {
     # Going to output in $opt_dir
     bomb "not a directory: $opt_dir" unless $opt_dir && -d $opt_dir;
@@ -552,6 +745,10 @@ if( $action eq "print" ) {
         open $fh, $opt_file or bomb "could not open file: $opt_file";
     } else {
         bomb "STDIN is no longer supported, please use -file (see 'stasis help' for more details)";
+    }
+    
+    if( $opt_tail ) {
+        bomb "tail is not supported in SQLite mode, try again without -tail";
     }
     
     # Get a database connection.
