@@ -292,7 +292,7 @@ sub page {
                 "R-%" => $raiderIncoming{$actor} && $raidInDamage && sprintf( "%d%%", ceil($raiderIncoming{$actor} / $raidInDamage * 100) ),
                 "R-Dam. In" => $raiderIncoming{$actor},
                 "R-Deaths" => $deathCount{$actor} || " 0",
-                " " => $mostdmg && sprintf( "%d", ceil($raiderIncoming{$actor} / $mostindmg * 100) ),
+                " " => $mostindmg && sprintf( "%d", ceil($raiderIncoming{$actor} / $mostindmg * 100) ),
             },
             type => "",
         );
