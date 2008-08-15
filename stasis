@@ -95,7 +95,10 @@ B<-attempt>  Include a parse for boss attempts (not just kills).
                
 B<-trash>     Include a parse for trash mobs (all sections of the log that
            were not part of a boss encounter).
-           
+
+B<-combine>   Include a parse that rolls up all attempts and kills on each
+           particular boss (one extra parse per boss).
+
 B<-overall>   Include a separate parse that rolls up everything in the log
            file.
            
@@ -127,9 +130,9 @@ use Stasis::SpellPage;
 use Stasis::ActorGroup;
 use Stasis::PageMaker;
 use Stasis::DB;
-use File::Find qw();
-use File::Path qw();
-use File::Spec qw();
+use File::Find ();
+use File::Path ();
+use File::Spec ();
 use File::Copy qw(copy);
 use POSIX;
 use HTML::Entities;
@@ -147,6 +150,7 @@ my $opt_attempts;
 my $opt_year;
 my $opt_trash;
 my $opt_overall;
+my $opt_combine;
 my $opt_server;
 my $opt_collapse;
 my $opt_tail;
@@ -322,6 +326,7 @@ my $rc = GetOptions(
     "sfile=s"       => \$opt_sfile,
     "trash"         => \$opt_trash,
     "overall"       => \$opt_overall,
+    "combine"       => \$opt_combine,
     "server=s"      => \$opt_server,
     "collapse"      => \$opt_collapse,
     "tail"          => \$opt_tail,
@@ -417,9 +422,9 @@ if( $action eq "print" ) {
                 bomb "please install File::Tail from CPAN or try again without -tail";
             }
             
-            # Can't do trash or overall with -tail
-            if( $opt_trash || $opt_overall ) {
-                bomb "-trash and -overall are not supported with -tail"
+            # Can't do trash, combine, or overall with -tail
+            if( $opt_trash || $opt_combine || $opt_overall ) {
+                bomb "-trash, -combine, and -overall are not supported with -tail"
             }
             
             tie *TAILFH, "File::Tail", ( 
@@ -465,6 +470,7 @@ if( $action eq "print" ) {
     my @boss;
     my $trash_exts = makeext;
     my $overall_exts = makeext;
+    my %combine_exts;
     my $classer = Stasis::ClassGuess->new( version => $opt_version );
     my $splitter = Stasis::LogSplit->new( version => $opt_version, callback =>
         # LogSplit callback
@@ -487,12 +493,27 @@ if( $action eq "print" ) {
             } else {
                 # Closing a split.
                 foreach my $b (@boss) {
-                    if( !$b->{long} && $b->{short} eq $short && $b->{start} eq $start ) {
-                        $b->{long} = $long;
+                    if( !$b->{end} && $b->{short} eq $short && $b->{start} eq $start ) {
                         $b->{kill} = $kill;
                         $b->{start} = $start;
                         $b->{end} = $end;
                         $b->{exts}->finish();
+                        
+                        # Figure out long name
+                        if( $kill ) {
+                            # This was a kill, just use the name.
+                            $b->{long} = $long;
+                        } else {
+                            # This was an attempt, add a number.
+                            my $btry = 0;
+                            foreach my $b2 (@boss) {
+                                if( $b2->{end} && $b2->{short} eq $short ) {
+                                    $btry ++;
+                                }
+                            }
+                            
+                            $b->{long} = "$long try $btry";
+                        }
                         
                         # If we're in tail mode, we need to write this out immediately.
                         if( $opt_tail ) {
@@ -557,7 +578,15 @@ if( $action eq "print" ) {
             next if defined $b->{kill};
             
             $bosses ++;
+            
+            # Add to the individual split parse.
             $b->{exts}->process($pline);
+            
+            if( $opt_combine ) {
+                # Add to the combine parse.
+                $combine_exts{ $b->{short} } ||= makeext;
+                $combine_exts{ $b->{short} }->process($pline);
+            }
         }
         
         if( !$bosses && $opt_trash ) {
@@ -575,6 +604,12 @@ if( $action eq "print" ) {
         # Shouldn't do any of this other junk.
         status "Ending.";
         exit(0);
+    }
+    
+    if( $opt_combine ) {
+        foreach my $e (values %combine_exts) {
+            $e->finish();
+        }
     }
     
     if( $opt_trash ) {
@@ -651,15 +686,44 @@ if( $action eq "print" ) {
         my $dname = sprintf "%s/sws-trash-%d", $opt_dir, floor($first);
         my $dname_old = $dname;
         
-        unless( $opt_nowrite ) {
-            eval {
-                writedir $dname, $dname_old, "Trash Mobs", "trash", \%raid, $trash_exts->{exts}, 1;
-            }; if( $@ ) {
-                bomb $@;
-            }
+        eval {
+            writedir $dname, $dname_old, "Trash Mobs", "trash", \%raid, $trash_exts->{exts}, 1;
+        }; if( $@ ) {
+            bomb $@;
         }
         
         status sprintf "Wrote: Trash Mobs (sws-trash-%d).", floor($first);
+    }
+    
+    # Write combine
+    if( $opt_combine && !$opt_nowrite ) {
+        while( my ($kboss, $exts) = each (%combine_exts) ) {
+            my $dname = sprintf "%s/sws-%s-combine-%d", $opt_dir, $kboss, floor($first);
+            my $dname_old = $dname;
+            
+            # Figure out boss name the cheesy way. Also count the number.
+            my $bname;
+            my $bcount = 0;
+            foreach my $b (@boss) {
+                if( $b->{short} eq $kboss ) {
+                    $bname = $b->{long};
+                    $bname =~ s/ try \d+$//;
+                    $bcount ++;
+                }
+            }
+            
+            # Skip unless we actually had more than one of this boss.
+            
+            if( $bcount > 1 ) {
+                eval {
+                    writedir $dname, $dname_old, "$bname (combined)", $kboss, \%raid, $exts->{exts}, $opt_collapse;
+                }; if( $@ ) {
+                    bomb $@;
+                }
+                
+                status sprintf "Wrote: $bname (combined) (sws-%s-combine-%d).", $kboss, floor($first);
+            }
+        }
     }
     
     # Write overall
@@ -667,12 +731,10 @@ if( $action eq "print" ) {
         my $dname = sprintf "%s/sws-overall-%d", $opt_dir, floor($first);
         my $dname_old = $dname;
         
-        unless( $opt_nowrite ) {
-            eval {
-                writedir $dname, $dname_old, "Overall", "overall", \%raid, $overall_exts->{exts}, 1;
-            }; if( $@ ) {
-                bomb $@;
-            }
+        eval {
+            writedir $dname, $dname_old, "Overall", "overall", \%raid, $overall_exts->{exts}, 1;
+        }; if( $@ ) {
+            bomb $@;
         }
         
         status sprintf "Wrote: Overall (sws-overall-%d).", floor($first);

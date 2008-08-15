@@ -28,7 +28,6 @@ use warnings;
 use lib 'lib';
 use open ':encoding(utf8)';
 use Stasis::Parser;
-use Stasis::LogSplit;
 
 die "Usage: $0 <logfile> <warriors>" unless @ARGV >= 2;
 

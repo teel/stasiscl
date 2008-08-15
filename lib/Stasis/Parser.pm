@@ -138,8 +138,7 @@ Parses a single line.
 =cut
 
 sub parse {
-    my ($self) = @_;
-    return $self->{version} == 1 ? parse1(@_) : parse2(@_);
+    return $_[0]->{version} == 1 ? parse1(@_) : parse2(@_);
 }
 
 sub parse1 {

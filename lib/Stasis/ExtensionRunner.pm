@@ -64,16 +64,14 @@ sub start {
 }
 
 sub process {
-    my ($self, $line) = @_;
-    
-    if( my $handlers = $self->{handlers}{ $line->{action} } ) {
-        foreach (@$handlers) {
-            $_->process($line);
-        } 
+    if( my $handlers = $_[0]->{handlers}{ $_[1]->{action} } ) {
+        foreach my $h (@$handlers) {
+            $h->process($_[1]);
+        }
     }
     
-    foreach (@{$self->{handlers}{ALL}}) {
-        $_->process($line);
+    foreach my $h (@{$_[0]->{handlers}{ALL}}) {
+        $h->process($_[1]);
     }
 }
 

@@ -31,7 +31,7 @@ use Stasis::MobUtil;
 
 # Fingerprints of various boss encounters.
 my %fingerprints = (
-    
+
 ############
 # KARAZHAN #
 ############
@@ -64,11 +64,11 @@ my %fingerprints = (
     timeout => 20,
 },
 
-# FIXME: Encounter doesn't end properly
 "Opera (Romulo and Julianne)" => {
     mobStart => [ "17534", "Julianne" ],
     mobContinue => [ "17533", "17534", "Romulo", "Julianne" ],
-    mobEnd => [],
+    mobEnd => [ "17533", "17534", "Romulo", "Julianne" ],
+    endAll => 1,
     timeout => 20,
 },
 
@@ -421,12 +421,12 @@ my %fingerprints = (
     timeout => 30,
 },
 
-# FIXME: encounter never ends
 "Eredar Twins" => {
     mobStart => [ "25166", "25165" ],
     mobContinue => [ "25166", "25165" ],
-    mobEnd => [],
+    mobEnd => [ "25166", "25165" ],
     timeout => 30,
+    endAll => 1,
     short => "twins",
 },
 
@@ -473,11 +473,10 @@ sub new {
     
     $params{scratch} = {};
     $params{splits} = [];
-    $params{nlog} = -1;
     
     # Callback args:
     # at split start:   ( $short, $start )
-    # at split end:     ( $short, $start, $long, $kill, $end, $startLine, $endLine )
+    # at split end:     ( $short, $start, $long, $kill, $end )
     $params{callback} ||= undef;
     
     bless \%params, $class;
@@ -486,7 +485,6 @@ sub new {
 sub process {
     my ($self, $entry) = @_;
     
-    $self->{nlog} ++;
     return unless $entry->{action};
     
     # Figure out what to use for the actor and target identifiers.
@@ -509,17 +507,15 @@ sub process {
                 $vboss->{attempt} ||= 0;
                 $vboss->{attempt} ++;
                 
-                my $splitname = $kboss . " try " . $self->{scratch}{$kboss}{attempt};
-                
                 # Figure out short name.
                 my $short = $fingerprints{$kboss}{short} || lc $kboss;
                 $short =~ s/\s+.*$//;
                 $short =~ s/[^\w]//g;
                 
-                push @{$self->{splits}}, { short => $short, long => $splitname, start => $self->{scratch}{$kboss}{start}, end => $self->{scratch}{$kboss}{end}, startLine => $self->{scratch}{$kboss}{startLine}, endLine => $self->{scratch}{$kboss}{endLine}, kill => 0 };
+                push @{$self->{splits}}, { short => $short, long => $kboss, start => $self->{scratch}{$kboss}{start}, end => $self->{scratch}{$kboss}{end}, startLine => $self->{scratch}{$kboss}{startLine}, endLine => $self->{scratch}{$kboss}{endLine}, kill => 0 };
                 
                 # Callback.
-                $self->{callback}->( $short, $self->{scratch}{$kboss}{start}, $splitname, 0, $self->{scratch}{$kboss}{end}, $self->{scratch}{$kboss}{startLine}, $self->{scratch}{$kboss}{endLine} ) if( $self->{callback} );
+                $self->{callback}->( $short, $self->{scratch}{$kboss}{start}, $kboss, 0, $self->{scratch}{$kboss}{end} ) if( $self->{callback} );
                 
                 # Reset the start/end times for this fingerprint.
                 $self->{scratch}{$kboss}{start} = 0;
@@ -527,19 +523,19 @@ sub process {
             } elsif( ($fcontinue{$actor_id} && $fcontinue{$actor_id} eq $kboss) || ($fcontinue{$target_id} && $fcontinue{$target_id} eq $kboss) ) {
                 # We should continue this encounter.
                 $self->{scratch}{$kboss}{end} = $entry->{t};
-                $self->{scratch}{$kboss}{endLine} = $self->{nlog};
 
                 # Also possibly end it.
-                if( $entry->{action} eq "UNIT_DIED" && $fend{$target_id} && $fend{$target_id} eq $kboss ) {
+                # FIXME: actually implement endAll
+                if( $entry->{action} eq "UNIT_DIED" && $fend{$target_id} && $fend{$target_id} eq $kboss && !$fingerprints{$kboss}{endAll} ) {
                     # Figure out short name.
                     my $short = $fingerprints{$kboss}{short} || lc $kboss;
                     $short =~ s/\s+.*$//;
                     $short =~ s/[^\w]//g;
 
-                    push @{$self->{splits}}, { short => $short, long => $kboss, start => $self->{scratch}{$kboss}{start}, end => $self->{scratch}{$kboss}{end}, startLine => $self->{scratch}{$kboss}{startLine}, endLine => $self->{scratch}{$kboss}{endLine}, kill => 1 };
+                    push @{$self->{splits}}, { short => $short, long => $kboss, start => $self->{scratch}{$kboss}{start}, end => $self->{scratch}{$kboss}{end}, kill => 1 };
                     
                     # Callback.
-                    $self->{callback}->( $short, $self->{scratch}{$kboss}{start}, $kboss, 1, $self->{scratch}{$kboss}{end}, $self->{scratch}{$kboss}{startLine}, $self->{scratch}{$kboss}{endLine} ) if( $self->{callback} );
+                    $self->{callback}->( $short, $self->{scratch}{$kboss}{start}, $kboss, 1, $self->{scratch}{$kboss}{end} ) if( $self->{callback} );
 
                     # Reset the start/end times for this fingerprint.
                     $self->{scratch}{$kboss}{start} = 0;
@@ -554,8 +550,6 @@ sub process {
         # The actor should start a new encounter.
         $self->{scratch}{$fstart{$actor_id}}{start} = $entry->{t};
         $self->{scratch}{$fstart{$actor_id}}{end} = $entry->{t};
-        $self->{scratch}{$fstart{$actor_id}}{startLine} = $self->{nlog};
-        $self->{scratch}{$fstart{$actor_id}}{endLine} = $self->{nlog};
         
         # Callback.
         my $short = $fingerprints{$fstart{$actor_id}}{short} || lc $fstart{$actor_id};
@@ -568,8 +562,6 @@ sub process {
         # The target should start a new encounter.
         $self->{scratch}{$fstart{$target_id}}{start} = $entry->{t};
         $self->{scratch}{$fstart{$target_id}}{end} = $entry->{t};
-        $self->{scratch}{$fstart{$target_id}}{startLine} = $self->{nlog};
-        $self->{scratch}{$fstart{$target_id}}{endLine} = $self->{nlog};
         
         # Callback.
         my $short = $fingerprints{$fstart{$target_id}}{short} || lc $fstart{$target_id};
@@ -589,19 +581,16 @@ sub finish {
             $self->{scratch}{$boss}{attempt} ||= 0;
             $self->{scratch}{$boss}{attempt} ++;
             
-            # Record the attempt.
-            my $splitname = $boss . " try " . $self->{scratch}{$boss}{attempt};
-            
             # Figure out short name.
             my $short = $print->{short} || lc $boss;
             $short =~ s/\s+.*$//;
             $short =~ s/[^\w]//g;
             
             if( $self->{scratch}{$boss}{end} && $self->{scratch}{$boss}{start} ) {
-                push @{$self->{splits}}, { short => $short, long => $splitname, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, startLine => $self->{scratch}{$boss}{startLine}, endLine => $self->{scratch}{$boss}{endLine}, kill => 0 };
+                push @{$self->{splits}}, { short => $short, long => $boss, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, kill => 0 };
                 
                 # Callback.
-                $self->{callback}->( $short, $self->{scratch}{$boss}{start}, $splitname, 0, $self->{scratch}{$boss}{end}, $self->{scratch}{$boss}{startLine}, $self->{scratch}{$boss}{endLine} ) if( $self->{callback} );
+                $self->{callback}->( $short, $self->{scratch}{$boss}{start}, $boss, 0, $self->{scratch}{$boss}{end} ) if( $self->{callback} );
             }
         }
     }
