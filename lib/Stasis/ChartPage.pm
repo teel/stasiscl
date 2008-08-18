@@ -535,7 +535,7 @@ sub page {
                 $self->{name},
                 $raidPresence*60000,
                 $raidDamage,
-                sprintf( "sws-%s-%d", $self->{short}, floor($raidStart) ),
+                $self->{dirname},
             );
     
     #########################
