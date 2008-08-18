@@ -212,9 +212,13 @@ sub writedir($$$$$$$) {
 
     # Create the directory.
     mkdir $dname or die $!;
+    
+    # Get the suffix of the directory.
+    my $dname_suffix = $dname;
+    $dname_suffix = $1 if $dname_suffix =~ /[\/\\:]([^\/\\:]+)$/;
 
     # Write the index.
-    my $charter = Stasis::ChartPage->new( name => $long, short => $short, raid => $raid, ext => $exts, collapse => $collapse );
+    my $charter = Stasis::ChartPage->new( name => $long, dirname => $dname_suffix, short => $short, raid => $raid, ext => $exts, collapse => $collapse );
     my ($chart_xml, $chart_html) = $charter->page;
     open CHARTPAGE, ">$dname/index.html" or die;
     print CHARTPAGE $chart_html;
@@ -225,7 +229,7 @@ sub writedir($$$$$$$) {
     $grouper->run( $raid, $exts );
 
     # Write the actor files.
-    my $ap = Stasis::ActorPage->new( server => $opt_server, name => $long, short => $short, raid => $raid, ext => $exts, collapse => $collapse );
+    my $ap = Stasis::ActorPage->new( server => $opt_server, dirname => $dname_suffix, name => $long, short => $short, raid => $raid, ext => $exts, collapse => $collapse );
     foreach my $actor (keys %{$exts->{Presence}{actors}}) {
         # Respect $collapse.
         next if $collapse && $grouper->group($actor);
@@ -254,7 +258,7 @@ sub writedir($$$$$$$) {
     close ENVPAGE;
     
     # Write the spell files.
-    my $sp = Stasis::SpellPage->new( name => $long, short => $short, raid => $raid, ext => $exts, collapse => $collapse );
+    my $sp = Stasis::SpellPage->new( name => $long, dirname => $dname_suffix, short => $short, raid => $raid, ext => $exts, collapse => $collapse );
     foreach my $spell (keys %{$exts->{Index}{spells}}) {
         my $id = lc $spell;
         $id = Stasis::PageMaker->tameText($id);
@@ -716,7 +720,7 @@ if( $action eq "print" ) {
             
             if( $bcount > 1 ) {
                 eval {
-                    writedir $dname, $dname_old, "$bname (combined)", $kboss, \%raid, $exts->{exts}, $opt_collapse;
+                    writedir $dname, $dname_old, "$bname (combined)", $kboss . "-combine", \%raid, $exts->{exts}, $opt_collapse;
                 }; if( $@ ) {
                     bomb $@;
                 }
