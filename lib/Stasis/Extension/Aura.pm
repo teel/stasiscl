@@ -31,117 +31,157 @@ our @ISA = "Stasis::Extension";
 sub start {
     my $self = shift;
     $self->{actors} = {};
-    $self->{presence} = {};
+}
+
+sub actions {
+    return qw(SPELL_AURA_APPLIED SPELL_AURA_REMOVED UNIT_DIED);
 }
 
 sub process {
     my ($self, $entry) = @_;
     
-    # We need to track presence for the purpose of closing the auras later, in finish()
-    if( $entry->{actor} ) {
-        $self->{presence}{ $entry->{actor} }{start} = $entry->{t} if !$self->{presence}{ $entry->{actor} }{start};
-        $self->{presence}{ $entry->{actor} }{end} = $entry->{t};
-    }
-    
-    if( $entry->{target} ) {
-        $self->{presence}{ $entry->{target} }{start} = $entry->{t} if !$self->{presence}{ $entry->{target} }{start};
-        $self->{presence}{ $entry->{target} }{end} = $entry->{t};
-    }
-    
-    # If an aura status changed, act on it.
-    if( $entry->{action} eq "SPELL_AURA_APPLIED" ) {
-        # Create a blank entry if none exists.
-        if( !exists $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} } ) {
-            $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} } = {
-                start => 0,
-                end => 0,
-                gains => 0,
-                fades => 0,
-                time => 0,
-                type => "",
+    # Forcibly fade all auras when a unit dies.    
+    if( $entry->{action} eq "UNIT_DIED" ) {
+        if( exists $self->{actors}{ $entry->{target} } ) {
+            foreach my $vaura (values %{ $self->{actors}{ $entry->{target} } } ) {
+                if( @{ $vaura->{spans} } ) {
+                    $vaura->{spans}->[-1]->{end} ||= $entry->{t};
+                }
             }
         }
         
+        return;
+    }
+    
+    # Create a blank entry if none exists.
+    my $sdata = $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} } ||= {
+        gains => 0,
+        fades => 0,
+        type => "",
+        spans => [],
+    };
+    
+    # Get a reference to the most recent span.
+    my $span = @{$sdata->{spans}} ? $sdata->{spans}->[-1] : undef;
+    
+    if( $entry->{action} eq "SPELL_AURA_APPLIED" ) {
         # An aura was gained, update the timeline.
-        if( $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{start} ) {
-            # 'start' is set, this means that we probably missed the fade message or this
+        if( !$span || $span->{end} ) {
+            # Either this is the first span, or the previous one has ended. We should make a new one.
+            push @{$sdata->{spans}}, {
+                start => $entry->{t},
+                end => 0,
+            }
+            
+            # In other cases, this means that we probably missed the fade message or this
             # is a dose application.
             
-            # The best we can do in this situation is nothing, just keep the aura on even
+            # The best we can do in that situation is nothing, just keep the aura on even
             # though it may have faded at some point.
-        } else {
-            # 'start' is not set, so we should set it.
-            $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{start} = $entry->{t};
         }
         
         # Update the number of times this aura was gained.
-        $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{gains} += 1;
+        $sdata->{gains} ++;
         
         # Update the type of this aura.
-        $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{type} ||= $entry->{extra}{auratype};
+        $sdata->{type} ||= $entry->{extra}{auratype};
     } elsif( $entry->{action} eq "SPELL_AURA_REMOVED" ) {
-        # Create a blank entry if none exists.
-        if( !exists $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} } ) {
-            $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} } = {
-                start => 0,
-                end => 0,
-                gains => 0,
-                fades => 0,
-                time => 0,
-                type => "",
-            }
-        }
-        
         # An aura faded, update the timeline.
-        if( $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{start} ) {
-            # 'start' is set, so we should turn it off and add the time to this aura duration.
-            $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{time} += $entry->{t} - $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{start};
-            $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{start} = 0;
+        if( $span && !$span->{end} ) {
+            # We should end the most recent span.
+            $span->{end} = $entry->{t};
         } else {
-            # no 'start' is set, we probably missed the gain message.
-            
-            if( !$self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{gains} &&
-                !$self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{fades} ) 
-            {
+            # There is no span in progress, we probably missed the gain message.
+            if( !$sdata->{gains} && !$sdata->{fades} ) {
                 # if this is the first fade and there were no gains, let's assume it was up since 
                 # before the log started (brave assumption)
                 
-                $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{time} += $entry->{t} - $self->{presence}{ $entry->{target} }{start};
+                push @{$sdata->{spans}}, {
+                    start => 0,
+                    end => $entry->{t},
+                }
             }
         }
         
         # Update the number of times this aura faded.
-        $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{fades} += 1;
+        $sdata->{fades} ++;
         
         # Update the type of this aura.
-        $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{type} ||= $entry->{extra}{auratype};
-    } elsif( $entry->{action} eq "UNIT_DIED" && exists $self->{actors}{ $entry->{target} } ) {
-        # Forcibly fade all auras when a unit dies.
-        foreach my $vaura (values %{ $self->{actors}{ $entry->{target} } } ) {
-            if( $vaura->{start} ) {
-                # 'start' is set, so we should turn it off and add the time to this aura duration.
-                $vaura->{time} += $entry->{t} - $vaura->{start};
-                $vaura->{start} = 0;
-            }
-        }
+        $sdata->{type} ||= $entry->{extra}{auratype};
     }
 }
 
-sub finish {
+# Returns total uptime for a set of auras "aura" on actors "actor".
+# Also needs a "start" and "end" to be able to resolve zero on spans.
+# If either is blank, will return 0.
+sub aura {
     my $self = shift;
+    my %params = @_;
     
-    # We need to close up all the un-closed aura uptimes.    
-    foreach my $actor (keys %{ $self->{actors} }) {
-        foreach my $aura (keys %{ $self->{actors}{$actor} } ) {
-            if( $self->{actors}{$actor}{$aura}{start} ) {
-                # 'start' is still set, this means the aura overlapped the end of the log.
-                # Fill in the uptime until the presence end time.
-                
-                $self->{actors}{$actor}{$aura}{time} += $self->{presence}{$actor}{end} - $self->{actors}{$actor}{$aura}{start};
-                $self->{actors}{$actor}{$aura}{start} = 0;
+    $params{actor} ||= [];
+    $params{aura} ||= [];
+    my $start = $params{start};
+    my $end = $params{end};
+    
+    # Return 0 with blank arguments, as promised.
+    return 0 unless @{$params{actor}} && @{$params{aura}};
+    
+    # Store relevant aura spans.
+    my @span;
+    
+    # Examine what we were told to.
+    foreach my $kactor ( @{$params{actor}} ) {
+        if( my $vactor = $self->{actors}{$kactor} ) {
+            foreach my $kaura ( @{$params{aura}} ) {
+                if( my $vaura = $vactor->{$kaura} ) {
+                    # Add the spans.
+                    push @span, @{$vaura->{spans}};
+                }
             }
         }
     }
+    
+    # Sort spans by start time.
+    @span = sort { ($a->{start}||$start) <=> ($b->{start}||$start) } @span;
+    
+    # Store the final list in here.
+    my @final = ();
+    
+    foreach my $span (@span) {
+        # We are assured that $span starts at the same time as, or after, everything in @final.
+        # If it overlaps the last span in @final then merge it in.
+        
+        if( @final ) {
+            my $last = $final[$#final];
+            if( ($span->{start}||$start) <= $last->{end} ) {
+                # There is an overlap.
+                if( ($span->{end}||$end) > $last->{end} ) {
+                    # Extend $last.
+                    $last->{end} = ($span->{end}||$end);
+                }
+            } else {
+                # No overlap.
+                push @final, {
+                    start => $span->{start} || $start,
+                    end => $span->{end} || $end,
+                };
+            }
+        } else {
+            # @final has nothing in it yet.
+            push @final, {
+                start => $span->{start} || $start,
+                end => $span->{end} || $end,
+            };
+        }
+    }
+    
+    # Total up @final.
+    my $sum = 0;
+    foreach (@final) {
+        $sum += $_->{end} - $_->{start};
+    }
+    
+    return $sum;
 }
 
 1;

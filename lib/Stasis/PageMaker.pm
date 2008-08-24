@@ -218,13 +218,13 @@ sub tableRows {
 sub pageHeader {
     my $self = shift;
     my $boss = shift;
-    my $title = shift;
+    my $origtitle = shift;
     my $start = shift;
     
     # Default vars
     $boss ||= "Page";
-    $title ||= "";
-    $title = $title ? "$boss : $title" : $boss;
+    $origtitle ||= "";
+    my $title = $origtitle ? "$boss : $origtitle" : $boss;
     
     # Reset table row ID
     $self->{id} = 0;
@@ -233,7 +233,7 @@ sub pageHeader {
     #my $starttxt = sprintf "%4d-%02d-%02d %02d:%02d:%02d", $year + 1900, $mon + 1, $mday, $hour, $min, $sec;
     my $starttxt = asctime localtime $start;
     
-    return <<END;
+    my $PAGE = <<END;
 <html>
 <head>
 <title>$title</title>
@@ -241,13 +241,18 @@ sub pageHeader {
 <script type="text/javascript" src="../extras/sws.js"></script>
 <script src="http://www.wowhead.com/widgets/power.js"></script>
 </head>
-<body>
+<body onLoad="hashTab();">
 <div class="swsmaster">
 <div class="top">
 <h2>$boss: $starttxt</h2>
-<b><a href="index.html">Damage Out</a> &ndash; <a href="index.html#damagein">Damage In</a> &ndash; <a href="index.html#healing">Healing</a> &ndash; <a href="index.html#deaths">Deaths</a> &ndash; <a href="index.html#actors">Raid &amp; Mobs</a></b>
-</div>
 END
+    if( $origtitle ) {
+        $PAGE .= '<b><a href="index.html#damage_out">Damage Out</a> &ndash; <a href="index.html#damage_in">Damage In</a> &ndash; <a href="index.html#healing">Healing</a> &ndash; <a href="index.html#raid__amp__mobs">Raid &amp; Mobs</a> &ndash; <a href="index.html#deaths">Deaths</a></b>';
+    } else {
+        $PAGE .= '<b><a href="javascript:toggleTab(\'damage_out\');">Damage Out</a> &ndash; <a href="javascript:toggleTab(\'damage_in\');">Damage In</a> &ndash; <a href="javascript:toggleTab(\'healing\');">Healing</a> &ndash; <a href="javascript:toggleTab(\'raid__amp__mobs\');">Raid &amp; Mobs</a> &ndash; <a href="javascript:toggleTab(\'deaths\');">Deaths</a></b>';
+    }
+    
+    return "$PAGE</div>";
 }
 
 # pageFooter()
