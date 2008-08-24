@@ -25,6 +25,7 @@ package Stasis::ExtensionRunner;
 
 use strict;
 use warnings;
+use Stasis::Extension;
 
 sub new {
     my $class = shift;

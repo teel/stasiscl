@@ -36,87 +36,97 @@ my %fingerprints = (
 # KARAZHAN #
 ############
 
-"Attumen the Huntsman" => {
+"attumen" => {
+    long => "Attumen the Huntsman",
     mobStart => [ "16151", "Midnight" ],
     mobContinue => [ "15550", "16151", "Attumen the Huntsman", "Midnight" ],
     mobEnd => [ "15550", "Attumen the Huntsman" ],
     timeout => 15,
 },
 
-"Moroes" => {
+"moroes" => {
+    long => "Moroes",
     mobStart => [ "15687", "Moroes" ],
     mobContinue => [ "15687", "Moroes" ],
     mobEnd => [ "15687", "Moroes" ],
     timeout => 20,
 },
 
-"Maiden of Virtue" => {
+"maiden" => {
+    long => "Maiden of Virtue",
     mobStart => [ "16457", "Maiden of Virtue" ],
     mobContinue => [ "16457", "Maiden of Virtue" ],
     mobEnd => [ "16457", "Maiden of Virtue" ],
     timeout => 20,
 },
 
-"Opera (Wizard of Oz)" => {
+"crone" => {
+    long => "Opera (Wizard of Oz)",
     mobStart => [ "17535", "17548", "17543", "17547", "17546", "Dorothee", "Tito", "Strawman", "Tinhead", "Roar" ],
     mobContinue => [ "17535", "17548", "17543", "17547", "17546", "18168", "Dorothee", "Tito", "Strawman", "Tinhead", "Roar", "The Crone" ],
     mobEnd => [ "18168", "The Crone" ],
     timeout => 20,
 },
 
-"Opera (Romulo and Julianne)" => {
+"romulo" => {
+    long => "Opera (Romulo and Julianne)",
     mobStart => [ "17534", "Julianne" ],
     mobContinue => [ "17533", "17534", "Romulo", "Julianne" ],
-    mobEnd => [ "17533", "17534", "Romulo", "Julianne" ],
+    mobEnd => [ "17533", "17534" ],
     endAll => 1,
     timeout => 20,
 },
 
-"Opera (Red Riding Hood)" => {
+"bbw" => {
+    long => "Opera (Red Riding Hood)",
     mobStart => [ "17521", "The Big Bad Wolf" ],
     mobContinue => [ "17521", "The Big Bad Wolf" ],
     mobEnd => [ "17521", "The Big Bad Wolf" ],
     timeout => 20,
 },
 
-"Nightbane" => {
+"nightbane" => {
+    long => "Nightbane",
     mobStart => [ "17225", "Nightbane" ],
     mobContinue => [ "17225", "17261", "Nightbane", "Restless Skeleton" ],
     mobEnd => [ "17225", "Nightbane" ],
     timeout => 30,
 },
 
-"The Curator" => {
-    short => "curator",
+"curator" => {
+    long => "The Curator",
     mobStart => [ "15691", "The Curator" ],
     mobContinue => [ "15691", "The Curator" ],
     mobEnd => [ "15691", "The Curator" ],
     timeout => 20,
 },
 
-"Shade of Aran" => {
+"shade" => {
+    long => "Shade of Aran",
     mobStart => [ "16524", "Shade of Aran" ],
     mobContinue => [ "16524", "Shade of Aran" ],
     mobEnd => [ "16524", "Shade of Aran" ],
     timeout => 20,
 },
 
-"Terestian Illhoof" => {
-    short => "illhoof",
+"illhoof" => {
+    long => "Terestian Illhoof",
     mobStart => [ "15688", "Terestian Illhoof" ],
     mobContinue => [ "15688", "Terestian Illhoof" ],
     mobEnd => [ "15688", "Terestian Illhoof" ],
     timeout => 20,
 },
 
-"Netherspite" => {
+"netherspite" => {
+    long => "Netherspite",
     mobStart => [ "15689", "Netherspite" ],
     mobContinue => [ "15689", "Netherspite" ],
     mobEnd => [ "15689", "Netherspite" ],
     timeout => 45,
 },
 
-"Prince Malchezaar" => {
+"prince" => {
+    long => "Prince Malchezaar",
     mobStart => [ "15690", "Prince Malchezaar" ],
     mobContinue => [ "15690", "Prince Malchezaar" ],
     mobEnd => [ "15690", "Prince Malchezaar" ],
@@ -127,43 +137,48 @@ my %fingerprints = (
 # ZUL'AMAN #
 ############
 
-"Nalorakk" => {
+"nalorakk" => {
+    long => "Nalorakk",
     mobStart => [ "23576", "Nalorakk" ],
     mobContinue => [ "23576", "Nalorakk" ],
     mobEnd => [ "23576", "Nalorakk" ],
     timeout => 15,
 },
 
-"Jan'alai" => {
+"janalai" => {
+    long => "Jan'alai",
     mobStart => [ "23578", "Jan'alai" ],
     mobContinue => [ "23578", "Jan'alai" ],
     mobEnd => [ "23578", "Jan'alai" ],
     timeout => 15,
 },
 
-"Akil'zon" => {
+"akilzon" => {
+    long => "Akil'zon",
     mobStart => [ "23574", "Akil'zon" ],
     mobContinue => [ "23574", "Akil'zon" ],
     mobEnd => [ "23574", "Akil'zon" ],
     timeout => 15,
 },
 
-"Halazzi" => {
+"halazzi" => {
+    long => "Halazzi",
     mobStart => [ "23577", "Halazzi" ],
     mobContinue => [ "23577", "Halazzi" ],
     mobEnd => [ "23577", "Halazzi" ],
     timeout => 15,
 },
 
-"Hex Lord Malacrass" => {
-    short => "hexlord",
+"hexlord" => {
+    long => "Hex Lord Malacrass",
     mobStart => [ "24239", "Hex Lord Malacrass" ],
     mobContinue => [ "24239", "Hex Lord Malacrass" ],
     mobEnd => [ "24239", "Hex Lord Malacrass" ],
     timeout => 15,
 },
 
-"Zul'jin" => {
+"zuljin" => {
+    long => "Zul'jin",
     mobStart => [ "23863", "Zul'jin" ],
     mobContinue => [ "23863", "Zul'jin" ],
     mobEnd => [ "23863", "Zul'jin" ],
@@ -174,24 +189,24 @@ my %fingerprints = (
 # GRUUL AND MAG #
 #################
 
-"High King Maulgar" => {
-    short => "maulgar",
+"maulgar" => {
+    long => "High King Maulgar",
     mobStart => [ "18831", "High King Maulgar", "Kiggler the Crazed", "Krosh Firehand", "Olm the Summoner", "Blindeye the Seer" ],
     mobContinue => [ "18831", "High King Maulgar", "Kiggler the Crazed", "Krosh Firehand", "Olm the Summoner", "Blindeye the Seer" ],
     mobEnd => [ "18831", "High King Maulgar" ],
     timeout => 15,
 },
 
-"Gruul the Dragonkiller" => {
-    short => "gruul",
+"gruul" => {
+    long => "Gruul the Dragonkiller",
     mobStart => [ "19044", "Gruul the Dragonkiller" ],
     mobContinue => [ "19044", "Gruul the Dragonkiller" ],
     mobEnd => [ "19044", "Gruul the Dragonkiller" ],
     timeout => 15,
 },
 
-"Magtheridon" => {
-    short => "mag",
+"magtheridon" => {
+    long => "Magtheridon",
     mobStart => [ "17257", "Hellfire Channeler" ],
     mobContinue => [ "17256", "17257", "Magtheridon", "Hellfire Channeler" ],
     mobEnd => [ "17257", "Magtheridon" ],
@@ -202,47 +217,48 @@ my %fingerprints = (
 # SERPENTSHRINE CAVERN #
 ########################
 
-"Hydross the Unstable" => {
+"hydross" => {
+    long => "Hydross the Unstable",
     mobStart => [ "21216", "Hydross the Unstable" ],
     mobContinue => [ "21216", "Hydross the Unstable" ],
     mobEnd => [ "21216", "Hydross the Unstable" ],
     timeout => 15,
 },
 
-"The Lurker Below" => {
-    short => "lurker",
+"lurker" => {
+    long => "The Lurker Below",
     mobStart => [ "21217", "The Lurker Below" ],
     mobContinue => [ "21217", "21865", "21873", "The Lurker Below", "Coilfang Ambusher", "Coilfang Guardian" ],
     mobEnd => [ "21217", "The Lurker Below" ],
     timeout => 15,
 },
 
-"Leotheras the Blind" => {
-    short => "leo",
+"leotheras" => {
+    long => "Leotheras the Blind",
     mobStart => [ "21806", "Greyheart Spellbinder" ],
     mobContinue => [ "21806", "21215", "Greyheart Spellbinder", "Leotheras the Blind" ],
     mobEnd => [ "21215", "Leotheras the Blind" ],
     timeout => 15,
 },
 
-"Fathom-Lord Karathress" => {
-    short => "flk",
+"flk" => {
+    long => "Fathom-Lord Karathress",
     mobStart => [ "21214", "Fathom-Lord Karathress", "Fathom-Guard Caribdis", "Fathom-Guard Sharkkis", "Fathom-Guard Tidalvess" ],
     mobContinue => [ "21214", "Fathom-Lord Karathress", "Fathom-Guard Caribdis", "Fathom-Guard Sharkkis", "Fathom-Guard Tidalvess" ],
     mobEnd => [ "21214", "Fathom-Lord Karathress" ],
     timeout => 15,
 },
 
-"Morogrim Tidewalker" => {
-    short => "tidewalker",
+"tidewalker" => {
+    long => "Morogrim Tidewalker",
     mobStart => [ "21213", "Morogrim Tidewalker" ],
     mobContinue => [ "21213", "Morogrim Tidewalker" ],
     mobEnd => [ "21213", "Morogrim Tidewalker" ],
     timeout => 15,
 },
 
-"Lady Vashj" => {
-    short => "vashj",
+"vashj" => {
+    long => "Lady Vashj",
     mobStart => [ "21212", "Lady Vashj" ],
     mobContinue => [ "21212", "21958", "22056", "22055", "22009", "Lady Vashj", "Enchanted Elemental", "Tainted Elemental", "Coilfang Strider", "Coilfang Elite" ],
     mobEnd => [ "21212", "Lady Vashj" ],
@@ -253,31 +269,32 @@ my %fingerprints = (
 # TEMPEST KEEP #
 ################
 
-"Al'ar" => {
+"alar" => {
+    long => "Al'ar",
     mobStart => [ "19514", "Al'ar" ],
     mobContinue => [ "19514", "Al'ar" ],
     mobEnd => [ "19514", "Al'ar" ],
     timeout => 30,
 },
 
-"Void Reaver" => {
-    short => "vr",
+"vr" => {
+    long => "Void Reaver",
     mobStart => [ "19516", "Void Reaver" ],
     mobContinue => [ "19516", "Void Reaver" ],
     mobEnd => [ "19516", "Void Reaver" ],
     timeout => 15,
 },
 
-"High Astromancer Solarian" => {
-    short => "solarian",
+"solarian" => {
+    long => "High Astromancer Solarian",
     mobStart => [ "18805", "High Astromancer Solarian" ],
     mobContinue => [ "18805", "18806", "18925", "High Astromancer Solarian", "Solarium Priest", "Solarium Agent" ],
     mobEnd => [ "18805", "High Astromancer Solarian" ],
     timeout => 15,
 },
 
-"Kael'thas Sunstrider" => {
-    short => "kael",
+"kaelthas" => {
+    long => "Kael'thas Sunstrider",
     mobStart => [ "21272", "21273", "21269", "21268", "21274", "21271", "21270", "Warp Slicer", "Phaseshift Bulwark", "Devastation", "Netherstrand Longbow", "Staff of Disintegration", "Infinity Blades", "Cosmic Infuser" ],
     mobContinue => [ "19622", "21272", "21273", "21269", "21268", "21274", "21271", "21270", "20063", "20062", "20064", "20060", "Warp Slicer", "Phaseshift Bulwark", "Devastation", "Netherstrand Longbow", "Staff of Disintegration", "Infinity Blades", "Cosmic Infuser", "Kael'thas Sunstrider", "Phoenix", "Phoenix Egg", "Master Engineer Telonicus", "Grand Astromancer Capernian", "Thaladred the Darkener", "Lord Sanguinar" ],
     mobEnd => [ "19622", "Kael'thas Sunstrider" ],
@@ -288,35 +305,40 @@ my %fingerprints = (
 # HYJAL #
 #########
 
-"Rage Winterchill" => {
+"rage" => {
+    long => "Rage Winterchill",
     mobStart => [ "17767", "Rage Winterchill" ],
     mobContinue => [ "17767", "Rage Winterchill" ],
     mobEnd => [ "17767", "Rage Winterchill" ],
     timeout => 10,
 },
 
-"Anetheron" => {
+"anetheron" => {
+    long => "Anetheron",
     mobStart => [ "17808", "Anetheron" ],
     mobContinue => [ "17808", "Anetheron" ],
     mobEnd => [ "17808", "Anetheron" ],
     timeout => 10,
 },
 
-"Kaz'rogal" => {
+"kazrogal" => {
+    long => "Kaz'rogal",
     mobStart => [ "17888", "Kaz'rogal" ],
     mobContinue => [ "17888", "Kaz'rogal" ],
     mobEnd => [ "17888", "Kaz'rogal" ],
     timeout => 10,
 },
 
-"Azgalor" => {
+"azgalor" => {
+    long => "Azgalor",
     mobStart => [ "17842", "Azgalor" ],
     mobContinue => [ "17842", "Azgalor" ],
     mobEnd => [ "17842", "Azgalor" ],
     timeout => 10,
 },
 
-"Archimonde" => {
+"archimonde" => {
+    long => "Archimonde",
     mobStart => [ "17968", "Archimonde" ],
     mobContinue => [ "17968", "Archimonde" ],
     mobEnd => [ "17968", "Archimonde" ],
@@ -327,69 +349,72 @@ my %fingerprints = (
 # BLACK TEMPLE #
 ################
 
-"High Warlord Naj'entus" => {
-    short => "najentus",
+"najentus" => {
+    long => "High Warlord Naj'entus",
     mobStart => [ "22887", "High Warlord Naj'entus" ],
     mobContinue => [ "22887", "High Warlord Naj'entus" ],
     mobEnd => [ "22887", "High Warlord Naj'entus" ],
     timeout => 15,
 },
 
-"Supremus" => {
+"supremus" => {
+    long => "Supremus",
     mobStart => [ "22898", "Supremus" ],
     mobContinue => [ "22898", "Supremus" ],
     mobEnd => [ "22898", "Supremus" ],
     timeout => 15,
 },
 
-"Shade of Akama" => {
-    short => "akama",
+"akama" => {
+    long => "Shade of Akama",
     mobStart => [ "23421", "23524", "23523", "23318", "Ashtongue Channeler", "Ashtongue Spiritbinder", "Ashtongue Elementalist", "Ashtongue Rogue" ],
     mobContinue => [ "23421", "23524", "23523", "23318", "22841", "Ashtongue Channeler", "Ashtongue Defender", "Ashtongue Spiritbinder", "Ashtongue Elementalist", "Ashtongue Rogue", "Shade of Akama" ],
     mobEnd => [ "22841", "Shade of Akama" ],
     timeout => 15,
 },
 
-"Teron Gorefiend" => {
+"teron" => {
+    long => "Teron Gorefiend",
     mobStart => [ "22871", "Teron Gorefiend" ],
     mobContinue => [ "22871", "Teron Gorefiend" ],
     mobEnd => [ "22871", "Teron Gorefiend" ],
     timeout => 15,
 },
 
-"Gurtogg Bloodboil" => {
-    short => "bloodboil",
+"bloodboil" => {
+    long => "Gurtogg Bloodboil",
     mobStart => [ "22948", "Gurtogg Bloodboil" ],
     mobContinue => [ "22948", "Gurtogg Bloodboil" ],
     mobEnd => [ "22948", "Gurtogg Bloodboil" ],
     timeout => 15,
 },
 
-"Reliquary of Souls" => {
-    short => "ros",
+"ros" => {
+    long => "Reliquary of Souls",
     mobStart => [ "23418", "Essence of Suffering" ],
     mobContinue => [ "23418", "23419", "23420", "23469", "Essence of Suffering", "Essence of Desire", "Essence of Anger", "Enslaved Soul" ],
     mobEnd => [ "23420", "Essence of Anger" ],
-    timeout => 30,
+    timeout => 20,
 },
 
-"Mother Shahraz" => {
-    short => "shahraz",
+"shahraz" => {
+    long => "Mother Shahraz",
     mobStart => [ "22947", "Mother Shahraz" ],
     mobContinue => [ "22947", "Mother Shahraz" ],
     mobEnd => [ "22947", "Mother Shahraz" ],
     timeout => 15,
 },
 
-"Illidari Council" => {
-    short => "council",
+"council" => {
+    long => "Illidari Council",
     mobStart => [ "22950", "22952", "22951", "22949", "High Nethermancer Zerevor", "Veras Darkshadow", "Lady Malande", "Gathios the Shatterer" ],
     mobContinue => [ "22950", "22952", "22951", "22949", "High Nethermancer Zerevor", "Veras Darkshadow", "Lady Malande", "Gathios the Shatterer" ],
     mobEnd => [ "22950", "22952", "22951", "22949", "23426", "The Illidari Council" ],
-    timeout => 30,
+    timeout => 15,
 },
 
-"Illidan Stormrage" => {
+"illidan" => {
+    long => "Illidan Stormrage",
     mobStart => [ "22917", "Illidan Stormrage" ],
     mobContinue => [ "22917", "22997", "Illidan Stormrage", "Flame of Azzinoth" ],
     mobEnd => [ "22917", "Illidan Stormrage" ],
@@ -400,44 +425,49 @@ my %fingerprints = (
 # SUNWELL #
 ###########
 
-"Kalecgos" => {
+"kalecgos" => {
+    long => "Kalecgos",
     mobStart => [ "24850" ],
     mobContinue => [ "24850", "24892" ],
     mobEnd => [ "24892" ],
-    timeout => 30,
+    timeout => 15,
 },
 
-"Brutallus" => {
+"brutallus" => {
+    long => "Brutallus",
     mobStart => [ "24882" ],
     mobContinue => [ "24882" ],
     mobEnd => [ "24882" ],
-    timeout => 30,
+    timeout => 15,
 },
 
-"Felmyst" => {
+"felmyst" => {
+    long => "Felmyst",
     mobStart => [ "25038" ],
     mobContinue => [ "25038", "25268" ],
     mobEnd => [ "25038" ],
-    timeout => 30,
+    timeout => 15,
 },
 
-"Eredar Twins" => {
+"twins" => {
+    long => "Eredar Twins",
     mobStart => [ "25166", "25165" ],
     mobContinue => [ "25166", "25165" ],
     mobEnd => [ "25166", "25165" ],
-    timeout => 30,
+    timeout => 15,
     endAll => 1,
-    short => "twins",
 },
 
-"M'uru" => {
+"muru" => {
+    long => "M'uru",
     mobStart => [ "25741" ],
-    mobContinue => [ "25741", "25840" ],
+    mobContinue => [ "25741", "25840", "25798", "25799" ],
     mobEnd => [ "25840" ],
-    timeout => 30,
+    timeout => 15,
 },
 
-"Kil'jaeden" => {
+"kiljaeden" => {
+    long => "Kil'jaeden",
     mobStart => [ "25315" ],
     mobContinue => [ "25315" ],
     mobEnd => [ "25315" ],
@@ -473,6 +503,7 @@ sub new {
     
     $params{scratch} = {};
     $params{splits} = [];
+    $params{force_one} ||= 1;
     
     # Callback args:
     # at split start:   ( $short, $start )
@@ -502,73 +533,102 @@ sub process {
         if( $vboss->{start} ) {
             if( $entry->{t} > $vboss->{end} + $fingerprints{$kboss}{timeout} ) {
                 # This fingerprint timed out without ending.
-                # Record it as an attempt, but disallow zero-length splits.
+                # Record it as an attempt.
                 
-                $vboss->{attempt} ||= 0;
-                $vboss->{attempt} ++;
+                $self->_bend(
+                    $kboss,
+                    $vboss->{start},
+                    $fingerprints{$kboss}{long},
+                    0,
+                    $vboss->{end},
+                );
                 
-                # Figure out short name.
-                my $short = $fingerprints{$kboss}{short} || lc $kboss;
-                $short =~ s/\s+.*$//;
-                $short =~ s/[^\w]//g;
-                
-                push @{$self->{splits}}, { short => $short, long => $kboss, start => $self->{scratch}{$kboss}{start}, end => $self->{scratch}{$kboss}{end}, startLine => $self->{scratch}{$kboss}{startLine}, endLine => $self->{scratch}{$kboss}{endLine}, kill => 0 };
-                
-                # Callback.
-                $self->{callback}->( $short, $self->{scratch}{$kboss}{start}, $kboss, 0, $self->{scratch}{$kboss}{end} ) if( $self->{callback} );
-                
-                # Reset the start/end times for this fingerprint.
-                $self->{scratch}{$kboss}{start} = 0;
-                $self->{scratch}{$kboss}{end} = 0;
+                # Reset this fingerprint.
+                delete $self->{scratch}{$kboss};
             } elsif( ($fcontinue{$actor_id} && $fcontinue{$actor_id} eq $kboss) || ($fcontinue{$target_id} && $fcontinue{$target_id} eq $kboss) ) {
                 # We should continue this encounter.
-                $self->{scratch}{$kboss}{end} = $entry->{t};
+                $vboss->{end} = $entry->{t};
 
                 # Also possibly end it.
-                # FIXME: actually implement endAll
-                if( $entry->{action} eq "UNIT_DIED" && $fend{$target_id} && $fend{$target_id} eq $kboss && !$fingerprints{$kboss}{endAll} ) {
-                    # Figure out short name.
-                    my $short = $fingerprints{$kboss}{short} || lc $kboss;
-                    $short =~ s/\s+.*$//;
-                    $short =~ s/[^\w]//g;
-
-                    push @{$self->{splits}}, { short => $short, long => $kboss, start => $self->{scratch}{$kboss}{start}, end => $self->{scratch}{$kboss}{end}, kill => 1 };
+                if( $entry->{action} eq "UNIT_DIED" && $fend{$target_id} && $fend{$target_id} eq $kboss ) {
+                    $vboss->{dead}{$target_id} = 1;
                     
-                    # Callback.
-                    $self->{callback}->( $short, $self->{scratch}{$kboss}{start}, $kboss, 1, $self->{scratch}{$kboss}{end} ) if( $self->{callback} );
+                    if( !$fingerprints{$kboss}{endAll} || ( scalar keys %{$vboss->{dead}} == scalar @{$fingerprints{$kboss}{mobEnd}} ) ) {
+                        $self->_bend(
+                            $kboss,
+                            $vboss->{start},
+                            $fingerprints{$kboss}{long},
+                            1,
+                            $vboss->{end},
+                        );
 
-                    # Reset the start/end times for this fingerprint.
-                    $self->{scratch}{$kboss}{start} = 0;
-                    $self->{scratch}{$kboss}{end} = 0;
+                        # Reset this fingerprint.
+                        delete $self->{scratch}{$kboss};
+                    }
                 }
             }
         }
     }
     
     # See if we should start a new encounter.
-    if( $fstart{$actor_id} && !$self->{scratch}{$fstart{$actor_id}}{start} && (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) ) {
-        # The actor should start a new encounter.
-        $self->{scratch}{$fstart{$actor_id}}{start} = $entry->{t};
-        $self->{scratch}{$fstart{$actor_id}}{end} = $entry->{t};
-        
-        # Callback.
-        my $short = $fingerprints{$fstart{$actor_id}}{short} || lc $fstart{$actor_id};
-        $short =~ s/\s+.*$//;
-        $short =~ s/[^\w]//g;
-        $self->{callback}->( $short, $entry->{t} ) if( $self->{callback} );
+    if( $self->{force_one} && !$self->{go} ) {
+        if( $fstart{$actor_id} && !$self->{scratch}{$fstart{$actor_id}}{start} && (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) ) {
+            # The actor should start a new encounter.
+            $self->{scratch}{$fstart{$actor_id}}{start} = $entry->{t};
+            $self->{scratch}{$fstart{$actor_id}}{end} = $entry->{t};
+
+            my $short = $fingerprints{$fstart{$actor_id}}{short} || lc $fstart{$actor_id};
+            $short =~ s/\s+.*$//;
+            $short =~ s/[^\w]//g;
+            $self->_bstart( $short, $entry->{t} );
+        }
+
+        if( $fstart{$target_id} && !$self->{scratch}{$fstart{$target_id}}{start} && (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) ) {
+            # The target should start a new encounter.
+            $self->{scratch}{$fstart{$target_id}}{start} = $entry->{t};
+            $self->{scratch}{$fstart{$target_id}}{end} = $entry->{t};
+
+            my $short = $fingerprints{$fstart{$target_id}}{short} || lc $fstart{$target_id};
+            $short =~ s/\s+.*$//;
+            $short =~ s/[^\w]//g;
+            $self->_bstart( $short, $entry->{t} );
+        }
     }
+}
+
+sub _bstart {
+    my ( $self, $short, $start ) = @_;
     
-    if( $fstart{$target_id} && !$self->{scratch}{$fstart{$target_id}}{start} && (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) ) {
-        # The target should start a new encounter.
-        $self->{scratch}{$fstart{$target_id}}{start} = $entry->{t};
-        $self->{scratch}{$fstart{$target_id}}{end} = $entry->{t};
-        
-        # Callback.
-        my $short = $fingerprints{$fstart{$target_id}}{short} || lc $fstart{$target_id};
-        $short =~ s/\s+.*$//;
-        $short =~ s/[^\w]//g;
-        $self->{callback}->( $short, $entry->{t} ) if( $self->{callback} );
-    }
+    $self->{go} = 1;
+    
+    # Callback.
+    $self->{callback}->(
+        $short, 
+        $start
+    ) if( $self->{callback} );
+}
+
+sub _bend {
+    my ( $self, $short, $start, $long, $kill, $end ) = @_;
+    
+    $self->{go} = 0;
+    
+    push @{$self->{splits}}, {
+        short => $short,
+        long => $long,
+        start => $start,
+        kill => 0,
+        end => $end,
+    };
+    
+    # Callback.
+    $self->{callback}->(
+        $short, 
+        $start,
+        $long,
+        $kill,
+        $end,
+    ) if( $self->{callback} );
 }
 
 sub finish {
@@ -577,23 +637,20 @@ sub finish {
     # End of the log file -- close up any open bosses.
     while( my ($boss, $print) = each (%fingerprints) ) {
         if( $self->{scratch}{$boss}{start} ) {
-            # Increment the attempt count.
-            $self->{scratch}{$boss}{attempt} ||= 0;
-            $self->{scratch}{$boss}{attempt} ++;
-            
-            # Figure out short name.
-            my $short = $print->{short} || lc $boss;
-            $short =~ s/\s+.*$//;
-            $short =~ s/[^\w]//g;
-            
             if( $self->{scratch}{$boss}{end} && $self->{scratch}{$boss}{start} ) {
-                push @{$self->{splits}}, { short => $short, long => $boss, start => $self->{scratch}{$boss}{start}, end => $self->{scratch}{$boss}{end}, kill => 0 };
-                
-                # Callback.
-                $self->{callback}->( $short, $self->{scratch}{$boss}{start}, $boss, 0, $self->{scratch}{$boss}{end} ) if( $self->{callback} );
+                $self->_bend(
+                    $boss,
+                    $self->{scratch}{$boss}{start},
+                    $fingerprints{$boss}{long},
+                    0,
+                    $self->{scratch}{$boss}{end},
+                );
             }
         }
     }
+    
+    # Delete scratch.
+    delete $self->{scratch};
     
     # Return.
     return @{$self->{splits}};
