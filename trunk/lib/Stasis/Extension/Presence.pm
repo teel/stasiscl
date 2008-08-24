@@ -31,17 +31,11 @@ our @ISA = "Stasis::Extension";
 sub start {
     my $self = shift;
     $self->{actors} = {};
-    $self->{total} = {
-        start => 0,
-        end => 0,
-    };
+    delete $self->{total};
 }
 
 sub process {
     my ($self, $entry) = @_;
-    
-    $self->{total}{start} = $entry->{t} if !$self->{total}{start};
-    $self->{total}{end} = $entry->{t};
     
     if( $entry->{actor} ) {
         $self->{actors}{ $entry->{actor} }{start} = $entry->{t} if !$self->{actors}{ $entry->{actor} }{start};
@@ -77,6 +71,19 @@ sub presence {
         return ( $start || 0, $end || 0, ($end || 0) - ($start || 0) );
     } else {
         # Raid
+        if( !$self->{total} ) {
+            my ($start, $end);
+            foreach my $h (values %{ $self->{actors} }) {
+                $start = $h->{start} if( !$start || $start < $h->{start} );
+                $end = $h->{end} if( !$end || $end < $h->{end} );
+                
+                $self->{total} = {
+                    start => $start,
+                    end => $end,
+                }
+            }
+        }
+        
         return ( $self->{total}{start}, $self->{total}{end}, $self->{total}{end} - $self->{total}{start} );
     }
 }
