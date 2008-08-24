@@ -46,3 +46,10 @@ function toggleTab(tabId) {
     div.style.display = 'block';
     a.className = 'tabLink select';
 }
+
+function hashTab() {
+    var t = location.hash.substring(1);
+    if( t.length > 0 ) {
+        toggleTab(t)
+    }
+}

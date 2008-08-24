@@ -42,6 +42,7 @@ sub new {
     $params{pm} ||= Stasis::PageMaker->new( raid => $params{raid}, ext => $params{ext}, grouper => $params{grouper}, collapse => $params{collapse} );
     $params{name} ||= "Untitled";
     $params{server} ||= "";
+    $params{meta} ||= 0;
     
     bless \%params, $class;
 }
@@ -111,6 +112,7 @@ sub page {
     ###############
     
     my $displayName = sprintf "%s%s", HTML::Entities::encode_entities($self->{ext}{Index}->actorname($MOB)), @PLAYER > 1 ? " (group)" : "";
+    $displayName ||= "Actor";
     $PAGE .= $pm->pageHeader($self->{name}, $displayName, $raidStart);
     $PAGE .= sprintf "<h3 class=\"color%s\">%s</h3>", $self->{raid}{$MOB}{class} || "Mob", $displayName;
     
@@ -641,40 +643,90 @@ sub page {
     # AURAS #
     #########
     
-    if( !$do_group && $self->_keyExists( $self->{ext}{Aura}{actors}, @PLAYER ) ) {
+    if( !$do_group && exists $self->{ext}{Aura}{actors}{$MOB} ) {
         my @auraHeader = (
-                "Name",
-                "Type",
-                "R-Uptime",
-                "R-%",
-                "R-Gained",
-                "R-Faded",
-            );
-
-        my @aurasort = sort {
-            ($self->{ext}{Aura}{actors}{$MOB}{$a}{type} cmp $self->{ext}{Aura}{actors}{$MOB}{$b}{type}) || ($self->{ext}{Aura}{actors}{$MOB}{$b}{time} <=> $self->{ext}{Aura}{actors}{$MOB}{$a}{time})
-        } keys %{$self->{ext}{Aura}{actors}{$MOB}};
-
-        $PAGE .= $pm->tableHeader("Buffs and Debuffs", @auraHeader);
-        foreach my $auraid (@aurasort) {
-            my $id = lc $auraid;
-            $id = $pm->tameText($id);
-
-            my $sdata;
-            $sdata = $self->{ext}{Aura}{actors}{$MOB}{$auraid};
-            $PAGE .= $pm->tableRow( 
-                header => \@auraHeader,
-                data => {
-                    "Name" => $pm->spellLink( $auraid, $self->{ext}{Index}->spellname($auraid) ),
-                    "Type" => ($sdata->{type} && lc $sdata->{type}) || "unknown",
-                    "R-Gained" => $sdata->{gains},
-                    "R-Faded" => $sdata->{fades},
-                    "R-%" => $ptime && sprintf( "%0.1f%%", $sdata->{time} / $ptime * 100 ),
-                    "R-Uptime" => $sdata->{time} && sprintf( "%02d:%02d", $sdata->{time}/60, $sdata->{time}%60 ),
+            "Name",
+            "Type",
+            "R-Uptime",
+            "R-%",
+            "R-Gained",
+            "R-Faded",
+        );
+        
+        # Get aura rows.
+        my @rows;
+        
+        # Get presence for $MOB.
+        my ($pstart, $pend, $ptime) = $self->{ext}{Presence}->presence($MOB);
+        
+        while( my ($kspell, $vspell) = each(%{$self->{ext}{Aura}{actors}{$MOB}}) ) {
+            push @rows, {
+                key => $kspell,
+                row => {
+                    %$vspell,
+                    time => $self->{ext}{Aura}->aura( start => $pstart, end => $pend, actor => [$MOB], aura => [$kspell] ),
                 },
-                type => "",
-                name => "aura_$id",
+            };
+        }
+        
+        if( $self->{meta} ) {
+            # Add meta auras.
+            my %meta = (
+                "+25% Armor" => [ 16237, 15359 ],
+                "Faerie Fire" => [ 26993, 27011 ],
+                "Mangle" => [ 33987, 33983 ],
             );
+            
+            while( my ($kmeta, $vmeta) = each(%meta) ) {
+                if( my $atime = $self->{ext}{Aura}->aura( start => $pstart, end => $pend, actor => [$MOB], aura => $vmeta ) ) {
+                    my $n = 0;
+                    my $row = {
+                        gains => 0,
+                        fades => 0,
+                        time => $atime,
+                        meta => 1,
+                    };
+                    
+                    foreach my $id (@$vmeta) {
+                        if( my $vaura = $self->{ext}{Aura}{actors}{$MOB}{$id} ) {
+                            $n ++;
+                            $row->{gains} += $vaura->{gains};
+                            $row->{fades} += $vaura->{fades};
+                            $row->{type} = $vaura->{type};
+                        }
+                    }
+                    
+                    push @rows, {
+                        key => $kmeta,
+                        row => $row,
+                    } if $n > 1;
+                }
+                
+            }
+        }
+        
+        @rows = sort { $a->{row}{type} cmp $b->{row}{type} || $b->{row}{time} <=> $a->{row}{time} } @rows;
+        
+        if( @rows ) {
+            $PAGE .= $pm->tableHeader("Buffs and Debuffs", @auraHeader);
+            foreach my $row (@rows) {
+                my $id = lc $row->{key};
+                $id = $pm->tameText($id);
+
+                $PAGE .= $pm->tableRow( 
+                    header => \@auraHeader,
+                    data => {
+                        "Name" => ( $row->{row}{meta} ? $row->{key} : $pm->spellLink( $row->{key}, $self->{ext}{Index}->spellname( $row->{key} ) ) ),
+                        "Type" => (($row->{row}{type} && lc $row->{row}{type}) || "unknown") . ( $row->{row}{meta} ? " (meta)" : "" ),
+                        "R-Gained" => $row->{row}{gains},
+                        "R-Faded" => $row->{row}{fades},
+                        "R-%" => $ptime && sprintf( "%0.1f%%", $row->{row}{time} / $ptime * 100 ),
+                        "R-Uptime" => $row->{row}{time} && sprintf( "%02d:%02d", $row->{row}{time}/60, $row->{row}{time}%60 ),
+                    },
+                    type => "",
+                    name => "aura_$id",
+                );
+            }
         }
     }
     

@@ -58,7 +58,7 @@ sub page {
     # PAGE HEADER #
     ###############
     
-    my $displayName = HTML::Entities::encode_entities($self->{ext}{Index}->spellname($SPELL));
+    my $displayName = HTML::Entities::encode_entities($self->{ext}{Index}->spellname($SPELL)) || "Spell";
     my ($raidStart, $raidEnd, $raidPresence) = $self->{ext}{Presence}->presence();
     $PAGE .= $pm->pageHeader($self->{name}, $displayName, $raidStart);
     $PAGE .= sprintf "<h3 class=\"colorMob\">%s</h3>", $displayName;
@@ -601,13 +601,18 @@ sub page {
         my @rows;
         
         while( my ($kactor, $vactor) = each(%{ $self->{ext}{Aura}{actors}}) ) {
+            my ($pstart, $pend, $ptime) = $self->{ext}{Presence}->presence($kactor);
+            
             while( my ($kspell, $vspell) = each(%$vactor) ) {
                 # Focus on our spell.
                 next unless $kspell eq $SPELL;
 
                 push @rows, {
                     key => $kactor,
-                    row => $vspell,
+                    row => {
+                        %$vspell,
+                        time => $self->{ext}{Aura}->aura( start => $pstart, end => $pend, actor => [$kactor], aura => [$SPELL] ),
+                    },
                 };
             }
         }

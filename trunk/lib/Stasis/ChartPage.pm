@@ -212,11 +212,28 @@ sub page {
         "Members"    => scalar keys %raiderDamage,
     );
     
+    ############
+    # TAB LIST #
+    ############
+    
+    my @deathlist;
+
+    foreach my $deathevent (keys %{$self->{ext}{Death}{actors}}) {
+        if ($self->{raid}{$deathevent} && 
+            $self->{raid}{$deathevent}{class} &&
+            $self->{raid}{$deathevent}{class} ne "Pet") {
+                push @deathlist, @{$self->{ext}{Death}{actors}{$deathevent}};
+        }
+    }
+
+    @deathlist = sort { $a->{'t'} <=> $b->{'t'} } @deathlist;
+    
+    my @tabs = ( "Damage Out", "Damage In", "Healing", "Raid & Mobs", "Deaths" );
+    $PAGE .= "<br />" . $pm->tabBar(@tabs);
+    
     ################
     # DAMAGE CHART #
     ################
-    
-    $PAGE .= $pm->tableStart( "chart" );
     
     my @damageHeader = (
             "Player",
@@ -229,6 +246,8 @@ sub page {
             " ",
         );
     
+    $PAGE .= $pm->tabStart("Damage Out");
+    $PAGE .= $pm->tableStart();
     $PAGE .= $pm->tableHeader("Damage Out", @damageHeader);
     
     my @damagesort = sort {
@@ -249,7 +268,7 @@ sub page {
                 "R-%" => $raiderDamage{$actor} && $raidDamage && sprintf( "%d%%", ceil($raiderDamage{$actor} / $raidDamage * 100) ),
                 "R-Dam. Out" => $raiderDamage{$actor},
                 " " => $mostdmg && sprintf( "%d", ceil($raiderDamage{$actor} / $mostdmg * 100) ),
-                "R-Pres. DPS" => $raiderDamage{$actor} && $dpsTime && sprintf( "%d", $raiderDamage{$actor} / $ptime ),
+                "R-Pres. DPS" => $raiderDamage{$actor} && $dpsTime && $ptime && sprintf( "%d", $raiderDamage{$actor} / $ptime ),
                 "R-Act. DPS" => $raiderDamage{$actor} && $dpsTime && sprintf( "%d", $raiderDamage{$actor} / $dpsTime ),
                 "R-Activity" => $raiderDamage{$actor} && $dpsTime && $ptime && sprintf( "%0.1f%%", $dpsTime / $ptime * 100 ),
             },
@@ -257,6 +276,8 @@ sub page {
         );
     }
     
+    $PAGE .= $pm->tableEnd;
+    $PAGE .= $pm->tabEnd;
 
     #########################
     # DAMAGE INCOMING CHART #
@@ -273,7 +294,9 @@ sub page {
             " ",
         );
     
-    $PAGE .= $pm->tableHeader("<a name=\"damagein\"></a>Damage In", @damageInHeader);
+    $PAGE .= $pm->tabStart("Damage In");
+    $PAGE .= $pm->tableStart();
+    $PAGE .= $pm->tableHeader("Damage In", @damageInHeader);
     
     my @damageinsort = sort {
         $raiderIncoming{$b} <=> $raiderIncoming{$a} || $a cmp $b
@@ -298,6 +321,9 @@ sub page {
         );
     }
     
+    $PAGE .= $pm->tableEnd;
+    $PAGE .= $pm->tabEnd;
+    
     #################
     # HEALING CHART #
     #################
@@ -312,8 +338,10 @@ sub page {
             "R-%",
             " ",
         );
-    
-    $PAGE .= $pm->tableHeader("<a name=\"healing\"></a>Healing", @healingHeader);    
+        
+    $PAGE .= $pm->tabStart("Healing");
+    $PAGE .= $pm->tableStart();
+    $PAGE .= $pm->tableHeader("Healing", @healingHeader);    
     
     my @healsort = sort {
         $raiderHealing{$b} <=> $raiderHealing{$a} || $a cmp $b
@@ -339,108 +367,28 @@ sub page {
     }
     
     $PAGE .= $pm->tableEnd;
-    
-    ##########
-    # DEATHS #
-    ##########
-
-    $PAGE .= "<a name=\"deaths\"></a>";
-
-    my @deathHeader = (
-            "Death",
-            "Time",
-            "R-Health",
-            "Event",
-        );
-        
-    my @deathlist;
-
-    foreach my $deathevent (keys %{$self->{ext}{Death}{actors}}) {
-        if ($self->{raid}{$deathevent} && 
-            $self->{raid}{$deathevent}{class} &&
-            $self->{raid}{$deathevent}{class} ne "Pet") {
-                push @deathlist, @{$self->{ext}{Death}{actors}{$deathevent}};
-        }
-    }
-
-    @deathlist = sort { $a->{'t'} <=> $b->{'t'} } @deathlist;
-
-    if( scalar @deathlist ) {
-
-        $PAGE .= $pm->tableStart("chart");
-        $PAGE .= $pm->tableHeader("Deaths", @deathHeader);
-        my $deathid = 0;
-        foreach my $death (@deathlist) {
-            # Increment death ID.
-            $deathid++;
-
-            # Get the last line of the autopsy.
-            my $lastline = pop @{$death->{autopsy}};
-            push @{$death->{autopsy}}, $lastline;
-
-            # Print the front row.
-            my $text = $lastline->{text}||"";
-            $text =~ s/\[\[([^\[\]]+?)\]\]/ $pm->actorLink($1, 1) /eg;
-            $text =~ s/\{\{([^\{\}]+?)\}\}/ $pm->spellLink($1, $self->{ext}{Index}->spellname($1)) /eg;
-            
-            my $t = $death->{t} - $raidStart;
-            $PAGE .= $pm->tableRow(
-                    header => \@deathHeader,
-                    data => {
-                        "Death" => $pm->actorLink( $death->{actor},  $self->{ext}{Index}->actorname($death->{actor}), $self->{raid}{$death->{actor}}{class} ),
-                        "Time" => $death->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
-                        "R-Health" => $lastline->{hp} || "",
-                        "Event" => $text,
-                    },
-                    type => "master",
-                    name => "death_$deathid",
-                );
-
-            # Print subsequent rows.
-            foreach my $line (@{$death->{autopsy}}) {
-                my $t = ($line->{t}||0) - $raidStart;
-                
-                my $text = $line->{text}||"";
-                $text =~ s/\[\[([^\[\]]+?)\]\]/ $pm->actorLink($1, 1) /eg;
-                $text =~ s/\{\{([^\{\}]+?)\}\}/ $pm->spellLink($1, $self->{ext}{Index}->spellname($1)) /eg;
-                
-                $PAGE .= $pm->tableRow(
-                        header => \@deathHeader,
-                        data => {
-                            "Death" => $line->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
-                            "R-Health" => $line->{hp} || "",
-                            "Event" => $text,
-                        },
-                        type => "slave",
-                        name => "death_$deathid",
-                    );
-            }
-
-            $PAGE .= $pm->jsClose("death_$deathid");
-        }
-
-        $PAGE .= $pm->tableEnd;
-    }
+    $PAGE .= $pm->tabEnd;
     
     ####################
     # RAID & MOBS LIST #
     ####################
     
-    $PAGE .= $pm->tableStart("chart");
+    my @actorHeader = (
+        "Actor",
+        "Class",
+        "Presence",
+        "R-Presence %",
+    );
+        
+    $PAGE .= $pm->tabStart("Raid & Mobs");
+    $PAGE .= $pm->tableStart();
     
     {
-        my @actorHeader = (
-                "Actor",
-                "Class",
-                "Presence",
-                "R-Presence %",
-            );
-
         my @actorsort = sort {
             $self->{ext}{Index}->actorname($a) cmp $self->{ext}{Index}->actorname($b)
         } keys %{$self->{ext}{Presence}{actors}};
         
-        $PAGE .= "<a name=\"actors\"></a>";
+        $PAGE .= "";
         $PAGE .= $pm->tableHeader("Raid &amp; Mobs", @actorHeader);
 
         my @rows;
@@ -517,11 +465,87 @@ sub page {
     }
     
     $PAGE .= $pm->tableEnd;
+    $PAGE .= $pm->tabEnd;
+    
+    ##########
+    # DEATHS #
+    ##########
+
+    $PAGE .= "";
+
+    my @deathHeader = (
+            "Death",
+            "Time",
+            "R-Health",
+            "Event",
+        );
+        
+    
+    $PAGE .= $pm->tabStart("Deaths");
+    $PAGE .= $pm->tableStart();
+    
+    if( scalar @deathlist ) {
+        $PAGE .= $pm->tableHeader("Deaths", @deathHeader);
+        my $deathid = 0;
+        foreach my $death (@deathlist) {
+            # Increment death ID.
+            $deathid++;
+
+            # Get the last line of the autopsy.
+            my $lastline = pop @{$death->{autopsy}};
+            push @{$death->{autopsy}}, $lastline;
+
+            # Print the front row.
+            my $text = $lastline->{text}||"";
+            $text =~ s/\[\[([^\[\]]+?)\]\]/ $pm->actorLink($1, 1) /eg;
+            $text =~ s/\{\{([^\{\}]+?)\}\}/ $pm->spellLink($1, $self->{ext}{Index}->spellname($1)) /eg;
+            
+            my $t = $death->{t} - $raidStart;
+            $PAGE .= $pm->tableRow(
+                    header => \@deathHeader,
+                    data => {
+                        "Death" => $pm->actorLink( $death->{actor},  $self->{ext}{Index}->actorname($death->{actor}), $self->{raid}{$death->{actor}}{class} ),
+                        "Time" => $death->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
+                        "R-Health" => $lastline->{hp} || "",
+                        "Event" => $text,
+                    },
+                    type => "master",
+                    name => "death_$deathid",
+                );
+
+            # Print subsequent rows.
+            foreach my $line (@{$death->{autopsy}}) {
+                my $t = ($line->{t}||0) - $raidStart;
+                
+                my $text = $line->{text}||"";
+                $text =~ s/\[\[([^\[\]]+?)\]\]/ $pm->actorLink($1, 1) /eg;
+                $text =~ s/\{\{([^\{\}]+?)\}\}/ $pm->spellLink($1, $self->{ext}{Index}->spellname($1)) /eg;
+                
+                $PAGE .= $pm->tableRow(
+                        header => \@deathHeader,
+                        data => {
+                            "Death" => $line->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
+                            "R-Health" => $line->{hp} || "",
+                            "Event" => $text,
+                        },
+                        type => "slave",
+                        name => "death_$deathid",
+                    );
+            }
+
+            $PAGE .= $pm->jsClose("death_$deathid");
+        }
+    }
+    
+    $PAGE .= $pm->tableEnd;
+    $PAGE .= $pm->tabEnd;
     
     #####################
     # PRINT HTML FOOTER #
     #####################
     
+    $PAGE .= $pm->jsTab("Damage Out");
+    $PAGE .= $pm->tabBarEnd;
     $PAGE .= $pm->pageFooter;
     
     #########################
@@ -529,14 +553,14 @@ sub page {
     #########################
     
     $XML .= sprintf( '  <raid dpstime="%d" start="%s" dps="%d" comment="%s" lg="%d" dmg="%d" dir="%s">' . "\n",
-                100,
-                $raidStart*1000 - 8*3600000,
-                $raidDPS,
-                $self->{name},
-                $raidPresence*60000,
-                $raidDamage,
-                $self->{dirname},
-            );
+        100,
+        $raidStart*1000 - 8*3600000,
+        $raidDPS,
+        $self->{name},
+        $raidPresence*60000,
+        $raidDamage,
+        $self->{dirname},
+    );
     
     #########################
     # PRINT PLAYER XML KEYS #

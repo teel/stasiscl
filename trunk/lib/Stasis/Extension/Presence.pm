@@ -51,7 +51,7 @@ sub process {
 # Returns (start, end, total) for the raid or for an actor
 sub presence {
     my $self = shift;
-    
+
     if( @_ ) {
         my $start = undef;
         my $end = undef;
