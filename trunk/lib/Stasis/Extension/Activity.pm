@@ -25,6 +25,7 @@ package Stasis::Extension::Activity;
 
 use strict;
 use warnings;
+use Stasis::Extension;
 
 our @ISA = "Stasis::Extension";
 

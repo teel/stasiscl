@@ -37,8 +37,12 @@ sub new {
     
     $params{ext} ||= {};
     $params{raid} ||= {};
-    $params{grouper} = Stasis::ActorGroup->new;
-    $params{grouper}->run( $params{raid}, $params{ext} );
+    
+    if( !$params{grouper} ) {
+        $params{grouper} = Stasis::ActorGroup->new;
+        $params{grouper}->run( $params{raid}, $params{ext} );
+    }
+    
     $params{pm} ||= Stasis::PageMaker->new( raid => $params{raid}, ext => $params{ext}, grouper => $params{grouper}, collapse => $params{collapse} );
     $params{name} ||= "Untitled";
     $params{server} ||= "";

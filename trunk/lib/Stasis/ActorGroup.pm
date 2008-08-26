@@ -26,6 +26,7 @@ package Stasis::ActorGroup;
 use strict;
 use warnings;
 use Stasis::MobUtil;
+use Stasis::Extension::Index;
 use Carp;
 
 sub new {

@@ -26,6 +26,7 @@ package Stasis::Extension::Damage;
 use strict;
 use warnings;
 use Carp;
+use Stasis::Extension;
 
 our @ISA = "Stasis::Extension";
 

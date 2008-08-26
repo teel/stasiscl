@@ -26,6 +26,7 @@ package Stasis::Extension::Death;
 use strict;
 use warnings;
 use Stasis::Parser;
+use Stasis::Extension;
 
 our @ISA = "Stasis::Extension";
 
