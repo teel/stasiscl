@@ -207,7 +207,7 @@ my %fingerprints = (
 
 "magtheridon" => {
     long => "Magtheridon",
-    mobStart => [ "17257", "Hellfire Channeler" ],
+    mobStart => [ "17256", "Hellfire Channeler" ],
     mobContinue => [ "17256", "17257", "Magtheridon", "Hellfire Channeler" ],
     mobEnd => [ "17257", "Magtheridon" ],
     timeout => 15,
