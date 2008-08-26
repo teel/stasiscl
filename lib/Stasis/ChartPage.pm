@@ -28,6 +28,9 @@ use warnings;
 use POSIX;
 use Stasis::PageMaker;
 use Stasis::ActorGroup;
+use Stasis::Extension::Presence;
+use Stasis::Extension::Index;
+use Stasis::Extension::Activity;
 
 sub new {
     my $class = shift;
@@ -133,7 +136,6 @@ sub page {
 			}
 		}
 	}
-	
 
 	# Calculate death count
 	my %deathCount;
@@ -270,7 +272,7 @@ sub page {
                 " " => $mostdmg && sprintf( "%d", ceil($raiderDamage{$actor} / $mostdmg * 100) ),
                 "R-Pres. DPS" => $raiderDamage{$actor} && $dpsTime && $ptime && sprintf( "%d", $raiderDamage{$actor} / $ptime ),
                 "R-Act. DPS" => $raiderDamage{$actor} && $dpsTime && sprintf( "%d", $raiderDamage{$actor} / $dpsTime ),
-                "R-Activity" => $raiderDamage{$actor} && $dpsTime && $ptime && sprintf( "%0.1f%%", $dpsTime / $ptime * 100 ),
+                "R-Activity" => $dpsTime && $ptime && sprintf( "%0.1f%%", $dpsTime / $ptime * 100 ),
             },
             type => "",
         );
@@ -548,66 +550,68 @@ sub page {
     $PAGE .= $pm->tabBarEnd;
     $PAGE .= $pm->pageFooter;
     
-    #########################
-    # PRINT OPENING XML TAG #
-    #########################
-    
-    $XML .= sprintf( '  <raid dpstime="%d" start="%s" dps="%d" comment="%s" lg="%d" dmg="%d" dir="%s">' . "\n",
-        100,
-        $raidStart*1000 - 8*3600000,
-        $raidDPS,
-        $self->{name},
-        $raidPresence*60000,
-        $raidDamage,
-        $self->{dirname},
-    );
-    
-    #########################
-    # PRINT PLAYER XML KEYS #
-    #########################
-    
-    my %xml_classmap = (
-            "Warrior" => "war",
-            "Druid" => "drd",
-            "Warlock" => "wrl",
-            "Shaman" => "sha",
-            "Paladin" => "pal",
-            "Priest" => "pri",
-            "Rogue" => "rog",
-            "Mage" => "mag",
-            "Hunter" => "hnt",
+    if( wantarray ) {
+        #########################
+        # PRINT OPENING XML TAG #
+        #########################
+
+        $XML .= sprintf( '  <raid dpstime="%d" start="%s" dps="%d" comment="%s" lg="%d" dmg="%d" dir="%s">' . "\n",
+            100,
+            $raidStart*1000 - 8*3600000,
+            $raidDPS,
+            $self->{name},
+            $raidPresence*60000,
+            $raidDamage,
+            $self->{dirname},
         );
-    
-    foreach my $actor (@damagesort) {
-        my $ptime = $self->{ext}{Presence}{actors}{$actor}{end} - $self->{ext}{Presence}{actors}{$actor}{start};
-        my $dpsTime = $self->{ext}{Activity}->activity( actor => [ $actor, @{ $self->{raid}{$actor}{pets} } ] );
-        
-        my %xml_keys = (
-            name => $self->{ext}{Index}->actorname($actor) || "Unknown",
-            classe => $xml_classmap{ $self->{raid}{$actor}{class} } || "war",
-            dps => $dpsTime && ceil( $raiderDamage{$actor} / $dpsTime ) || 0,
-            dpstime => $dpsTime && $ptime && $dpsTime / $ptime * 100 || 0,
-            dmgout => $raiderDamage{$actor} && $raidDamage && $raiderDamage{$actor} / $raidDamage * 100 || 0,
-            dmgin => $raiderIncoming{$actor} && $raidInDamage && $raiderIncoming{$actor} / $raidInDamage * 100 || 0,
-            heal => $raiderHealing{$actor} && $raidHealing && $raiderHealing{$actor} / $raidHealing * 100 || 0,
-            ovh => $raiderHealing{$actor} && $raiderHealingTotal{$actor} && ceil( ($raiderHealingTotal{$actor} - $raiderHealing{$actor}) / $raiderHealingTotal{$actor} * 100 ) || 0,
-            death => $deathCount{$actor} || 0,
-            
-            # Ignored values
-            decurse => 0,
-            pres => 100,
-        );
-        
-        $XML .= sprintf "    <player %s />\n", join " ", map { sprintf "%s=\"%s\"", $_, $xml_keys{$_} } (keys %xml_keys);
+
+        #########################
+        # PRINT PLAYER XML KEYS #
+        #########################
+
+        my %xml_classmap = (
+                "Warrior" => "war",
+                "Druid" => "drd",
+                "Warlock" => "wrl",
+                "Shaman" => "sha",
+                "Paladin" => "pal",
+                "Priest" => "pri",
+                "Rogue" => "rog",
+                "Mage" => "mag",
+                "Hunter" => "hnt",
+            );
+
+        foreach my $actor (@damagesort) {
+            my $ptime = $self->{ext}{Presence}{actors}{$actor}{end} - $self->{ext}{Presence}{actors}{$actor}{start};
+            my $dpsTime = $self->{ext}{Activity}->activity( actor => [ $actor, @{ $self->{raid}{$actor}{pets} } ] );
+
+            my %xml_keys = (
+                name => $self->{ext}{Index}->actorname($actor) || "Unknown",
+                classe => $xml_classmap{ $self->{raid}{$actor}{class} } || "war",
+                dps => $dpsTime && ceil( $raiderDamage{$actor} / $dpsTime ) || 0,
+                dpstime => $dpsTime && $ptime && $dpsTime / $ptime * 100 || 0,
+                dmgout => $raiderDamage{$actor} && $raidDamage && $raiderDamage{$actor} / $raidDamage * 100 || 0,
+                dmgin => $raiderIncoming{$actor} && $raidInDamage && $raiderIncoming{$actor} / $raidInDamage * 100 || 0,
+                heal => $raiderHealing{$actor} && $raidHealing && $raiderHealing{$actor} / $raidHealing * 100 || 0,
+                ovh => $raiderHealing{$actor} && $raiderHealingTotal{$actor} && ceil( ($raiderHealingTotal{$actor} - $raiderHealing{$actor}) / $raiderHealingTotal{$actor} * 100 ) || 0,
+                death => $deathCount{$actor} || 0,
+
+                # Ignored values
+                decurse => 0,
+                pres => 100,
+            );
+
+            $XML .= sprintf "    <player %s />\n", join " ", map { sprintf "%s=\"%s\"", $_, $xml_keys{$_} } (keys %xml_keys);
+        }
+
+        ####################
+        # PRINT XML FOOTER #
+        ####################
+
+        $XML .= "  </raid>\n";
     }
     
-    ####################
-    # PRINT XML FOOTER #
-    ####################
-    
-    $XML .= "  </raid>\n";
-    
-    return ($XML, $PAGE);
+    return wantarray ? ($XML, $PAGE) : $PAGE;
 }
 
 1;

@@ -25,6 +25,7 @@ package Stasis::Extension::Dispel;
 
 use strict;
 use warnings;
+use Stasis::Extension;
 
 our @ISA = "Stasis::Extension";
 

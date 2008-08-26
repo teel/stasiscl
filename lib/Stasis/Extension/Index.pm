@@ -26,6 +26,7 @@ package Stasis::Extension::Index;
 use strict;
 use warnings;
 use Stasis::SpellUtil;
+use Stasis::Extension;
 
 our @ISA = "Stasis::Extension";
 
