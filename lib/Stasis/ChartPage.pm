@@ -124,15 +124,15 @@ sub page {
 
     # Calculate incoming damage
     my $raidInDamage = 0;
-    while( my ($kactor, $vactor) = each(%{ $self->{ext}{Damage}{actors} }) ) {
-        while( my ($kspell, $vspell) = each(%$vactor) ) {
-            while( my ($ktarget, $vtarget) = each(%$vspell) ) {
-				next unless $self->{raid}{$ktarget}{class};
-				next if $self->{raid}{$ktarget}{class} eq "Pet";
-
-				$raiderIncoming{$ktarget} ||= 0;
-				$raiderIncoming{$ktarget} += $vtarget->{total};
-				$raidInDamage += $vtarget->{total};
+    while( my ($ktarget, $vtarget) = each(%{ $self->{ext}{Damage}{targets} }) ) {
+		next unless $self->{raid}{$ktarget}{class};
+		next if $self->{raid}{$ktarget}{class} eq "Pet";
+		$raiderIncoming{$ktarget} ||= 0;
+		
+        while( my ($kspell, $vspell) = each(%$vtarget) ) {
+            while( my ($kactor, $vactor) = each(%$vspell) ) {
+				$raiderIncoming{$ktarget} += $vactor->{total};
+				$raidInDamage += $vactor->{total};
 			}
 		}
 	}
