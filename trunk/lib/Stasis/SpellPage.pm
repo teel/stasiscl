@@ -49,7 +49,7 @@ sub page {
     my $self = shift;
     my $SPELL = shift;
     
-    return unless $SPELL;
+    return unless defined $SPELL;
     
     my $PAGE;
     my $pm = $self->{pm};
@@ -105,11 +105,11 @@ sub page {
         
         # Sort @rows.
         my @rows = @$rows_dmgout;
-        @rows = sort { $b->{row}{total} <=> $a->{row}{total} } @rows;
+        @rows = sort { ($b->{row}{total}||0) <=> ($a->{row}{total}||0) } @rows;
         
         # Sort slaves.
         foreach my $row (@rows) {
-            $row->{slaves} = [ sort { $b->{row}{total} <=> $a->{row}{total} } @{$row->{slaves}} ]; 
+            $row->{slaves} = [ sort { ($b->{row}{total}||0) <=> ($a->{row}{total}||0) } @{$row->{slaves}} ]; 
         }
         
         # Print @rows.
@@ -165,11 +165,11 @@ sub page {
         
         # Sort @rows.
         my @rows = @$rows_dmgin;
-        @rows = sort { $b->{row}{total} <=> $a->{row}{total} } @rows;
+        @rows = sort { ($b->{row}{total}||0) <=> ($a->{row}{total}||0) } @rows;
         
         # Sort slaves.
         foreach my $row (@rows) {
-            $row->{slaves} = [ sort { $b->{row}{total} <=> $a->{row}{total} } @{$row->{slaves}} ]; 
+            $row->{slaves} = [ sort { ($b->{row}{total}||0) <=> ($a->{row}{total}||0) } @{$row->{slaves}} ]; 
         }
         
         # Print @rows.
@@ -231,11 +231,11 @@ sub page {
         
         # Sort @rows.
         my @rows = @$rows_healout;
-        @rows = sort { $b->{row}{effective} <=> $a->{row}{effective} } @rows;
+        @rows = sort { ($b->{row}{effective}||0) <=> ($a->{row}{effective}||0) } @rows;
         
         # Sort slaves.
         foreach my $row (@rows) {
-            $row->{slaves} = [ sort { $b->{row}{effective} <=> $a->{row}{effective} } @{$row->{slaves}} ]; 
+            $row->{slaves} = [ sort { ($b->{row}{effective}||0) <=> ($a->{row}{effective}||0) } @{$row->{slaves}} ]; 
         }
         
         # Print @rows.
@@ -291,11 +291,11 @@ sub page {
         
         # Sort @rows.
         my @rows = @$rows_healin;
-        @rows = sort { $b->{row}{effective} <=> $a->{row}{effective} } @rows;
+        @rows = sort { ($b->{row}{effective}||0) <=> ($a->{row}{effective}||0) } @rows;
         
         # Sort slaves.
         foreach my $row (@rows) {
-            $row->{slaves} = [ sort { $b->{row}{effective} <=> $a->{row}{effective} } @{$row->{slaves}} ]; 
+            $row->{slaves} = [ sort { ($b->{row}{effective}||0) <=> ($a->{row}{effective}||0) } @{$row->{slaves}} ]; 
         }
         
         # Print @rows.
@@ -597,24 +597,17 @@ sub page {
             "R-Faded",
         );
         
+        # Get aura information.
+        my $auras = $self->{ext}{Aura}->aura( p => $self->{ext}{Presence}{actors}, aura => [$SPELL], expand => ["actor"] ),
+        
         # Get aura rows.
         my @rows;
         
-        while( my ($kactor, $vactor) = each(%{ $self->{ext}{Aura}{actors}}) ) {
-            my ($pstart, $pend, $ptime) = $self->{ext}{Presence}->presence($kactor);
-            
-            while( my ($kspell, $vspell) = each(%$vactor) ) {
-                # Focus on our spell.
-                next unless $kspell eq $SPELL;
-
-                push @rows, {
-                    key => $kactor,
-                    row => {
-                        %$vspell,
-                        time => $self->{ext}{Aura}->aura( start => $pstart, end => $pend, actor => [$kactor], aura => [$SPELL] ),
-                    },
-                };
-            }
+        while( my ($kactor, $vactor) = each(%$auras) ) {
+            push @rows, {
+                key => $kactor,
+                row => $vactor,
+            };
         }
         
         @rows = sort { $a->{row}{type} cmp $b->{row}{type} || $b->{row}{time} <=> $a->{row}{time} } @rows;
@@ -747,20 +740,21 @@ sub _damageOrHealingRows {
     my @rows_in;
     my @rows_out;
     
-    while( my ($kactor, $vactor) = each(%{ $ext->{actors}}) ) {
-        if( my $vspell = $vactor->{$kspell} ) {
-            # Figure out the key for this actor.
-            my $gactor = $self->{grouper}->group($kactor);
-            my $kactor_use = $gactor ? $self->{grouper}->captain($gactor) : $kactor;
+    # Get a report.
+    my $de = $ext->sum( spell => [ $kspell ], expand => [ "actor", "target" ] );
+    
+    while( my ($kactor, $vactor) = each(%$de) ) {
+        # Figure out the key for this actor.
+        my $gactor = $self->{grouper}->group($kactor);
+        my $kactor_use = $gactor ? $self->{grouper}->captain($gactor) : $kactor;
             
-            while( my ($ktarget, $vtarget) = each(%$vspell) ) {
-                # Figure out the key for this target.
-                my $gtarget = $self->{grouper}->group($ktarget);
-                my $ktarget_use = $gtarget ? $self->{grouper}->captain($gtarget) : $ktarget;
-                
-                Stasis::ActorPage->_rowadd( \@rows_in, $ktarget_use, $kactor_use, $vtarget );
-                Stasis::ActorPage->_rowadd( \@rows_out, $kactor_use, $ktarget_use, $vtarget );
-            }
+        while( my ($ktarget, $vtarget) = each(%$vactor) ) {
+            # Figure out the key for this target.
+            my $gtarget = $self->{grouper}->group($ktarget);
+            my $ktarget_use = $gtarget ? $self->{grouper}->captain($gtarget) : $ktarget;
+            
+            Stasis::ActorPage->_rowadd( \@rows_in, $ktarget_use, $kactor_use, $vtarget );
+            Stasis::ActorPage->_rowadd( \@rows_out, $kactor_use, $ktarget_use, $vtarget );
         }
     }
     
@@ -790,11 +784,11 @@ sub _dispelOrInterruptRows {
     }
     
     # Sort @rows.
-    @rows = sort { $b->{row}{count} <=> $a->{row}{count} } @rows;
+    @rows = sort { ($b->{row}{count}||0) <=> ($a->{row}{count}||0) } @rows;
     
     # Sort slaves.
     foreach my $row (@rows) {
-        $row->{slaves} = [ sort { $b->{row}{count} <=> $a->{row}{count} } @{$row->{slaves}} ]; 
+        $row->{slaves} = [ sort { ($b->{row}{count}||0) <=> ($a->{row}{count}||0) } @{$row->{slaves}} ]; 
     }
     
     return @rows;
@@ -835,11 +829,11 @@ sub _castOrGainRows {
     }
     
     # Sort @rows.
-    @rows = sort { $b->{row}{count} <=> $a->{row}{count} } @rows;
+    @rows = sort { ($b->{row}{count}||0) <=> ($a->{row}{count}||0) } @rows;
     
     # Sort slaves.
     foreach my $row (@rows) {
-        $row->{slaves} = [ sort { $b->{row}{count} <=> $a->{row}{count} } @{$row->{slaves}} ]; 
+        $row->{slaves} = [ sort { ($b->{row}{count}||0) <=> ($a->{row}{count}||0) } @{$row->{slaves}} ]; 
     }
     
     return @rows;

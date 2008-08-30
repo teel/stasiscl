@@ -26,13 +26,24 @@ package Stasis::MobUtil;
 use strict;
 use warnings;
 use Carp;
+use Exporter "import";
+
+our @EXPORT_OK = qw(splitguid joinguid);
 
 # returns (type, npc, spawncount)
-sub splitguid {
+sub splitguid($) {
     if( length $_[0] == 18 && $_[0] =~ /^0x/ ) {
         return ( hex( substr $_[0], 2, 4 ), hex( substr $_[0], 6, 6 ), hex( substr $_[0], 12, 6 ) );
     } else {
         return ( 0, 0, 0 );
+    }
+}
+
+sub joinguid(@) {
+    if( @_ == 3 && defined $_[2] ) {
+        return sprintf "0x%04X%06X%06X", $_[0] & 0xFFFF, $_[1] & 0xFFFFFF, $_[2] & 0xFFFFFF;
+    } else {
+        return 0;
     }
 }
 

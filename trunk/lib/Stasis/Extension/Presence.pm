@@ -39,13 +39,21 @@ sub process {
     my ($self, $entry) = @_;
     
     if( $entry->{actor} ) {
-        $self->{actors}{ $entry->{actor} }{start} = $entry->{t} if !$self->{actors}{ $entry->{actor} }{start};
-        $self->{actors}{ $entry->{actor} }{end} = $entry->{t};
+        my ($start, $end) = $self->{actors}{ $entry->{actor} } && unpack "dd", $self->{actors}{ $entry->{actor} };
+        
+        $start = $entry->{t} if !$start;
+        $end = $entry->{t};
+        
+        $self->{actors}{ $entry->{actor} } = pack "dd", $start, $end;
     }
     
     if( $entry->{target} ) {
-        $self->{actors}{ $entry->{target} }{start} = $entry->{t} if !$self->{actors}{ $entry->{target} }{start};
-        $self->{actors}{ $entry->{target} }{end} = $entry->{t};
+        my ($start, $end) = $self->{actors}{ $entry->{target} } && unpack "dd", $self->{actors}{ $entry->{target} };
+        
+        $start = $entry->{t} if !$start;
+        $end = $entry->{t};
+        
+        $self->{actors}{ $entry->{target} } = pack "dd", $start, $end;
     }
 }
 
@@ -59,12 +67,13 @@ sub presence {
 
         foreach (@_) {
             if( $_ && $self->{actors}{$_} ) {
-                if( !defined $start || $start > $self->{actors}{$_}{start} ) {
-                    $start = $self->{actors}{$_}{start};
+                my ($istart, $iend) = unpack "dd", $self->{actors}{$_};
+                if( !defined $start || $start > $istart ) {
+                    $start = $istart;
                 }
 
-                if( !defined $end || $end < $self->{actors}{$_}{end} ) {
-                    $end = $self->{actors}{$_}{end};
+                if( !defined $end || $end < $iend ) {
+                    $end = $iend;
                 }
             }
         }
@@ -75,17 +84,16 @@ sub presence {
         if( !$self->{total} ) {
             my ($start, $end);
             foreach my $h (values %{ $self->{actors} }) {
-                $start = $h->{start} if( !$start || $start < $h->{start} );
-                $end = $h->{end} if( !$end || $end < $h->{end} );
-                
-                $self->{total} = {
-                    start => $start,
-                    end => $end,
-                }
+                my ($istart, $iend) = unpack "dd", $h;
+                $start = $istart if( !$start || $start > $istart );
+                $end = $iend if( !$end || $end < $iend );
             }
+            
+            $self->{total} = pack "dd", $start, $end;
         }
         
-        return ( $self->{total}{start}, $self->{total}{end}, $self->{total}{end} - $self->{total}{start} );
+        my ($tstart, $tend) = unpack "dd", $self->{total};
+        return ( $tstart, $tend, $tend - $tstart );
     }
 }
 

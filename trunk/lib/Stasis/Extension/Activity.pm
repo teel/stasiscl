@@ -33,7 +33,6 @@ sub start {
     my $self = shift;
     $self->{actors} = {};
     $self->{span_scratch} = {};
-    $self->{last_scratch} = {};
     
     # No damage for this long will end a DPS span.
     $self->{_dpstimeout} = 5;
@@ -68,40 +67,35 @@ sub process {
     my $target = $entry->{target};
     
     # Create a scratch hash for this actor/target pair if it does not exist already.
-    $self->{span_scratch}{ $actor }{ $target } ||= {
-        start => 0,
-        end => 0,
-    };
+    $self->{span_scratch}{ $actor }{ $target } ||= pack "dd", 0, 0;
     
     # Track DPS time.
-    my $adata = $self->{span_scratch}{ $actor }{ $target };
-    if( !$adata->{start} ) {
+    my ($astart, $aend) = unpack "dd", $self->{span_scratch}{ $actor }{ $target };
+    if( !$astart ) {
         # This is the first DPS action, so mark the start of a span.
-        $adata->{start} = $entry->{t};
-        $adata->{end} = $entry->{t};
-    } elsif( $adata->{end} + $self->{_dpstimeout} < $entry->{t} ) {
+        $astart = $entry->{t};
+        $aend = $entry->{t};
+    } elsif( $aend + $self->{_dpstimeout} < $entry->{t} ) {
         # The last span ended, add it.
         $self->{actors}{ $actor }{ $target } ||= [];
         
-        my $span = {
-            start => $adata->{start},
-            end => $adata->{end} + $self->{_dpstimeout},
-        };
+        my $span = pack "dd", (
+            $astart,
+            $aend + $self->{_dpstimeout},
+        );
         
         push @{$self->{actors}{ $actor }{ $target }}, $span;
         
-        # Update last_scratch
-        if( !$self->{last_scratch}{$actor} || $span->{end} > $self->{last_scratch}{$actor}{end} ) {
-            $self->{last_scratch}{$actor} = $span;
-        }
-        
         # Reset the start and end times to the current time.
-        $adata->{start} = $entry->{t};
-        $adata->{end} = $entry->{t};
+        $astart = $entry->{t};
+        $aend = $entry->{t};
     } else {
         # The last span is continuing.
-        $adata->{end} = $entry->{t};
+        $aend = $entry->{t};
     }
+    
+    # Store what we came up with.
+    $self->{span_scratch}{ $actor }{ $target } = pack "dd", $astart, $aend;
 }
 
 sub finish {
@@ -112,27 +106,36 @@ sub finish {
         while( my ($ktarget, $vtarget) = each( %$vactor ) ) {
             $self->{actors}{ $kactor }{ $ktarget } ||= [];
             
-            my $span = {
-                start => $vtarget->{start},
-                end => $vtarget->{end} + $self->{_dpstimeout},
-            };
+            my ($vstart, $vend) = unpack "dd", $vtarget;
+            my $span = pack "dd", (
+                $vstart,
+                $vend + $self->{_dpstimeout},
+            );
             
             push @{$self->{actors}{ $kactor }{ $ktarget }}, $span;
-            
-            # Update last_scratch
-            if( !$self->{last_scratch}{$kactor} || $span->{end} > $self->{last_scratch}{$kactor}{end} ) {
-                $self->{last_scratch}{$kactor} = $span;
-            }
         }
     }
     
     # Remove _dpstimeout from all last spans for each actor.
-    foreach (values %{ $self->{last_scratch} }) {
-        $_->{end} -= $self->{_dpstimeout};
+    while( my ($kactor, $vactor) = each (%{ $self->{actors} }) ) {
+        my ( $t_last, $ref_last );
+        while( my ($ktarget, $vtarget) = each (%$vactor) ) {
+            foreach my $span (@$vtarget) {
+                my ($start, $end) = unpack "dd", $span;
+                if( !$t_last || $end > $t_last ) {
+                    $t_last = $end;
+                    $ref_last = \$span;
+                }
+            }
+        }
+        
+        if( $t_last ) {
+            my ($start, $end) = unpack "dd", $$ref_last;
+            $$ref_last = pack "dd", $start, $end - $self->{_dpstimeout};
+        }
     }
     
     delete $self->{span_scratch};
-    delete $self->{last_scratch};
 }
 
 # Returns total for a set of actors "actor" onto targets "target".
@@ -147,21 +150,25 @@ sub activity {
     # Store relevant activity spans.
     my @span;
     
-    while( my ($kactor, $vactor) = each( %{ $self->{actors} } ) ) {
-        # Skip actors we do not wish to examine.
-        next if @{$params{actor}} && ! grep $_ eq $kactor, @{$params{actor}};
+    foreach my $kactor (scalar @{$params{actor}} ? @{$params{actor}} : keys %{$self->{actors}}) {
+        my $vactor = $self->{actors}{$kactor} or next;
         
-        while( my ($ktarget, $vtarget) = each( %$vactor ) ) {
-            # Skip targets we do not wish to examine.
-            next if @{$params{target}} && ! grep $_ eq $ktarget, @{$params{target}};
+        foreach my $ktarget (scalar @{$params{target}} ? @{$params{target}} : keys %$vactor) {
+            my $vtarget = $vactor->{$ktarget} or next;
             
-            # Include the spans listed in $vtarget (an array of start/end hashes)
+            # Include the spans listed in $vtarget (an array of start/ends)
             push @span, @$vtarget;
         }
     }
     
+    $self->_activity(\@span);
+}
+
+sub _activity {
+    my ($self, $spans) = @_;
+    
     # Sort spans by start time.
-    @span = sort { $a->{start} <=> $b->{start} } @span;
+    my @span = sort { scalar( unpack "dd", $a ) <=> scalar( unpack "dd", $b) } @$spans;
     
     # Store the final list in here.
     my @final = ();
@@ -169,35 +176,30 @@ sub activity {
     foreach my $span (@span) {
         # We are assured that $span starts at the same time as, or after, everything in @final.
         # If it overlaps the last span in @final then merge it in.
+        my ($sstart, $send) = unpack "dd", $span;
         
         if( @final ) {
-            my $last = $final[$#final];
-            if( $span->{start} <= $last->{end} ) {
-                # There is an overlap.
-                if( $span->{end} > $last->{end} ) {
-                    # Extend $last.
-                    $last->{end} = $span->{end};
-                }
+            
+            my ($lstart, $lend) = unpack "dd", $final[$#final];
+            
+            if( $sstart <= $lend ) {
+                # There is an overlap. Possibly extend $last.
+                $final[$#final] = pack "dd", $lstart, $send if $send > $lend;
             } else {
                 # No overlap.
-                push @final, {
-                    start => $span->{start},
-                    end => $span->{end},
-                };
+                push @final, $span;
             }
         } else {
             # @final has nothing in it yet.
-            push @final, {
-                start => $span->{start},
-                end => $span->{end},
-            };
+            push @final, $span;
         }
     }
     
     # Total up @final.
     my $sum = 0;
     foreach (@final) {
-        $sum += $_->{end} - $_->{start};
+        my ($fstart, $fend) = unpack "dd", $_;
+        $sum += $fend - $fstart;
     }
     
     return $sum;

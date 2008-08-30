@@ -26,6 +26,7 @@ package Stasis::Extension::Aura;
 use strict;
 use warnings;
 use Stasis::Extension;
+use Stasis::Extension::Activity;
 
 our @ISA = "Stasis::Extension";
 
@@ -46,7 +47,11 @@ sub process {
         if( exists $self->{actors}{ $entry->{target} } ) {
             foreach my $vaura (values %{ $self->{actors}{ $entry->{target} } } ) {
                 if( @{ $vaura->{spans} } ) {
-                    $vaura->{spans}->[-1]->{end} ||= $entry->{t};
+                    my ($start, $end) = unpack "dd", $vaura->{spans}->[-1];
+                    
+                    if( !$end ) {
+                        $vaura->{spans}->[-1] = pack "dd", $start, $entry->{t};
+                    }
                 }
             }
         }
@@ -58,21 +63,20 @@ sub process {
     my $sdata = $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} } ||= {
         gains => 0,
         fades => 0,
-        type => "",
+        type => undef,
         spans => [],
     };
     
-    # Get a reference to the most recent span.
-    my $span = @{$sdata->{spans}} ? $sdata->{spans}->[-1] : undef;
+    # Get the most recent span.
+    my ($sstart, $send) = @{$sdata->{spans}} ? unpack( "dd", $sdata->{spans}->[-1] ) : (undef, undef);
     
     if( $entry->{action} eq "SPELL_AURA_APPLIED" ) {
         # An aura was gained, update the timeline.
-        if( !$span || $span->{end} ) {
+        if( $send || !defined $sstart ) {
             # Either this is the first span, or the previous one has ended. We should make a new one.
-            push @{$sdata->{spans}}, {
-                start => $entry->{t},
-                end => 0,
-            }
+            push @{$sdata->{spans}}, pack "dd",
+                $entry->{t},
+                0;
             
             # In other cases, this means that we probably missed the fade message or this
             # is a dose application.
@@ -88,19 +92,15 @@ sub process {
         $sdata->{type} ||= $entry->{extra}{auratype};
     } elsif( $entry->{action} eq "SPELL_AURA_REMOVED" ) {
         # An aura faded, update the timeline.
-        if( $span && !$span->{end} ) {
+        if( defined $sstart && !$send ) {
             # We should end the most recent span.
-            $span->{end} = $entry->{t};
+            $sdata->{spans}->[-1] = pack "dd", $sstart, $entry->{t};
         } else {
             # There is no span in progress, we probably missed the gain message.
             if( !$sdata->{gains} && !$sdata->{fades} ) {
                 # if this is the first fade and there were no gains, let's assume it was up since 
                 # before the log started (brave assumption)
-                
-                push @{$sdata->{spans}}, {
-                    start => 0,
-                    end => $entry->{t},
-                }
+                push @{$sdata->{spans}}, pack "dd", 0, $entry->{t};
             }
         }
         
@@ -112,77 +112,63 @@ sub process {
     }
 }
 
-# Returns total uptime for a set of auras "aura" on actors "actor".
-# Also needs a "start" and "end" to be able to resolve zero on spans.
-# If either is blank, will return 0.
+# Returns type, gains, fades, and total uptime for a set of auras
+# "aura" on actors "actor".
 sub aura {
     my $self = shift;
     my %params = @_;
     
     $params{actor} ||= [];
     $params{aura} ||= [];
-    my $start = $params{start};
-    my $end = $params{end};
+    $params{expand} ||= [];
+    $params{p} ||= {};
     
-    # Return 0 with blank arguments, as promised.
-    return 0 unless @{$params{actor}} && @{$params{aura}};
+    # Filter the expand list.
+    my @expand = map { $_ eq "actor" || $_ eq "aura" ? $_ : () } @{$params{expand}};
     
-    # Store relevant aura spans.
-    my @span;
+    # We'll eventually return this.
+    my %ret;
+    
+    # This holds references to the informational arrays.
+    my @refs;
     
     # Examine what we were told to.
-    foreach my $kactor ( @{$params{actor}} ) {
-        if( my $vactor = $self->{actors}{$kactor} ) {
-            foreach my $kaura ( @{$params{aura}} ) {
-                if( my $vaura = $vactor->{$kaura} ) {
-                    # Add the spans.
-                    push @span, @{$vaura->{spans}};
-                }
-            }
-        }
-    }
-    
-    # Sort spans by start time.
-    @span = sort { ($a->{start}||$start) <=> ($b->{start}||$start) } @span;
-    
-    # Store the final list in here.
-    my @final = ();
-    
-    foreach my $span (@span) {
-        # We are assured that $span starts at the same time as, or after, everything in @final.
-        # If it overlaps the last span in @final then merge it in.
+    foreach my $kactor (scalar @{$params{actor}} ? @{$params{actor}} : keys %{$self->{actors}}) {
+        my $vactor = $self->{actors}{$kactor} or next;
+        my ($start, $end) = unpack "dd", $params{p}{$kactor};
         
-        if( @final ) {
-            my $last = $final[$#final];
-            if( ($span->{start}||$start) <= $last->{end} ) {
-                # There is an overlap.
-                if( ($span->{end}||$end) > $last->{end} ) {
-                    # Extend $last.
-                    $last->{end} = ($span->{end}||$end);
-                }
-            } else {
-                # No overlap.
-                push @final, {
-                    start => $span->{start} || $start,
-                    end => $span->{end} || $end,
-                };
+        foreach my $kspell (scalar @{$params{aura}} ? @{$params{aura}} : keys %$vactor) {
+            my $vspell = $vactor->{$kspell} or next;
+            
+            # Get a reference to the hash we want to add to.
+            my $ref = \%ret;
+            foreach (@expand) {
+                $ref = $ref->{ $_ eq "actor" ? $kactor : $kspell } ||= {};
             }
-        } else {
-            # @final has nothing in it yet.
-            push @final, {
-                start => $span->{start} || $start,
-                end => $span->{end} || $end,
-            };
+            
+            # Add the info.
+            push @refs, $ref if ! %$ref;
+            
+            $ref->{type} ||= $vspell->{type};
+            $ref->{gains} += $vspell->{gains};
+            $ref->{fades} += $vspell->{fades};
+            $ref->{spans} ||= [];
+            
+            push @{$ref->{spans}}, map { ($a, $b) = unpack "dd", $_; pack "dd", $a||$start, $b||$end } @{$vspell->{spans}};
         }
     }
     
-    # Total up @final.
-    my $sum = 0;
-    foreach (@final) {
-        $sum += $_->{end} - $_->{start};
+    # Resolve the spans into uptimes.
+    foreach my $ref (@refs) {
+        $ref->{time} = $self->_uptime( delete $ref->{spans} );
     }
     
-    return $sum;
+    return \%ret;
+}
+
+sub _uptime {
+    # This is pretty much the same function.
+    goto &Stasis::Extension::Activity::_activity;
 }
 
 1;
