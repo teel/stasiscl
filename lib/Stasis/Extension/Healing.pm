@@ -26,6 +26,7 @@ package Stasis::Extension::Healing;
 use strict;
 use warnings;
 use Stasis::Extension;
+use Stasis::Extension::Damage;
 
 our @ISA = "Stasis::Extension";
 
@@ -69,12 +70,18 @@ sub process {
                 hitCount => 0,
                 hitTotal => 0,
                 hitEffective => 0,
+                hitMin => 0,
+                hitMax => 0,
                 critCount => 0,
                 critTotal => 0,
                 critEffective => 0,
+                critMin => 0,
+                critMax => 0,
                 tickCount => 0,
                 tickTotal => 0,
                 tickEffective => 0,
+                tickMin => 0,
+                tickMax => 0,
             }
         }
         
@@ -130,6 +137,11 @@ sub process {
         # If someone is taking damage we need to debit it for overheal tracking.
         $self->{ohtrack}{ $entry->{target} } -= $entry->{extra}{amount};
     }
+}
+
+sub sum {
+    # This is pretty much the same function.
+    goto &Stasis::Extension::Damage::sum;
 }
 
 1;

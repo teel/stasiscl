@@ -30,6 +30,7 @@ use HTML::Entities;
 use Stasis::Parser;
 use Stasis::PageMaker;
 use Stasis::ActorGroup;
+use Stasis::Extension qw(ext_sum ext_copy);
 
 sub new {
     my $class = shift;
@@ -81,35 +82,25 @@ sub page {
     my $dpsTime = $self->{ext}{Activity}->activity( actor => \@playpet );
     
     # Total damage, and damage from/to enemies (not enemies of the raid, this means enemies of the actor)
-    my $dmg_from_all = 0;
-    my $dmg_from_enemies = 0;
+    my $dmg_from_all;
+    my $dmg_from_enemies;
     
-    my $dmg_to_all = 0;
-    my $dmg_to_enemies = 0;
-    while( my ($kactor, $vactor) = each(%{ $self->{ext}{Damage}{actors} }) ) {
-        while( my ($kspell, $vspell) = each(%$vactor) ) {
-            while( my ($ktarget, $vtarget) = each(%$vspell) ) {
-                # $vtarget is a spell hash.
-                my $is_enemy = $kactor eq "0" || ($self->{raid}{$kactor}{class} && !$self->{raid}{$ktarget}{class}) || (!$self->{raid}{$kactor}{class} && $self->{raid}{$ktarget}{class});
-                
-                if( grep $_ eq $kactor, @playpet ) {
-                    $dmg_to_all += $vtarget->{total};
-                    
-                    if( $is_enemy ) {
-                        $dmg_to_enemies += $vtarget->{total};
-                    }
-                }
-                
-                if( grep $_ eq $ktarget, @playpet ) {
-                    $dmg_from_all += $vtarget->{total};
-                    
-                    if( $is_enemy ) {
-                        $dmg_from_enemies += $vtarget->{total};
-                    }
-                }
-            }
-        }
-    }
+    my $dmg_to_all;
+    my $dmg_to_enemies;
+    
+    {
+        my @raiders = map { $self->{raid}{$_}{class} ? ( $_ ) : () } keys %{$self->{raid}};
+        
+        my $deInAll = $self->{ext}{Damage}->sum( target => \@PLAYER );
+        my $deInFriends = $self->{ext}{Damage}->sum( actor => \@raiders, target => \@PLAYER );
+        my $deOutAll = $self->{ext}{Damage}->sum( actor => \@PLAYER );
+        my $deOutFriends = $self->{ext}{Damage}->sum( actor => \@PLAYER, target => \@raiders );
+        
+        $dmg_from_all = $deInAll->{total} || 0;
+        $dmg_from_enemies = $dmg_from_all - ($deInFriends->{total} || 0);
+        $dmg_to_all = $deOutAll->{total} || 0;
+        $dmg_to_enemies = $dmg_to_all - ($deOutFriends->{total} || 0);
+    }    
     
     ###############
     # PAGE HEADER #
@@ -225,11 +216,11 @@ sub page {
         my @rows = $self->_abilityRows( $self->{ext}{Damage}, @playpet );
         
         # Sort @rows.
-        @rows = sort { $b->{row}{total} <=> $a->{row}{total} } @rows;
+        @rows = sort { ($b->{row}{total}||0) <=> ($a->{row}{total}||0) } @rows;
         
         # Sort slaves.
         foreach my $row (@rows) {
-            $row->{slaves} = [ sort { $b->{row}{total} <=> $a->{row}{total} } @{$row->{slaves}} ]; 
+            $row->{slaves} = [ sort { ($b->{row}{total}||0) <=> ($a->{row}{total}||0) } @{$row->{slaves}} ]; 
         }
         
         # Print @rows.
@@ -272,11 +263,11 @@ sub page {
         my @rows = $self->_targetRowsOut( $self->{ext}{Damage}, @playpet );
         
         # Sort @rows.
-        @rows = sort { $b->{row}{total} <=> $a->{row}{total} } @rows;
+        @rows = sort { ($b->{row}{total}||0) <=> ($a->{row}{total}||0) } @rows;
         
         # Sort slaves.
         foreach my $row (@rows) {
-            $row->{slaves} = [ sort { $b->{row}{total} <=> $a->{row}{total} } @{$row->{slaves}} ]; 
+            $row->{slaves} = [ sort { ($b->{row}{total}||0) <=> ($a->{row}{total}||0) } @{$row->{slaves}} ]; 
         }
         
         # Print @rows.
@@ -318,14 +309,14 @@ sub page {
         );
         
         # Group by source.
-        my @rows = $self->_targetRowsIn( $self->{ext}{Damage}, @playpet );
+        my @rows = $self->_targetRowsIn( $self->{ext}{Damage}, @PLAYER );
         
         # Sort @rows.
-        @rows = sort { $b->{row}{total} <=> $a->{row}{total} } @rows;
+        @rows = sort { ($b->{row}{total}||0) <=> ($a->{row}{total}||0) } @rows;
         
         # Sort slaves.
         foreach my $row (@rows) {
-            $row->{slaves} = [ sort { $b->{row}{total} <=> $a->{row}{total} } @{$row->{slaves}} ]; 
+            $row->{slaves} = [ sort { ($b->{row}{total}||0) <=> ($a->{row}{total}||0) } @{$row->{slaves}} ]; 
         }
         
         # Print @rows.
@@ -376,11 +367,11 @@ sub page {
         my @rows = $self->_abilityRows( $self->{ext}{Healing}, @playpet );
         
         # Sort @rows.
-        @rows = sort { $b->{row}{effective} <=> $a->{row}{effective} } @rows;
+        @rows = sort { ($b->{row}{effective}||0) <=> ($a->{row}{effective}||0) } @rows;
         
         # Sort slaves.
         foreach my $row (@rows) {
-            $row->{slaves} = [ sort { $b->{row}{effective} <=> $a->{row}{effective} } @{$row->{slaves}} ]; 
+            $row->{slaves} = [ sort { ($b->{row}{effective}||0) <=> ($a->{row}{effective}||0) } @{$row->{slaves}} ]; 
         }
         
         # Print @rows.
@@ -421,12 +412,12 @@ sub page {
         my $eff_on_others;
         
         # Sort @rows.
-        @rows = sort { $b->{row}{effective} <=> $a->{row}{effective} } @rows;
+        @rows = sort { ($b->{row}{effective}||0) <=> ($a->{row}{effective}||0) } @rows;
         
         # Sort slaves.
         foreach my $row (@rows) {
-            $row->{slaves} = [ sort { $b->{row}{effective} <=> $a->{row}{effective} } @{$row->{slaves}} ]; 
-            $eff_on_others += $row->{row}{effective};
+            $row->{slaves} = [ sort { ($b->{row}{effective}||0) <=> ($a->{row}{effective}||0) } @{$row->{slaves}} ]; 
+            $eff_on_others += $row->{row}{effective}||0;
         }
         
         # Print @rows.
@@ -438,10 +429,10 @@ sub page {
                 master => sub {
                     return {
                         "Target" => $pm->actorLink( $_[0]->{key} ),
-                        "R-Eff. Heal" => $_[0]->{row}{effective},
-                        "R-Count" => $_[0]->{row}{count},
-                        "R-Overheal %" => $_[0]->{row}{total} && sprintf( "%0.1f%%", ( $_[0]->{row}{total} - $_[0]->{row}{effective} ) / $_[0]->{row}{total} * 100 ),
-                        "R-Eff. Out %" => $eff_on_others && sprintf( "%0.1f%%", $_[0]->{row}{effective} / $eff_on_others * 100 ),
+                        "R-Eff. Heal" => $_[0]->{row}{effective}||0,
+                        "R-Count" => $_[0]->{row}{count}||0,
+                        "R-Overheal %" => $_[0]->{row}{total} && sprintf( "%0.1f%%", ( $_[0]->{row}{total} - ($_[0]->{row}{effective}||0) ) / $_[0]->{row}{total} * 100 ),
+                        "R-Eff. Out %" => $eff_on_others && sprintf( "%0.1f%%", ($_[0]->{row}{effective}||0) / $eff_on_others * 100 ),
                     };
                 },
                 slave => sub {
@@ -449,10 +440,10 @@ sub page {
                     
                     return {
                         "Target" => $spellname,
-                        "R-Eff. Heal" => $_[0]->{row}{effective},
-                        "R-Count" => $_[0]->{row}{count},
-                        "R-Overheal %" => $_[0]->{row}{total} && sprintf( "%0.1f%%", ( $_[0]->{row}{total} - $_[0]->{row}{effective} ) / $_[0]->{row}{total} * 100 ),
-                        "R-Eff. Out %" => $_[1]->{row}{total} && sprintf( "%0.1f%%", $_[0]->{row}{effective} / $_[1]->{row}{total} * 100 ),
+                        "R-Eff. Heal" => $_[0]->{row}{effective}||0,
+                        "R-Count" => $_[0]->{row}{count}||0,
+                        "R-Overheal %" => $_[0]->{row}{total} && sprintf( "%0.1f%%", ( $_[0]->{row}{total} - ($_[0]->{row}{effective}||0) ) / $_[0]->{row}{total} * 100 ),
+                        "R-Eff. Out %" => $_[1]->{row}{total} && sprintf( "%0.1f%%", ($_[0]->{row}{effective}||0) / $_[1]->{row}{total} * 100 ),
                     };
                 }
             );
@@ -473,18 +464,18 @@ sub page {
         );
         
         # Group by source.
-        my @rows = $self->_targetRowsIn( $self->{ext}{Healing}, @playpet );
+        my @rows = $self->_targetRowsIn( $self->{ext}{Healing}, @PLAYER );
         
         # Sum up all effective healing.
         my $eff_on_me;
         
         # Sort @rows.
-        @rows = sort { $b->{row}{effective} <=> $a->{row}{effective} } @rows;
+        @rows = sort { ($b->{row}{effective}||0) <=> ($a->{row}{effective}||0) } @rows;
         
         # Sort slaves.
         foreach my $row (@rows) {
-            $row->{slaves} = [ sort { $b->{row}{effective} <=> $a->{row}{effective} } @{$row->{slaves}} ];
-            $eff_on_me += $row->{row}{effective};
+            $row->{slaves} = [ sort { ($b->{row}{effective}||0) <=> ($a->{row}{effective}||0) } @{$row->{slaves}} ];
+            $eff_on_me += $row->{row}{effective}||0;
         }
         
         # Print @rows.
@@ -498,8 +489,8 @@ sub page {
                         "Source" => $pm->actorLink( $_[0]->{key} ),
                         "R-Eff. Heal" => $_[0]->{row}{effective},
                         "R-Count" => $_[0]->{row}{count},
-                        "R-Overheal %" => $_[0]->{row}{total} && sprintf( "%0.1f%%", ( $_[0]->{row}{total} - $_[0]->{row}{effective} ) / $_[0]->{row}{total} * 100 ),
-                        "R-Eff. In %" => $eff_on_me && sprintf( "%0.1f%%", $_[0]->{row}{effective} / $eff_on_me * 100 ),
+                        "R-Overheal %" => $_[0]->{row}{total} && sprintf( "%0.1f%%", ( $_[0]->{row}{total} - ($_[0]->{row}{effective}||0) ) / $_[0]->{row}{total} * 100 ),
+                        "R-Eff. In %" => $eff_on_me && sprintf( "%0.1f%%", ($_[0]->{row}{effective}||0) / $eff_on_me * 100 ),
                     };
                 },
                 slave => sub {
@@ -507,8 +498,8 @@ sub page {
                         "Source" => $pm->spellLink( $_[0]->{key}, $self->{ext}{Index}->spellname( $_[0]->{key} ) ),
                         "R-Eff. Heal" => $_[0]->{row}{effective},
                         "R-Count" => $_[0]->{row}{count},
-                        "R-Overheal %" => $_[0]->{row}{total} && sprintf( "%0.1f%%", ( $_[0]->{row}{total} - $_[0]->{row}{effective} ) / $_[0]->{row}{total} * 100 ),
-                        "R-Eff. In %" => $_[1]->{row}{total} && sprintf( "%0.1f%%", $_[0]->{row}{effective} / $_[1]->{row}{total} * 100 ),
+                        "R-Overheal %" => $_[0]->{row}{total} && sprintf( "%0.1f%%", ( $_[0]->{row}{total} - ($_[0]->{row}{effective}||0) ) / $_[0]->{row}{total} * 100 ),
+                        "R-Eff. In %" => $_[1]->{row}{total} && sprintf( "%0.1f%%", ($_[0]->{row}{effective}||0) / $_[1]->{row}{total} * 100 ),
                     };
                 }
             );
@@ -647,7 +638,7 @@ sub page {
     # AURAS #
     #########
     
-    if( !$do_group && exists $self->{ext}{Aura}{actors}{$MOB} ) {
+    if( !$do_group ) {
         my @auraHeader = (
             "Name",
             "Type",
@@ -661,53 +652,52 @@ sub page {
         my @rows;
         
         # Get presence for $MOB.
-        my ($pstart, $pend, $ptime) = $self->{ext}{Presence}->presence($MOB);
+        # my ($mpstart, $mpend, $mptime) = $self->{ext}{Presence}->presence($MOB);
         
-        while( my ($kspell, $vspell) = each(%{$self->{ext}{Aura}{actors}{$MOB}}) ) {
+        # Get the auras.
+        my $auras = $self->{ext}{Aura}->aura( p => $self->{ext}{Presence}{actors}, actor => [$MOB], expand => ["aura"] );
+        while( my ($kspell, $vspell) = each(%$auras) ) {
             push @rows, {
                 key => $kspell,
-                row => {
-                    %$vspell,
-                    time => $self->{ext}{Aura}->aura( start => $pstart, end => $pend, actor => [$MOB], aura => [$kspell] ),
-                },
+                row => $vspell,
             };
         }
         
-        if( $self->{meta} ) {
-            # Add meta auras.
-            my %meta = (
-                "+25% Armor" => [ 16237, 15359 ],
-                "Faerie Fire" => [ 26993, 27011 ],
-                "Mangle" => [ 33987, 33983 ],
-            );
-            
-            while( my ($kmeta, $vmeta) = each(%meta) ) {
-                if( my $atime = $self->{ext}{Aura}->aura( start => $pstart, end => $pend, actor => [$MOB], aura => $vmeta ) ) {
-                    my $n = 0;
-                    my $row = {
-                        gains => 0,
-                        fades => 0,
-                        time => $atime,
-                        meta => 1,
-                    };
-                    
-                    foreach my $id (@$vmeta) {
-                        if( my $vaura = $self->{ext}{Aura}{actors}{$MOB}{$id} ) {
-                            $n ++;
-                            $row->{gains} += $vaura->{gains};
-                            $row->{fades} += $vaura->{fades};
-                            $row->{type} = $vaura->{type};
-                        }
-                    }
-                    
-                    push @rows, {
-                        key => $kmeta,
-                        row => $row,
-                    } if $n > 1;
-                }
-                
-            }
-        }
+        # if( $self->{meta} ) {
+        #     # Add meta auras.
+        #     my %meta = (
+        #         "+25% Armor" => [ 16237, 15359 ],
+        #         "Faerie Fire" => [ 26993, 27011 ],
+        #         "Mangle" => [ 33987, 33983 ],
+        #     );
+        #     
+        #     while( my ($kmeta, $vmeta) = each(%meta) ) {
+        #         if( my $atime = $self->{ext}{Aura}->aura( start => $pstart, end => $pend, actor => [$MOB], aura => $vmeta ) ) {
+        #             my $n = 0;
+        #             my $row = {
+        #                 gains => 0,
+        #                 fades => 0,
+        #                 time => $atime,
+        #                 meta => 1,
+        #             };
+        #             
+        #             foreach my $id (@$vmeta) {
+        #                 if( my $vaura = $self->{ext}{Aura}{actors}{$MOB}{$id} ) {
+        #                     $n ++;
+        #                     $row->{gains} += $vaura->{gains};
+        #                     $row->{fades} += $vaura->{fades};
+        #                     $row->{type} = $vaura->{type};
+        #                 }
+        #             }
+        #             
+        #             push @rows, {
+        #                 key => $kmeta,
+        #                 row => $row,
+        #             } if $n > 1;
+        #         }
+        #         
+        #     }
+        # }
         
         @rows = sort { $a->{row}{type} cmp $b->{row}{type} || $b->{row}{time} <=> $a->{row}{time} } @rows;
         
@@ -1011,51 +1001,22 @@ sub _targetRowsIn {
     my $self = shift;
     my $ext = shift;
     
-    # Group by target.
+    # Get a report.
+    my $de = $ext->sum( target => [@_], expand => [ "actor", "spell" ] );
+
+    # Group by ability.
     my @rows;
-    
-    # my $vtarget;
-    # while( my ($kactor, $vactor) = each(%{ $ext->{actors}}) ) {
-    #     my $gactor;
-    #     my $kactor_use;
-    #     
-    #     while( my ($kspell, $vspell) = each(%$vactor) ) {
-    #         foreach my $ktarget (@GROUP) {
-    #             if( $vtarget = $vspell->{$ktarget} ) {
-    #                 if( !$kactor_use ) {
-    #                     # Figure out what the key for this actor is.
-    #                     $gactor = $self->{grouper}->group($kactor);
-    #                     $kactor_use = $gactor && $_[0] ne $kactor ? $self->{grouper}->captain($gactor) : $kactor;
-    #                 }
-    #                 
-    #                 # Figure out the key for this target.
-    #                 my $gtarget = $self->{grouper}->group($ktarget);
-    #                 my $ktarget_use = $gtarget ? $self->{grouper}->captain($gtarget) : $ktarget;
-    #                 
-    #                 # Add the row.
-    #                 $self->_rowadd( \@rows, $kactor_use, $kspell, $vtarget );
-    #             }
-    #         }
-    #     }
-    # }
-    
-    foreach my $ktarget (@_) {
-        # Figure out the key for this target.
-        my $gtarget = $self->{grouper}->group($ktarget);
-        my $ktarget_use = $gtarget ? $self->{grouper}->captain($gtarget) : $ktarget;
-        
-        while( my ($kspell, $vspell) = each(%{ $ext->{targets}{$ktarget} } ) ) {
-            while( my ($kactor, $vactor) = each(%$vspell) ) {
-                # Figure out the key for this actor.
-                my $gactor = $self->{grouper}->group($kactor);
-                my $kactor_use = $gactor && $_[0] ne $kactor ? $self->{grouper}->captain($gactor) : $kactor;
-                
-                # Add the row.
-                $self->_rowadd( \@rows, $kactor_use, $kspell, $vactor );
-            }
+
+    while( my ($kactor, $vactor) = each(%$de) ) {
+        my $gactor = $self->{grouper}->group($kactor);
+        my $kactor_use = $gactor && $_[0] ne $kactor ? $self->{grouper}->captain($gactor) : $kactor;
+
+        while( my ($kspell, $vspell) = each(%$vactor) ) {
+            # Add the row.
+            $self->_rowadd( \@rows, $kactor_use, $kspell, $vspell );
         }
     }
-    
+
     return @rows;
 }
 
@@ -1063,29 +1024,31 @@ sub _targetRowsOut {
     my $self = shift;
     my $ext = shift;
     
-    # Group by target.
+    # Get a report.
+    my $de = $ext->sum( actor => [@_], expand => [ "actor", "spell", "target" ] );
+
+    # Group by ability.
     my @rows;
-    
-    foreach my $kactor (@_) {
-        # Actor keys.
+
+    while( my ($kactor, $vactor) = each(%$de) ) {
         my $gactor = $self->{grouper}->group($kactor);
         my $kactor_use = $gactor && $_[0] ne $kactor ? $self->{grouper}->captain($gactor) : $kactor;
-        
-        while( my ($kspell, $vspell) = each(%{ $ext->{actors}{$kactor} } ) ) {
+
+        while( my ($kspell, $vspell) = each(%$vactor) ) {
             # Encoded spell name.
             my $espell = "$kactor_use: $kspell";
-            
+
             while( my ($ktarget, $vtarget) = each(%$vspell) ) {
-                # Figure out the key for this target.
+                # $vtarget is a spell hash.
                 my $gtarget = $self->{grouper}->group($ktarget);
                 my $ktarget_use = $gtarget ? $self->{grouper}->captain($gtarget) : $ktarget;
-                
+
                 # Add the row.
                 $self->_rowadd( \@rows, $ktarget_use, $espell, $vtarget );
             }
         }
     }
-    
+
     return @rows;
 }
 
@@ -1093,28 +1056,31 @@ sub _abilityRows {
     my $self = shift;
     my $ext = shift;
     
+    # Get a report.
+    my $de = $ext->sum( actor => [@_], expand => [ "actor", "spell", "target" ] );
+
     # Group by ability.
     my @rows;
-    
-    foreach my $kactor (@_) {
-        while( my ($kspell, $vspell) = each(%{ $ext->{actors}{$kactor} } ) ) {
+
+    while( my ($kactor, $vactor) = each(%$de) ) {
+        my $gactor = $self->{grouper}->group($kactor);
+        my $kactor_use = $gactor && $_[0] ne $kactor ? $self->{grouper}->captain($gactor) : $kactor;
+
+        while( my ($kspell, $vspell) = each(%$vactor) ) {
             # Encoded spell name.
-            my $gactor = $self->{grouper}->group($kactor);
-            my $kactor_use = $gactor && $_[0] ne $kactor ? $self->{grouper}->captain($gactor) : $kactor;
-            
             my $espell = "$kactor_use: $kspell";
-            
+
             while( my ($ktarget, $vtarget) = each(%$vspell) ) {
                 # $vtarget is a spell hash.
                 my $gtarget = $self->{grouper}->group($ktarget);
                 my $ktarget_use = $gtarget ? $self->{grouper}->captain($gtarget) : $ktarget;
-                
+
                 # Add the row.
                 $self->_rowadd( \@rows, $espell, $ktarget_use, $vtarget );
             }
         }
     }
-    
+
     return @rows;
 }
 
@@ -1255,12 +1221,12 @@ sub _rowDamage {
     my $time = shift;
     
     # We're printing a row based on $sdata.
-    my $swings = ($sdata->{count} - $sdata->{tickCount});
+    my $swings = ($sdata->{count}||0) - ($sdata->{tickCount}||0);
     
     return {
         ($header || "Ability") => $title,
         "R-Total" => $sdata->{total},
-        "R-DPS" => $time && sprintf( "%d", $sdata->{total}/$time ),
+        "R-DPS" => $sdata->{total} && $time && sprintf( "%d", $sdata->{total}/$time ),
         "R-Time" => $time && sprintf( "%02d:%02d", $time/60, $time%60 ),
         "R-Hits" => $sdata->{hitCount} && sprintf( "%d", $sdata->{hitCount} ),
         "R-Avg Hit" => $sdata->{hitCount} && $sdata->{hitTotal} && sprintf( "<span class=\"tip\" title=\"Range: %d&ndash;%d\">%d</span>", $sdata->{hitMin}, $sdata->{hitMax}, $sdata->{hitTotal} / $sdata->{hitCount} ),
@@ -1268,8 +1234,8 @@ sub _rowDamage {
         "R-Avg Tick" => $sdata->{tickCount} && $sdata->{tickTotal} && sprintf( "<span class=\"tip\" title=\"Range: %d&ndash;%d\">%d</span>", $sdata->{tickMin}, $sdata->{tickMax}, $sdata->{tickTotal} / $sdata->{tickCount} ),
         "R-Crits" => $sdata->{critCount} && sprintf( "%d", $sdata->{critCount} ),
         "R-Avg Crit" => $sdata->{critCount} && $sdata->{critTotal} && sprintf( "<span class=\"tip\" title=\"Range: %d&ndash;%d\">%d</span>", $sdata->{critMin}, $sdata->{critMax}, $sdata->{critTotal} / $sdata->{critCount} ),
-        "R-CriCruGla %" => $swings && sprintf( "%s/%s/%s", $self->_tidypct( $sdata->{critCount} / $swings * 100 ), $self->_tidypct( $sdata->{crushing} / $swings * 100 ), $self->_tidypct( $sdata->{glancing} / $swings * 100 ) ),
-        "MDPBARI %" => $swings && sprintf( "%s/%s/%s/%s/%s/%s/%s", $self->_tidypct( $sdata->{missCount} / $swings * 100 ), $self->_tidypct( $sdata->{dodgeCount} / $swings * 100 ), $self->_tidypct( $sdata->{parryCount} / $swings * 100 ), $self->_tidypct( $sdata->{blockCount} / $swings * 100 ), $self->_tidypct( $sdata->{absorbCount} / $swings * 100 ), $self->_tidypct( $sdata->{resistCount} / $swings * 100 ), $self->_tidypct( $sdata->{immuneCount} / $swings * 100 ) ),
+        "R-CriCruGla %" => $swings && sprintf( "%s/%s/%s", $self->_tidypct( ($sdata->{critCount}||0) / $swings * 100 ), $self->_tidypct( ($sdata->{crushing}||0) / $swings * 100 ), $self->_tidypct( ($sdata->{glancing}||0) / $swings * 100 ) ),
+        "MDPBARI %" => $swings && sprintf( "%s/%s/%s/%s/%s/%s/%s", $self->_tidypct( ($sdata->{missCount}||0) / $swings * 100 ), $self->_tidypct( ($sdata->{dodgeCount}||0) / $swings * 100 ), $self->_tidypct( ($sdata->{parryCount}||0) / $swings * 100 ), $self->_tidypct( ($sdata->{blockCount}||0) / $swings * 100 ), $self->_tidypct( ($sdata->{absorbCount}||0) / $swings * 100 ), $self->_tidypct( ($sdata->{resistCount}||0) / $swings * 100 ), $self->_tidypct( ($sdata->{immuneCount}||0) / $swings * 100 ) ),
     };
 }
 
@@ -1283,15 +1249,15 @@ sub _rowHealing {
     
     return {
         ($header || "Ability") => $title,
-        "R-Eff. Heal" => $sdata->{effective},
-        "R-Overheal %" => $sdata->{total} ? sprintf "%0.1f%%", ($sdata->{total} - $sdata->{effective} ) / $sdata->{total} * 100 : "",
+        "R-Eff. Heal" => $sdata->{effective}||0,
+        "R-Overheal %" => $sdata->{total} && sprintf( "%0.1f%%", ($sdata->{total} - ($sdata->{effective}||0) ) / $sdata->{total} * 100 ),
         "R-Hits" => $sdata->{hitCount} && sprintf( "%d", $sdata->{hitCount} ),
         "R-Avg Hit" => $sdata->{hitCount} && $sdata->{hitTotal} && sprintf( "<span class=\"tip\" title=\"Range: %d&ndash;%d\">%d</span>", $sdata->{hitMin}, $sdata->{hitMax}, $sdata->{hitTotal} / $sdata->{hitCount} ),
         "R-Ticks" => $sdata->{tickCount} && sprintf( "%d", $sdata->{tickCount} ),
         "R-Avg Tick" => $sdata->{tickCount} && $sdata->{tickTotal} && sprintf( "<span class=\"tip\" title=\"Range: %d&ndash;%d\">%d</span>", $sdata->{tickMin}, $sdata->{tickMax}, $sdata->{tickTotal} / $sdata->{tickCount} ),
         "R-Crits" => $sdata->{critCount} && sprintf( "%d", $sdata->{critCount} ),
         "R-Avg Crit" => $sdata->{critCount} && $sdata->{critTotal} && sprintf( "<span class=\"tip\" title=\"Range: %d&ndash;%d\">%d</span>", $sdata->{critMin}, $sdata->{critMax}, $sdata->{critTotal} / $sdata->{critCount} ),
-        "R-Crit %" => $sdata->{count} - $sdata->{tickCount} > 0 ? sprintf "%0.1f%%", $sdata->{critCount} / ($sdata->{count} - $sdata->{tickCount}) * 100 : "",
+        "R-Crit %" => $sdata->{count} && $sdata->{tickCount} && ($sdata->{count} - $sdata->{tickCount} > 0) && sprintf( "%0.1f%%", ($sdata->{critCount}||0) / ($sdata->{count} - $sdata->{tickCount}) * 100 ),
     };
 }
 
@@ -1310,7 +1276,7 @@ sub _rowadd {
     
     if( $row ) {
         # Add to an existing row.
-        _sum( "Stasis::ActorPage", $row->{row}, $vtarget );
+        ext_sum( $row->{row}, $vtarget );
         
         # Either add to an existing slave, or create a new one.
         my $slave;
@@ -1323,66 +1289,27 @@ sub _rowadd {
         
         if( $slave ) {
             # Add to an existing slave.
-            _sum( "Stasis::ActorPage", $slave->{row}, $vtarget );
+            ext_sum( $slave->{row}, $vtarget );
         } else {
             # Create a new slave.
             push @{$row->{slaves}}, {
                 key => $skey,
-                row => _copy( "Stasis::ActorPage", $vtarget ),
+                row => ext_copy( $vtarget ),
             }
         }
     } else {
         # Create a new row.
         push @$rows, {
             key => $mkey,
-            row => _copy( "Stasis::ActorPage", $vtarget ),
+            row => ext_copy( $vtarget ),
             slaves => [
                 {
                     key => $skey,
-                    row => _copy( "Stasis::ActorPage", $vtarget ),
+                    row => ext_copy( $vtarget ),
                 }
             ]
         }
     }
-}
-
-sub _sum {
-    my $self = shift;
-    my $sd1 = shift;
-    
-    # Merge the rest of @_ into $sd1.
-    foreach my $sd2 (@_) {
-        while( my ($key, $val) = each (%$sd2) ) {
-            $sd1->{$key} ||= 0;
-            
-            if( $key =~ /[Mm](?:in|ax)$/ ) {
-                # Minimum or maximum
-                if( lc $1 eq "in" && (!$sd1->{$key} || $val < $sd1->{$key}) ) {
-                    $sd1->{$key} = $val;
-                } elsif( lc $1 eq "ax" && (!$sd1->{$key} || $val > $sd1->{$key}) ) {
-                    $sd1->{$key} = $val;
-                }
-            } else {
-                # Total
-                $sd1->{$key} += $val;
-            }
-        }
-    }
-    
-    # Return $sd1.
-    return $sd1;
-}
-
-sub _copy {
-    my ($self, $ref) = @_;
-    
-    # Shallow copy hashref $ref into $copy.
-    my %copy;
-    while( my ($key, $val) = each (%$ref) ) {
-        $copy{$key} = $val;
-    }
-    
-    return \%copy;
 }
 
 sub _keyExists {

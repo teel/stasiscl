@@ -239,7 +239,6 @@ sub pageHeader {
 <title>$title</title>
 <link rel="stylesheet" type="text/css" href="../extras/sws2.css" />
 <script type="text/javascript" src="../extras/sws.js"></script>
-<script src="http://www.wowhead.com/widgets/power.js"></script>
 </head>
 <body onLoad="hashTab();">
 <div class="swsmaster">
@@ -264,6 +263,7 @@ sub pageFooter {
 <p class="footer">Generated on $timestr</p>
 <p class="footer">stasiscl available at <a href="http://code.google.com/p/stasiscl/">http://code.google.com/p/stasiscl/</a></p>
 </div>
+<script src="http://www.wowhead.com/widgets/power.js"></script>
 </body>
 </html>
 END

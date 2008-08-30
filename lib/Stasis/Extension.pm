@@ -26,6 +26,9 @@ package Stasis::Extension;
 use strict;
 use warnings;
 use Carp;
+use Exporter "import";
+
+our @EXPORT_OK = qw(ext_sum ext_copy);
 
 # Meant to be called statically like:
 # Stasis::Extension->factory "Aura" 
@@ -75,6 +78,46 @@ sub process {
 # the end of processing.
 sub finish {
     return 1;
+}
+
+# NOT object oriented.
+sub ext_sum {
+    my $sd1 = shift;
+    
+    # Merge the rest of @_ into $sd1.
+    foreach my $sd2 (@_) {
+        while( my ($key, $val) = each (%$sd2) ) {
+            $sd1->{$key} ||= 0;
+            
+            if( $key =~ /[Mm](in|ax)$/ ) {
+                # Minimum or maximum
+                if( lc $1 eq "in" && (!$sd1->{$key} || $val < $sd1->{$key}) ) {
+                    $sd1->{$key} = $val;
+                } elsif( lc $1 eq "ax" && (!$sd1->{$key} || $val > $sd1->{$key}) ) {
+                    $sd1->{$key} = $val;
+                }
+            } else {
+                # Total
+                $sd1->{$key} += $val;
+            }
+        }
+    }
+    
+    # Return $sd1.
+    return $sd1;
+}
+
+# NOT object oriented.
+sub ext_copy {
+    my ($ref) = @_;
+    
+    # Shallow copy hashref $ref into $copy.
+    my %copy;
+    while( my ($key, $val) = each (%$ref) ) {
+        $copy{$key} = $val;
+    }
+    
+    return \%copy;
 }
 
 1;

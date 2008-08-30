@@ -28,9 +28,6 @@ use warnings;
 use POSIX;
 use Stasis::PageMaker;
 use Stasis::ActorGroup;
-use Stasis::Extension::Presence;
-use Stasis::Extension::Index;
-use Stasis::Extension::Activity;
 
 sub new {
     my $class = shift;
@@ -61,81 +58,58 @@ sub page {
     ############################
     
     # Determine start time and end times (earliest/latest presence)
-    my $raidStart;
-    my $raidEnd;
-    foreach ( keys %{$self->{ext}{Presence}{actors}} ) {
-        if( !$raidStart || $self->{ext}{Presence}{actors}{$_}{start} < $raidStart ) {
-            $raidStart = $self->{ext}{Presence}{actors}{$_}{start};
-        }
-                
-        if( !$raidEnd || $self->{ext}{Presence}{actors}{$_}{end} > $raidEnd ) {
-            $raidEnd = $self->{ext}{Presence}{actors}{$_}{end};
+    my ($raidStart, $raidEnd, $raidPresence) = $self->{ext}{Presence}->presence;
+    
+    # Figure out pet owners.
+    my %powner;
+    while( my ($kactor, $ractor) = each %{$self->{raid}} ) {
+        if( $ractor->{pets} ) {
+            foreach my $p (@{$ractor->{pets}}) {
+                $powner{ $p } = $kactor;
+            }
         }
     }
-    
-    # Raid duration
-    my $raidPresence = $raidEnd - $raidStart;
     
     # Calculate raid DPS
     # Also get a list of total damage by raid member (on the side)
     my %raiderDamage;
     my %raiderIncoming;
     my $raidDamage = 0;
-    foreach my $actor (keys %{$self->{ext}{Presence}{actors}}) {
+    
+    my @raiders = map { $self->{raid}{$_}{class} ? ( $_ ) : () } keys %{$self->{raid}};
+    
+    # All damage done by raiders and their pets
+    my $deOutAll = $self->{ext}{Damage}->sum( actor => \@raiders, expand => [ "actor" ] );
+    
+    # Friendly fire by raiders and their pets
+    my $deOutFriendly = $self->{ext}{Damage}->sum( actor => \@raiders, target => \@raiders, expand => [ "actor" ] );
+    
+    while( my ($kactor, $ractor) = each %{$self->{raid}} ) {
         # Only show raiders
-        next unless $self->{raid}{$actor}{class};
+        next unless $ractor->{class} && $self->{ext}{Presence}->presence($kactor);
         
-        if( $self->{raid}{$actor}{class} eq "Pet" ) {
-            # Pet.
-            # Add damage to the raider.
-            
-            foreach my $spell (keys %{$self->{ext}{Damage}{actors}{$actor}}) {
-                foreach my $target (keys %{$self->{ext}{Damage}{actors}{$actor}{$spell}}) {
-                    # Skip friendlies
-                    next if $self->{raid}{$target}{class};
-                    
-                    # Find the raider to add this damage to.
-                    foreach my $raider (keys %{$self->{raid}}) {
-                        next unless $self->{raid}{$raider}{pets} && grep $actor eq $_, @{$self->{raid}{$raider}{pets}};
-                        
-                        $raiderDamage{$raider} += $self->{ext}{Damage}{actors}{$actor}{$spell}{$target}{total};
-                        $raidDamage += $self->{ext}{Damage}{actors}{$actor}{$spell}{$target}{total};
-                        last;
-                    }
-                }
-            }
-        } else {
-            # Raider.
-            # Start it at zero.
-            $raiderDamage{$actor} ||= 0;
-            $raiderIncoming{$actor} ||= 0;
-
-            foreach my $spell (keys %{$self->{ext}{Damage}{actors}{$actor}}) {
-                foreach my $target (keys %{$self->{ext}{Damage}{actors}{$actor}{$spell}}) {
-                    # Skip friendlies
-                    next if $self->{raid}{$target}{class};
-
-                    $raiderDamage{$actor} += $self->{ext}{Damage}{actors}{$actor}{$spell}{$target}{total};
-                    $raidDamage += $self->{ext}{Damage}{actors}{$actor}{$spell}{$target}{total};
-                }
-            }
-        }
+        my $raider = $ractor->{class} eq "Pet" ? $powner{ $kactor } : $kactor;
+        $raiderDamage{$raider} ||= 0;
+        $raiderIncoming{$raider} ||= 0;
+        
+        $raiderDamage{$raider} += $deOutAll->{$kactor}{total} || 0 if $deOutAll->{$kactor};
+        $raiderDamage{$raider} -= $deOutFriendly->{$kactor}{total} || 0 if $deOutFriendly->{$kactor};
+    }
+    
+    foreach (values %raiderDamage) {
+        $raidDamage += $_;
     }
 
     # Calculate incoming damage
     my $raidInDamage = 0;
-    while( my ($ktarget, $vtarget) = each(%{ $self->{ext}{Damage}{targets} }) ) {
-		next unless $self->{raid}{$ktarget}{class};
-		next if $self->{raid}{$ktarget}{class} eq "Pet";
-		$raiderIncoming{$ktarget} ||= 0;
-		
-        while( my ($kspell, $vspell) = each(%$vtarget) ) {
-            while( my ($kactor, $vactor) = each(%$vspell) ) {
-				$raiderIncoming{$ktarget} += $vactor->{total};
-				$raidInDamage += $vactor->{total};
-			}
-		}
-	}
+    my $deInAll = $self->{ext}{Damage}->sum( target => \@raiders, expand => [ "target" ] );
+    while( my ($kactor, $ractor) = each %{$self->{raid}} ) {
+        # Only show raiders
+        next if !$ractor->{class} || $ractor->{class} eq "Pet" || !$self->{ext}{Presence}->presence($kactor);
+        
+        $raiderIncoming{$kactor} += $deInAll->{$kactor}{total} || 0 if $deInAll->{$kactor};
+        $raidInDamage += $deInAll->{$kactor}{total} || 0 if $deInAll->{$kactor};
+    }
 
 	# Calculate death count
 	my %deathCount;
@@ -153,49 +127,23 @@ sub page {
     my %raiderHealingTotal;
     my $raidHealing = 0;
     my $raidHealingTotal = 0;
-    foreach my $actor (keys %{$self->{ext}{Presence}{actors}}) {
+    
+    # Friendly healing by raiders and their pets
+    my $heOutFriendly = $self->{ext}{Healing}->sum( actor => \@raiders, target => \@raiders, expand => [ "actor" ] );
+    
+    while( my ($kactor, $ractor) = each (%{$self->{raid}}) ) {
         # Only show raiders
-        next unless $self->{raid}{$actor}{class};
+        next unless $ractor->{class} && $self->{ext}{Presence}->presence($kactor);
         
-        if( $self->{raid}{$actor}{class} eq "Pet" ) {
-            # Pet.
-            # Add healing to the raider.
-            
-            foreach my $spell (keys %{$self->{ext}{Healing}{actors}{$actor}}) {
-                foreach my $target (keys %{$self->{ext}{Healing}{actors}{$actor}{$spell}}) {
-                    # Skip non-friendlies
-                    next unless $self->{raid}{$target}{class};
-                    
-                    # Find the raider to add this Healing to.
-                    foreach my $raider (keys %{$self->{raid}}) {
-                        next unless $self->{raid}{$raider}{pets} && grep $actor eq $_, @{$self->{raid}{$raider}{pets}};
-                        
-                        $raiderHealing{$raider} += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{effective};
-                        $raidHealing += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{effective};
-                        $raiderHealingTotal{$raider} += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{total};
-                        $raidHealingTotal += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{total};
-                        last;
-                    }
-                }
-            }
-        } else {
-            # Raider.
-            # Start it at zero.
-            $raiderHealing{$actor} ||= 0;
-            $raiderHealingTotal{$actor} ||= 0;
-
-            foreach my $spell (keys %{$self->{ext}{Healing}{actors}{$actor}}) {
-                foreach my $target (keys %{$self->{ext}{Healing}{actors}{$actor}{$spell}}) {
-                    # Skip friendlies
-                    next unless $self->{raid}{$target}{class};
-
-                    $raiderHealing{$actor} += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{effective};
-                    $raidHealing += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{effective};
-                    $raiderHealingTotal{$actor} += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{total};
-                    $raidHealingTotal += $self->{ext}{Healing}{actors}{$actor}{$spell}{$target}{total};
-                }
-            }
-        }
+        my $raider = $ractor->{class} eq "Pet" ? $powner{ $kactor } : $kactor;
+        $raiderHealing{$raider} ||= 0;
+        $raiderHealingTotal{$raider} ||= 0;
+        
+        $raiderHealing{$raider} += $heOutFriendly->{$kactor}{effective} || 0 if $heOutFriendly->{$kactor};
+        $raiderHealingTotal{$raider} += $heOutFriendly->{$kactor}{total} || 0 if $heOutFriendly->{$kactor};
+        
+        $raidHealing += $heOutFriendly->{$kactor}{effective} || 0;
+        $raidHealingTotal += $heOutFriendly->{$kactor}{total} || 0;
     }
     
     # Raid DPS
@@ -307,7 +255,7 @@ sub page {
     my $mostindmg = keys %raiderIncoming && $raiderIncoming{ $damageinsort[0] };
     
     foreach my $actor (@damageinsort) {
-        my $ptime = $self->{ext}{Presence}{actors}{$actor}{end} - $self->{ext}{Presence}{actors}{$actor}{start};
+        my $ptime = $self->{ext}{Presence}->presence($actor);
         
         $PAGE .= $pm->tableRow( 
             header => \@damageInHeader,
@@ -352,7 +300,7 @@ sub page {
     my $mostheal = keys %raiderHealing && $raiderHealing{ $healsort[0] };
     
     foreach my $actor (@healsort) {
-        my $ptime = $self->{ext}{Presence}{actors}{$actor}{end} - $self->{ext}{Presence}{actors}{$actor}{start};
+        my $ptime = $self->{ext}{Presence}->presence($actor);
         
         $PAGE .= $pm->tableRow( 
             header => \@healingHeader,
@@ -404,7 +352,7 @@ sub page {
                 
                 my $found;
                 foreach my $row (@rows) {
-                    if( $row->{key} eq $grouper->captain($group) ) {
+                    if( $row->{key} eq $group->{members}->[0] ) {
                         # It exists. Add this data to the existing master row.
                         $row->{row}{start} = $pstart if( $row->{row}{start} > $pstart );
                         $row->{row}{end} = $pstart if( $row->{row}{end} < $pend );
@@ -417,7 +365,7 @@ sub page {
                 if( !$found ) {
                     # Create the row.
                     push @rows, {
-                        key => $grouper->captain($group),
+                        key => $group->{members}->[0],
                         row => {
                             start => $pstart,
                             end => $pend,
@@ -582,7 +530,7 @@ sub page {
             );
 
         foreach my $actor (@damagesort) {
-            my $ptime = $self->{ext}{Presence}{actors}{$actor}{end} - $self->{ext}{Presence}{actors}{$actor}{start};
+            my $ptime = $self->{ext}{Presence}->presence($actor);
             my $dpsTime = $self->{ext}{Activity}->activity( actor => [ $actor, @{ $self->{raid}{$actor}{pets} } ] );
 
             my %xml_keys = (
