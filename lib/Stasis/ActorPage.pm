@@ -195,6 +195,9 @@ sub page {
     # DAMAGE #
     ##########
     
+    my $deOut = $self->{ext}{Damage}->sum( actor => \@playpet, expand => [ "actor", "spell", "target" ] );
+    my $heOut = $self->{ext}{Healing}->sum( actor => \@playpet, expand => [ "actor", "spell", "target" ] );
+    
     $PAGE .= $pm->tabStart("Damage");
     $PAGE .= $pm->tableStart;
     
@@ -213,7 +216,7 @@ sub page {
         );
         
         # Group by ability.
-        my @rows = $self->_abilityRows( $self->{ext}{Damage}, @playpet );
+        my @rows = $self->_abilityRows( $deOut, @playpet );
         
         # Sort @rows.
         @rows = sort { ($b->{row}{total}||0) <=> ($a->{row}{total}||0) } @rows;
@@ -260,7 +263,7 @@ sub page {
         );
         
         # Group by target.
-        my @rows = $self->_targetRowsOut( $self->{ext}{Damage}, @playpet );
+        my @rows = $self->_targetRowsOut( $deOut, @playpet );
         
         # Sort @rows.
         @rows = sort { ($b->{row}{total}||0) <=> ($a->{row}{total}||0) } @rows;
@@ -364,7 +367,7 @@ sub page {
         );
         
         # Group by ability.
-        my @rows = $self->_abilityRows( $self->{ext}{Healing}, @playpet );
+        my @rows = $self->_abilityRows( $heOut, @playpet );
         
         # Sort @rows.
         @rows = sort { ($b->{row}{effective}||0) <=> ($a->{row}{effective}||0) } @rows;
@@ -406,7 +409,7 @@ sub page {
         );
         
         # Group by target.
-        my @rows = $self->_targetRowsOut( $self->{ext}{Healing}, @playpet );
+        my @rows = $self->_targetRowsOut( $heOut, @playpet );
         
         # Sum up all effective healing.
         my $eff_on_others;
@@ -655,7 +658,7 @@ sub page {
         # my ($mpstart, $mpend, $mptime) = $self->{ext}{Presence}->presence($MOB);
         
         # Get the auras.
-        my $auras = $self->{ext}{Aura}->aura( p => $self->{ext}{Presence}{actors}, actor => [$MOB], expand => ["aura"] );
+        my $auras = $self->{ext}{Aura}->aura( p => $self->{ext}{Presence}{actors}, actor => [$MOB], expand => ["spell"] );
         while( my ($kspell, $vspell) = each(%$auras) ) {
             push @rows, {
                 key => $kspell,
@@ -672,7 +675,7 @@ sub page {
         #     );
         #     
         #     while( my ($kmeta, $vmeta) = each(%meta) ) {
-        #         if( my $atime = $self->{ext}{Aura}->aura( start => $pstart, end => $pend, actor => [$MOB], aura => $vmeta ) ) {
+        #         if( my $atime = $self->{ext}{Aura}->aura( start => $pstart, end => $pend, actor => [$MOB], spell => $vmeta ) ) {
         #             my $n = 0;
         #             my $row = {
         #                 gains => 0,
@@ -1022,10 +1025,7 @@ sub _targetRowsIn {
 
 sub _targetRowsOut {
     my $self = shift;
-    my $ext = shift;
-    
-    # Get a report.
-    my $de = $ext->sum( actor => [@_], expand => [ "actor", "spell", "target" ] );
+    my $de = shift;
 
     # Group by ability.
     my @rows;
@@ -1054,10 +1054,7 @@ sub _targetRowsOut {
 
 sub _abilityRows {
     my $self = shift;
-    my $ext = shift;
-    
-    # Get a report.
-    my $de = $ext->sum( actor => [@_], expand => [ "actor", "spell", "target" ] );
+    my $de = shift;
 
     # Group by ability.
     my @rows;

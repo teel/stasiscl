@@ -119,12 +119,12 @@ sub aura {
     my %params = @_;
     
     $params{actor} ||= [];
-    $params{aura} ||= [];
+    $params{spell} ||= [];
     $params{expand} ||= [];
     $params{p} ||= {};
     
     # Filter the expand list.
-    my @expand = map { $_ eq "actor" || $_ eq "aura" ? $_ : () } @{$params{expand}};
+    my @expand = map { $_ eq "actor" || $_ eq "spell" ? $_ : () } @{$params{expand}};
     
     # We'll eventually return this.
     my %ret;
@@ -137,7 +137,7 @@ sub aura {
         my $vactor = $self->{actors}{$kactor} or next;
         my ($start, $end) = unpack "dd", $params{p}{$kactor};
         
-        foreach my $kspell (scalar @{$params{aura}} ? @{$params{aura}} : keys %$vactor) {
+        foreach my $kspell (scalar @{$params{spell}} ? @{$params{spell}} : keys %$vactor) {
             my $vspell = $vactor->{$kspell} or next;
             
             # Get a reference to the hash we want to add to.

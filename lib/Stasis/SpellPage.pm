@@ -598,7 +598,7 @@ sub page {
         );
         
         # Get aura information.
-        my $auras = $self->{ext}{Aura}->aura( p => $self->{ext}{Presence}{actors}, aura => [$SPELL], expand => ["actor"] ),
+        my $auras = $self->{ext}{Aura}->aura( p => $self->{ext}{Presence}{actors}, spell => [$SPELL], expand => ["actor"] ),
         
         # Get aura rows.
         my @rows;
