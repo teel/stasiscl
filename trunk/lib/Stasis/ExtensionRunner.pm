@@ -26,13 +26,18 @@ package Stasis::ExtensionRunner;
 use strict;
 use warnings;
 use Stasis::Extension;
+use Stasis::Parser;
 
 sub new {
     my $class = shift;
     my %exts;
-    my %handlers;
+    my @handlers;
     
-    $handlers{ALL} ||= [];
+    # Initialize the handler arrays.
+    $handlers[0] = [];
+    foreach (values %Stasis::Parser::action_map) {
+        $handlers[$_] = [];
+    }
 
     foreach (@_) {
         my $ext = Stasis::Extension->factory($_);
@@ -44,17 +49,17 @@ sub new {
         if( @actions ) {
             # Only listening for certain actions.
             foreach my $action (@actions) {
-                $handlers{$action} ||= [];
-                push @{$handlers{$action}}, $ext;
+                push @{ $handlers[ $Stasis::Parser::action_map{$action} ] }, $ext;
             }
         } else {
-            push @{$handlers{ALL}}, $ext;
+            # Listening for all actions.
+            push @{ $handlers[0] }, $ext;
         }
     }
     
     bless {
         exts => \%exts,
-        handlers => \%handlers,
+        handlers => \@handlers,
     }, $class;
 }
 
@@ -65,15 +70,8 @@ sub start {
 }
 
 sub process {
-    if( my $handlers = $_[0]->{handlers}{ $_[1]->{action} } ) {
-        foreach my $h (@$handlers) {
-            $h->process($_[1]);
-        }
-    }
-    
-    foreach my $h (@{$_[0]->{handlers}{ALL}}) {
-        $h->process($_[1]);
-    }
+    $_->process($_[1]) foreach (@{ $_[0]->{handlers}->[ $Stasis::Parser::action_map{ $_[1]->{action} } ] });
+    $_->process($_[1]) foreach (@{ $_[0]->{handlers}->[0] });
 }
 
 sub finish {

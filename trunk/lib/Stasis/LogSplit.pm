@@ -571,7 +571,7 @@ sub process {
     }
     
     # See if we should start a new encounter.
-    if( $self->{force_one} && !$self->{go} ) {
+    if( !$self->{go} || !$self->{force_one} ) {
         if( $fstart{$actor_id} && !$self->{scratch}{$fstart{$actor_id}}{start} && (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) ) {
             # The actor should start a new encounter.
             $self->{scratch}{$fstart{$actor_id}}{start} = $entry->{t};
