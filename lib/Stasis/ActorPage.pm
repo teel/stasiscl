@@ -93,14 +93,14 @@ sub page {
         
         my $deInAll = $self->{ext}{Damage}->sum( target => \@PLAYER );
         my $deInFriends = $self->{ext}{Damage}->sum( actor => \@raiders, target => \@PLAYER );
-        my $deOutAll = $self->{ext}{Damage}->sum( actor => \@PLAYER );
-        my $deOutFriends = $self->{ext}{Damage}->sum( actor => \@PLAYER, target => \@raiders );
+        my $deOutAll = $self->{ext}{Damage}->sum( actor => \@playpet );
+        my $deOutFriends = $self->{ext}{Damage}->sum( actor => \@playpet, target => \@raiders );
         
         $dmg_from_all = $deInAll->{total} || 0;
         $dmg_from_enemies = $dmg_from_all - ($deInFriends->{total} || 0);
         $dmg_to_all = $deOutAll->{total} || 0;
         $dmg_to_enemies = $dmg_to_all - ($deOutFriends->{total} || 0);
-    }    
+    }
     
     ###############
     # PAGE HEADER #

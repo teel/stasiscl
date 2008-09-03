@@ -30,9 +30,9 @@ use Carp;
 
 # Spells that players cast
 my %spellplayer = (
-    #################################
-    # WOWHEAD PLAYER ABILITIES LIST #
-    #################################
+    #######################################
+    # WOWHEAD PLAYER ABILITIES LIST : TBC #
+    #######################################
     
     "5185" => { id => "5185", class => "Druid", name => "Healing Touch", rank => "1"},
     "1126" => { id => "1126", class => "Druid", name => "Mark of the Wild", rank => "1"},
@@ -1882,34 +1882,34 @@ my %spellplayer = (
     # MANUALLY ENTERED SPELL IDS #
     ##############################
     
-    "1680" => { id => "1680", class => "Warrior", name => "Whirlwind", rank => "MH" },
-    "44949" => { id => "44949", class => "Warrior", name => "Whirlwind", rank => "OH" },
+    "1680" => { class => "Warrior", name => "Whirlwind", rank => "MH" },
+    "44949" => { class => "Warrior", name => "Whirlwind", rank => "OH" },
     
-    "25504" => { id => "25504", class => "Shaman", name => "Windfury Attack", rank => "MH" },
-    "33750" => { id => "33750", class => "Shaman", name => "Windfury Attack", rank => "OH" },
+    "25504" => { class => "Shaman", name => "Windfury Attack", rank => "MH" },
+    "33750" => { class => "Shaman", name => "Windfury Attack", rank => "OH" },
     
-    "32175" => { id => "32175", class => "Shaman", name => "Stormstrike", rank => "MH" },
-    "32176" => { id => "32176", class => "Shaman", name => "Stormstrike", rank => "OH" },
+    "32175" => { class => "Shaman", name => "Stormstrike", rank => "MH" },
+    "32176" => { class => "Shaman", name => "Stormstrike", rank => "OH" },
     
-    "19982" => { id => "19982", class => "Paladin", name => "Holy Light", rank => "1" },
-    "19981" => { id => "19982", class => "Paladin", name => "Holy Light", rank => "2" },
-    "19980" => { id => "19982", class => "Paladin", name => "Holy Light", rank => "3" },
-    "19968" => { id => "19982", class => "Paladin", name => "Holy Light", rank => "4" },
-    "35217" => { id => "19982", class => "Paladin", name => "Holy Light", rank => "5" },
-    "35218" => { id => "19982", class => "Paladin", name => "Holy Light", rank => "6" },
-    "35219" => { id => "19982", class => "Paladin", name => "Holy Light", rank => "7" },
-    "35220" => { id => "19982", class => "Paladin", name => "Holy Light", rank => "8" },
-    "35221" => { id => "19982", class => "Paladin", name => "Holy Light", rank => "9" },
-    "35222" => { id => "19982", class => "Paladin", name => "Holy Light", rank => "10" },
-    "35223" => { id => "19982", class => "Paladin", name => "Holy Light", rank => "11" },
+    "19982" => { class => "Paladin", name => "Holy Light", rank => "1" },
+    "19981" => { class => "Paladin", name => "Holy Light", rank => "2" },
+    "19980" => { class => "Paladin", name => "Holy Light", rank => "3" },
+    "19968" => { class => "Paladin", name => "Holy Light", rank => "4" },
+    "35217" => { class => "Paladin", name => "Holy Light", rank => "5" },
+    "35218" => { class => "Paladin", name => "Holy Light", rank => "6" },
+    "35219" => { class => "Paladin", name => "Holy Light", rank => "7" },
+    "35220" => { class => "Paladin", name => "Holy Light", rank => "8" },
+    "35221" => { class => "Paladin", name => "Holy Light", rank => "9" },
+    "35222" => { class => "Paladin", name => "Holy Light", rank => "10" },
+    "35223" => { class => "Paladin", name => "Holy Light", rank => "11" },
     
-    "19982" => { id => "19993", class => "Paladin", name => "Flash of Light", rank => "1" },
-    "19981" => { id => "35211", class => "Paladin", name => "Flash of Light", rank => "2" },
-    "19980" => { id => "35212", class => "Paladin", name => "Flash of Light", rank => "3" },
-    "19968" => { id => "35213", class => "Paladin", name => "Flash of Light", rank => "4" },
-    "35217" => { id => "35214", class => "Paladin", name => "Flash of Light", rank => "5" },
-    "35218" => { id => "35215", class => "Paladin", name => "Flash of Light", rank => "6" },
-    "35219" => { id => "35216", class => "Paladin", name => "Flash of Light", rank => "7" },
+    "19982" => { class => "Paladin", name => "Flash of Light", rank => "1" },
+    "19981" => { class => "Paladin", name => "Flash of Light", rank => "2" },
+    "19980" => { class => "Paladin", name => "Flash of Light", rank => "3" },
+    "19968" => { class => "Paladin", name => "Flash of Light", rank => "4" },
+    "35217" => { class => "Paladin", name => "Flash of Light", rank => "5" },
+    "35218" => { class => "Paladin", name => "Flash of Light", rank => "6" },
+    "35219" => { class => "Paladin", name => "Flash of Light", rank => "7" },
 );
 
 # Get spell info by ID

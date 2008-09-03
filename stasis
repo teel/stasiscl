@@ -474,7 +474,6 @@ if( $action eq "print" ) {
     status "Using directory: $opt_dir";
     
     # Assign classes to %raid and splits to @splits
-    status "Reading log .. " if !$opt_tail;
     
     my @boss;
     my $trash_exts = makeext;
@@ -494,11 +493,19 @@ if( $action eq "print" ) {
                 };
                 
                 # If we're in -tail mode, let the user know we saw a boss start.
-                if( $opt_tail ) {
-                    $start =~ /^(\d+)(\.(\d+)|)$/;
-                    my @t = localtime $1;
-                    status sprintf "Detected encounter start: %s at %d/%d %02d:%02d:%02d\.%03d (%s) .. ", $short, $t[4]+1, $t[3], $t[2], $t[1], $t[0], $2?$3:0, lagstring(time-int($start));
-                }
+                $start =~ /^(\d+)(\.(\d+)|)$/;
+                my @t = localtime $1;
+                status sprintf(
+                    "Encounter start: %s at %d/%d %02d:%02d:%02d\.%03d%s .. ",
+                    $short,
+                    $t[4]+1,
+                    $t[3],
+                    $t[2],
+                    $t[1],
+                    $t[0],
+                    $2?$3:0,
+                    $opt_tail ? " (" . lagstring(time-int($start)) . ")" : "",
+                );
             } else {
                 # Closing a split.
                 foreach my $b (@boss) {
@@ -524,40 +531,37 @@ if( $action eq "print" ) {
                             $b->{long} = "$long try $btry";
                         }
                         
-                        # If we're in tail mode, we need to write this out immediately.
-                        if( $opt_tail ) {
-                            # Remove the exts.
-                            my $exts = delete $b->{exts};
+                        # Remove the exts.
+                        my $exts = delete $b->{exts};
+                        
+                        if( $opt_minlength && $b->{end} - $b->{start} < $opt_minlength ) {
+                            # Check minlength option.
+                            status sprintf "skipping (too short).", $b->{long};
+                        } elsif( !$opt_attempts && !$b->{kill} ) {
+                            # Check attempts option.
+                            status sprintf "skipping (not a kill).", $b->{long}, $b->{end} - $b->{start};
+                        } else {
+                            # If we got this far, we should write this encounter.
                             
-                            if( $opt_minlength && $b->{end} - $b->{start} < $opt_minlength ) {
-                                # Check minlength option.
-                                status sprintf "skipping (too short).", $b->{long};
-                            } elsif( !$opt_attempts && !$b->{kill} ) {
-                                # Check attempts option.
-                                status sprintf "skipping (not a kill).", $b->{long}, $b->{end} - $b->{start};
-                            } else {
-                                # If we got this far, we should write this encounter.
-                                
-                                # Get whatever the class guesser has figured out by now.
-                                my %raid = $classer->finish();
-                                
-                                status sprintf "writing %s (sws-%s-%d) .. ", $b->{long}, $b->{short}, floor($b->{start});
+                            # Get whatever the class guesser has figured out by now.
+                            my %raid = $classer->finish();
+                            
+                            status sprintf "writing %s (sws-%s-%d) .. ", $b->{long}, $b->{short}, floor($b->{start});
 
-                                # Find the directory name.
-                                my $dname = sprintf "%s/sws-%s-%d", $opt_dir, $b->{short}, floor($b->{start});
-                                my $dname_old = sprintf "%s/sws-%d", $opt_dir, floor($b->{start});
+                            # Find the directory name.
+                            my $dname = sprintf "%s/sws-%s-%d", $opt_dir, $b->{short}, floor($b->{start});
+                            my $dname_old = sprintf "%s/sws-%d", $opt_dir, floor($b->{start});
 
-                                # Write the files for this split.
-                                unless( $opt_nowrite ) {
-                                    eval {
-                                        writedir $dname, $dname_old, $b->{long}, $b->{short}, \%raid, $exts->{exts}, $opt_collapse;
-                                    }; if( $@ ) {
-                                        bomb $@;
-                                    }
+                            # Write the files for this split.
+                            unless( $opt_nowrite ) {
+                                eval {
+                                    writedir $dname, $dname_old, $b->{long}, $b->{short}, \%raid, $exts->{exts}, $opt_collapse;
+                                }; if( $@ ) {
+                                    bomb $@;
                                 }
-
-                                status "done.";
                             }
+
+                            status "done.";
                         }
                         
                         return;
@@ -655,53 +659,22 @@ if( $action eq "print" ) {
     }
     
     status 
-            "found $n_players player" . ($n_players == 1 ? "" : "s") . 
+            "Done processing. Found $n_players player" . ($n_players == 1 ? "" : "s") . 
             ", $n_pets pet" . ($n_pets == 1 ? "" : "s") . 
             ", and " . scalar(@splits) . " boss encounter" . (scalar(@splits) == 1 ? "" : "s") . ".";
-    
-    # Write boss encounters
-    foreach my $b (@boss) {
-        warn "possible error in log splitter" if !defined $b->{kill};
-        
-        if( $opt_minlength && $b->{end} - $b->{start} < $opt_minlength ) {
-            # Check minlength option.
-            status sprintf "Skipping: %s (too short).", $b->{long};
-        } elsif( !$opt_attempts && !$b->{kill} ) {
-            # Check attempts option.
-            status sprintf "Skipping: %s (not a kill).", $b->{long}, $b->{end} - $b->{start};
-        } else {
-            # If we got this far, we should write this encounter.
-            status sprintf "Writing: %s (sws-%s-%d) .. ", $b->{long}, $b->{short}, floor($b->{start});
-
-            # Find the directory name.
-            my $dname = sprintf "%s/sws-%s-%d", $opt_dir, $b->{short}, floor($b->{start});
-            my $dname_old = sprintf "%s/sws-%d", $opt_dir, floor($b->{start});
-
-            # Write the files for this split.
-            unless( $opt_nowrite ) {
-                eval {
-                    writedir $dname, $dname_old, $b->{long}, $b->{short}, \%raid, $b->{exts}{exts}, $opt_collapse;
-                }; if( $@ ) {
-                    bomb $@;
-                }
-            }
-            
-            status "done.";
-        }
-    }
     
     # Write trash
     if( $opt_trash && !$opt_nowrite ) {
         my $dname = sprintf "%s/sws-trash-%d", $opt_dir, floor($first);
         my $dname_old = $dname;
+        status sprintf "Writing Trash Mobs (sws-trash-%d) .. ", floor($first);
         
         eval {
             writedir $dname, $dname_old, "Trash Mobs", "trash", \%raid, $trash_exts->{exts}, 1;
+            status "done.";
         }; if( $@ ) {
             bomb $@;
         }
-        
-        status sprintf "Wrote: Trash Mobs (sws-trash-%d).", floor($first);
     }
     
     # Write combine
@@ -724,13 +697,14 @@ if( $action eq "print" ) {
             # Skip unless we actually had more than one of this boss.
             
             if( $bcount > 1 ) {
+                status sprintf "Writing $bname (combined) (sws-%s-combine-%d) .. ", $kboss, floor($first);
                 eval {
                     writedir $dname, $dname_old, "$bname (combined)", $kboss . "-combine", \%raid, $exts->{exts}, $opt_collapse;
                 }; if( $@ ) {
                     bomb $@;
                 }
                 
-                status sprintf "Wrote: $bname (combined) (sws-%s-combine-%d).", $kboss, floor($first);
+                status "done.";
             }
         }
     }
@@ -739,6 +713,7 @@ if( $action eq "print" ) {
     if( $opt_overall && !$opt_nowrite ) {
         my $dname = sprintf "%s/sws-overall-%d", $opt_dir, floor($first);
         my $dname_old = $dname;
+        status sprintf "Writing Overall (sws-overall-%d) .. ", floor($first);
         
         eval {
             writedir $dname, $dname_old, "Overall", "overall", \%raid, $overall_exts->{exts}, 1;
@@ -746,7 +721,7 @@ if( $action eq "print" ) {
             bomb $@;
         }
         
-        status sprintf "Wrote: Overall (sws-overall-%d).", floor($first);
+        status "done.";
     }
 } elsif( $action eq "history" ) {
     # Going to output in $opt_dir

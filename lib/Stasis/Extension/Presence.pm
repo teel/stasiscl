@@ -40,20 +40,12 @@ sub process {
     
     if( $entry->{actor} ) {
         my ($start, $end) = $self->{actors}{ $entry->{actor} } && unpack "dd", $self->{actors}{ $entry->{actor} };
-        
-        $start = $entry->{t} if !$start;
-        $end = $entry->{t};
-        
-        $self->{actors}{ $entry->{actor} } = pack "dd", $start, $end;
+        $self->{actors}{ $entry->{actor} } = pack "dd", $start||$entry->{t}, $entry->{t};
     }
     
     if( $entry->{target} ) {
         my ($start, $end) = $self->{actors}{ $entry->{target} } && unpack "dd", $self->{actors}{ $entry->{target} };
-        
-        $start = $entry->{t} if !$start;
-        $end = $entry->{t};
-        
-        $self->{actors}{ $entry->{target} } = pack "dd", $start, $end;
+        $self->{actors}{ $entry->{target} } = pack "dd", $start||$entry->{t}, $entry->{t};
     }
 }
 
