@@ -35,8 +35,12 @@ sub new {
     
     $params{ext} ||= {};
     $params{raid} ||= {};
-    $params{grouper} = Stasis::ActorGroup->new;
-    $params{grouper}->run( $params{raid}, $params{ext} );
+    
+    if( !$params{grouper} ) {
+        $params{grouper} = Stasis::ActorGroup->new;
+        $params{grouper}->run( $params{raid}, $params{ext} );
+    }
+    
     $params{pm} ||= Stasis::PageMaker->new( raid => $params{raid}, ext => $params{ext}, grouper => $params{grouper}, collapse => $params{collapse} );
     $params{name} ||= "Untitled";
     $params{short} ||= $params{name};
@@ -79,10 +83,10 @@ sub page {
     my @raiders = map { $self->{raid}{$_}{class} ? ( $_ ) : () } keys %{$self->{raid}};
     
     # All damage done by raiders and their pets
-    my $deOutAll = $self->{ext}{Damage}->sum( actor => \@raiders, expand => [ "actor" ] );
+    my $deOutAll = $self->{ext}{Damage}->sum( actor => \@raiders, expand => [ "actor" ], fields => [ "total" ] );
     
     # Friendly fire by raiders and their pets
-    my $deOutFriendly = $self->{ext}{Damage}->sum( actor => \@raiders, target => \@raiders, expand => [ "actor" ] );
+    my $deOutFriendly = $self->{ext}{Damage}->sum( actor => \@raiders, target => \@raiders, expand => [ "actor" ], fields => [ "total" ] );
     
     while( my ($kactor, $ractor) = each %{$self->{raid}} ) {
         # Only show raiders
@@ -99,10 +103,10 @@ sub page {
     foreach (values %raiderDamage) {
         $raidDamage += $_;
     }
-
+    
     # Calculate incoming damage
     my $raidInDamage = 0;
-    my $deInAll = $self->{ext}{Damage}->sum( target => \@raiders, expand => [ "target" ] );
+    my $deInAll = $self->{ext}{Damage}->sum( target => \@raiders, expand => [ "target" ], fields => [ "total" ] );
     while( my ($kactor, $ractor) = each %{$self->{raid}} ) {
         # Only show raiders
         next if !$ractor->{class} || $ractor->{class} eq "Pet" || !$self->{ext}{Presence}->presence($kactor);
@@ -129,7 +133,7 @@ sub page {
     my $raidHealingTotal = 0;
     
     # Friendly healing by raiders and their pets
-    my $heOutFriendly = $self->{ext}{Healing}->sum( actor => \@raiders, target => \@raiders, expand => [ "actor" ] );
+    my $heOutFriendly = $self->{ext}{Healing}->sum( actor => \@raiders, target => \@raiders, expand => [ "actor" ], fields => [ "effective", "total" ] );
     
     while( my ($kactor, $ractor) = each (%{$self->{raid}}) ) {
         # Only show raiders
