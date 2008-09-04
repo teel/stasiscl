@@ -84,12 +84,7 @@ sub spellname {
 }
 
 sub actorname {
-    my ($self, $actor) = @_;
-    if( $actor ) {
-        return $self->{actors}{$actor} || $actor;
-    } else {
-        return "Environment";
-    }
+    return $_[1] ? $_[0]->{actors}{ $_[1] } || $_[1] : "Environment";
 }
 
 1;

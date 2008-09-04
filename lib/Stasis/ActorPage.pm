@@ -53,13 +53,9 @@ sub new {
 }
 
 sub page {
-    my $self = shift;
-    my $MOB = shift;
-    my $do_group = shift;
-    
+    my ($self, $MOB, $do_group) = @_;
     my $MOB_GROUP = $self->{grouper}->group($MOB);
     my @PLAYER = $do_group && $MOB_GROUP ? @{ $MOB_GROUP->{members} } : ($MOB);
-    
     return unless @PLAYER;
     
     my $PAGE;
@@ -91,10 +87,10 @@ sub page {
     {
         my @raiders = map { $self->{raid}{$_}{class} ? ( $_ ) : () } keys %{$self->{raid}};
         
-        my $deInAll = $self->{ext}{Damage}->sum( target => \@PLAYER );
-        my $deInFriends = $self->{ext}{Damage}->sum( actor => \@raiders, target => \@PLAYER );
-        my $deOutAll = $self->{ext}{Damage}->sum( actor => \@playpet );
-        my $deOutFriends = $self->{ext}{Damage}->sum( actor => \@playpet, target => \@raiders );
+        my $deInAll = $self->{ext}{Damage}->sum( target => \@PLAYER, fields => [ "total" ] );
+        my $deInFriends = $self->{ext}{Damage}->sum( actor => \@raiders, target => \@PLAYER, fields => [ "total" ] );
+        my $deOutAll = $self->{ext}{Damage}->sum( actor => \@playpet, fields => [ "total" ] );
+        my $deOutFriends = $self->{ext}{Damage}->sum( actor => \@playpet, target => \@raiders, fields => [ "total" ] );
         
         $dmg_from_all = $deInAll->{total} || 0;
         $dmg_from_enemies = $dmg_from_all - ($deInFriends->{total} || 0);
