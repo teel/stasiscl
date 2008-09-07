@@ -343,6 +343,7 @@ sub actorLink {
     
     $name ||= "";
     $color ||= "Mob";
+    $color =~ s/\s//g;
     
     if( $id || (defined $id && $id eq "0") ) {
         my $group = $self->{grouper}->group($id);

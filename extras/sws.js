@@ -53,3 +53,7 @@ function hashTab() {
         toggleTab(t)
     }
 }
+
+function loadclip(url, id) {
+    
+}

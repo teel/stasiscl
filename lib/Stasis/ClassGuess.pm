@@ -566,6 +566,12 @@ sub process2 {
             $self->{scratch2}{class}{ $entry->{target} } = "Pet";
             $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
         }
+        
+        # Soul Leech Mana
+        elsif( $entry->{action} eq "SPELL_ENERGIZE" && $entry->{extra}{spellid} == 54607 ) {
+            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
+            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+        }
     }
 }
 

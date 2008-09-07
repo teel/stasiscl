@@ -134,6 +134,7 @@ our %action_map = (
     SPELL_DISPEL => 45,
     SPELL_STOLEN => 46,
     SPELL_AURA_BROKEN => 47,
+    SPELL_RESURRECT => 48,
 );
 
 =head3 new
@@ -1071,13 +1072,24 @@ sub parse2 {
             spellschool => hex shift @col,
             misstype => shift @col,
         }
-    } elsif( $result->{action} eq "SPELL_HEAL" ) {
-        $result->{extra} = {
-            spellid => shift @col,
-            spellname => shift @col,
-            spellschool => hex shift @col,
-            amount => shift @col,
-            critical => shift @col,
+    } elsif( $result->{action} eq "SPELL_HEAL" || $result->{action} eq "SPELL_PERIODIC_HEAL" ) {
+        if( @col <= 5 ) {
+            $result->{extra} = {
+                spellid => shift @col,
+                spellname => shift @col,
+                spellschool => hex shift @col,
+                amount => shift @col,
+                critical => shift @col,
+            }
+        } else {
+            $result->{extra} = {
+                spellid => shift @col,
+                spellname => shift @col,
+                spellschool => hex shift @col,
+                amount => shift @col,
+                extraamount => shift @col,
+                critical => shift @col,
+            }
         }
     } elsif( $result->{action} eq "SPELL_ENERGIZE" ) {
         $result->{extra} = {
@@ -1107,14 +1119,6 @@ sub parse2 {
             critical => shift @col,
             glancing => shift @col,
             crushing => shift @col,
-        }
-    } elsif( $result->{action} eq "SPELL_PERIODIC_HEAL" ) {
-        $result->{extra} = {
-            spellid => shift @col,
-            spellname => shift @col,
-            spellschool => hex shift @col,
-            amount => shift @col,
-            critical => shift @col,
         }
     } elsif( $result->{action} eq "SPELL_PERIODIC_DRAIN" ) {
         $result->{extra} = {
@@ -1369,6 +1373,12 @@ sub parse2 {
             extraspellname => shift @col,
             extraspellschool => hex shift @col,
         }
+    } elsif( $result->{action} eq "SPELL_RESURRECT" ) {
+        $result->{extra} = {
+            spellid => shift @col,
+            spellname => shift @col,
+            spellschool => hex shift @col,
+        }
     } else {
         # Unrecognized action
         carp( "Unrecognized action: " . $result->{action} );
@@ -1511,6 +1521,11 @@ sub toString {
             $entry->{extra}{critical} ? "crit heal" : "heal",
             $target,
             $entry->{extra}{amount};
+        
+        # WLK log overhealing
+        if( $entry->{extra}{extraamount} ) {
+            $text .= sprintf " {%s}", $entry->{extra}{extraamount};
+        }
     } elsif( $entry->{action} eq "SPELL_ENERGIZE" ) {
         $text = sprintf "[%s] %s energize [%s] %d %s",
             $actor,
@@ -1542,6 +1557,11 @@ sub toString {
             $spell,
             $target,
             lc( $entry->{extra}{amount} );
+        
+        # WLK log overhealing
+        if( $entry->{extra}{extraamount} ) {
+            $text .= sprintf " {%s}", $entry->{extra}{extraamount};
+        }
     } elsif( $entry->{action} eq "SPELL_PERIODIC_DRAIN" ) {
         $text = sprintf "[%s] %s drain [%s] %d %s",
             $actor,
@@ -1672,6 +1692,11 @@ sub toString {
         $text .= " (glancing)" if $entry->{extra}{glancing};
     } elsif( $entry->{action} eq "UNIT_DIED" ) {
         $text = sprintf "[%s] dies",
+            $target;
+    } elsif( $entry->{action} eq "SPELL_RESURRECT" ) {
+        $text = sprintf "[%s] %s resurrect [%s]",
+            $actor,
+            $spell,
             $target;
     }
     
