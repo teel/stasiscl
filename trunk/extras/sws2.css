@@ -223,7 +223,11 @@ body {
 
 .swsmaster .colorWarrior {
     color: #97704e;
-}   
+}
+
+.swsmaster .colorDeathKnight {
+    color: #c41f3b;
+}
 
 .swsmaster .colorDruid {
     color: #ff5807;

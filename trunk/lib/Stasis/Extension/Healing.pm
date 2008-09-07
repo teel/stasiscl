@@ -92,11 +92,28 @@ sub process {
         
         # Add the HP to the target for overheal-tracking purposes.
         $self->{ohtrack}{ $entry->{target} } += $entry->{extra}{amount};
+        
+        # Figure out how much effective healing there was.
+        my $effective;
+        if( exists $entry->{extra}{extraamount} ) {
+            # WLK-style. Overhealing is included.
+            $effective = $entry->{extra}{amount} - $entry->{extra}{extraamount};
+        } else {
+            # TBC-style. Overhealing is not included.
+            if( $self->{ohtrack}{ $entry->{target} } > 0 ) {
+                $effective = $entry->{extra}{amount} - $self->{ohtrack}{ $entry->{target} };
+
+                # Reset HP to zero (meaning full).
+                $self->{ohtrack}{ $entry->{target} } = 0;
+            } else {
+                $effective = $entry->{extra}{amount};
+            }
+        }
     
         # Add total healing to the healer.
         $hdata->{count} += 1;
         $hdata->{total} += $entry->{extra}{amount};
-        $hdata->{effective} += $entry->{extra}{amount};
+        $hdata->{effective} += $effective;
     
         # Add this as the appropriate kind of healing: tick, hit, or crit.
         my $type;
@@ -110,7 +127,7 @@ sub process {
         
         $hdata->{"${type}Count"} += 1;
         $hdata->{"${type}Total"} += $entry->{extra}{amount};
-        $hdata->{"${type}Effective"} += $entry->{extra}{amount};
+        $hdata->{"${type}Effective"} += $effective;
         
         # Update min/max hit size.
         $hdata->{"${type}Min"} = $entry->{extra}{amount}
@@ -124,15 +141,6 @@ sub process {
                 !$hdata->{"${type}Max"} ||
                 $entry->{extra}{amount} > $hdata->{"${type}Max"}
             );
-    
-        # Account for overhealing, if it happened, by removing the excess from effective healing.
-        if( $self->{ohtrack}{ $entry->{target} } > 0 ) {
-            $hdata->{effective} -= $self->{ohtrack}{ $entry->{target} };
-            $hdata->{"${type}Effective"} -= $self->{ohtrack}{ $entry->{target} };
-            
-            # Reset HP to zero (meaning full).
-            $self->{ohtrack}{ $entry->{target} } = 0;
-        }
     } elsif( $damage_actions{ $entry->{action} } ) {
         # If someone is taking damage we need to debit it for overheal tracking.
         $self->{ohtrack}{ $entry->{target} } -= $entry->{extra}{amount};
