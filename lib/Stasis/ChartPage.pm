@@ -486,8 +486,6 @@ sub page {
                         name => "death_$deathid",
                     );
             }
-
-            $PAGE .= $pm->jsClose("death_$deathid");
         }
     }
     

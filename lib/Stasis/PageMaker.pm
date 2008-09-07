@@ -33,7 +33,12 @@ sub new {
     my $class = shift;
     my %params = @_;
     
+    # Section ID
     $params{id} = 0;
+    
+    # Tip ID
+    $params{tid} = 0;
+    
     bless \%params, $class;
 }
 
@@ -133,7 +138,7 @@ sub tableRow {
     $params{name} = $params{type} eq "master" ? ++$self->{id} : $self->{id};
     
     if( $params{type} eq "slave" ) {
-        $result .= "<tr class=\"sectionSlave\" name=\"s" . $params{name} . "\">";
+        $result .= "<tr class=\"s\" name=\"s" . $params{name} . "\">";
     } elsif( $params{type} eq "master" ) {
         $result .= "<tr class=\"sectionMaster\">";
     } else {
@@ -207,9 +212,6 @@ sub tableRows {
                 type => "slave",
             );
         }
-        
-        # JavaScript close
-        $result .= $self->jsClose();
     }
     
     return $result;
@@ -239,8 +241,14 @@ sub pageHeader {
 <title>$title</title>
 <link rel="stylesheet" type="text/css" href="../extras/sws2.css" />
 <script type="text/javascript" src="../extras/sws.js"></script>
+
+<!-- YUI -->
+<link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/2.5.2/build/container/assets/container.css">
+<script type="text/javascript" src="http://yui.yahooapis.com/2.5.2/build/yahoo-dom-event/yahoo-dom-event.js"></script>
+<script type="text/javascript" src="http://yui.yahooapis.com/2.5.2/build/container/container-min.js"></script>
+
 </head>
-<body onLoad="hashTab();">
+<body class="yui-skin-sam" onLoad="hashTab();">
 <div class="swsmaster">
 <div class="top">
 <h2>$boss: $starttxt</h2>
@@ -264,6 +272,7 @@ sub pageFooter {
 <p class="footer">stasiscl available at <a href="http://code.google.com/p/stasiscl/">http://code.google.com/p/stasiscl/</a></p>
 </div>
 <script src="http://www.wowhead.com/widgets/power.js"></script>
+<script type="text/javascript">initTabs();</script>
 </body>
 </html>
 END
@@ -294,20 +303,6 @@ sub vertBox {
     }
     
     $TABLE .= "</table>";
-}
-
-sub jsClose {
-    my $self = shift;
-    
-    # Override $section
-    my $section = $self->{id};
-    
-    return <<END;
-<script type="text/javascript">
-toggleTableSection('$section');
-</script>   
-
-END
 }
 
 sub jsTab {
@@ -372,6 +367,15 @@ sub spellLink {
     } else {
         return HTML::Entities::encode_entities($name);
     }
+}
+
+sub tip {
+    my ($self, $short, $long) = @_;
+    
+    my $id = ++ $self->{tid};
+    $long =~ s/"/&quot;/g;
+    
+    return sprintf '<span id="tip%d" class="tip" title="%s">%s</span>', $id, $long, $short;
 }
 
 sub _commify {

@@ -6,7 +6,21 @@ function toggleTableSection(secName) {
     for( var x = 0 ; x < trs.length ; x ++ ) {
         att = trs[x].getAttribute('name');
         if( att == 'section_' + secName || att == 's' + secName ) {
-            trs[x].style.display = trs[x].style.display == 'none' ? '' : 'none';
+            if( trs[x].className == 's' ) {
+                if( trs[x].style.display == 'none' || !trs[x].style.display ) {
+                    try {
+            			trs[x].style.display = 'table-row';
+            		} catch (e) {
+            			// for IE
+            			trs[x].style.display = 'block';
+            		}
+                } else {
+                    trs[x].style.display = 'none';
+                }
+            } else {
+                trs[x].style.display = trs[x].style.display == 'none' ? '' : 'none';
+            }
+            
             text = trs[x].style.display == 'none' ? '+' : '-';
             number ++;
         }
@@ -51,6 +65,15 @@ function hashTab() {
     var t = location.hash.substring(1);
     if( t.length > 0 ) {
         toggleTab(t)
+    }
+}
+
+function initTabs() {
+    var spans = document.getElementsByTagName('span');
+    for( var x = 0 ; x < spans.length ; x ++ ) {
+        if( spans[x].className == 'tip' ) {
+            var myTooltip = new YAHOO.widget.Tooltip( "t" + spans[x].id, { context: spans[x].id, preventoverlap: false } );
+        }
     }
 }
 

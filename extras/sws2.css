@@ -170,13 +170,19 @@ body {
     border-top: 20px solid white;
 }
 
-.swsmaster tr.sectionSlave td {
+.swsmaster tr.s {
+    display: none;
+}
+
+.swsmaster tr.s td {
     color: #222;
     background-color: #f7f7f7;
 }
 
-.swsmaster tr.sectionMaster td {
-/*    background-color: #eee; */
+/* Legacy */
+.swsmaster tr.sectionSlave td {
+    color: #222;
+    background-color: #f7f7f7;
 }
 
 .swsmaster td {
@@ -184,7 +190,6 @@ body {
     text-align:left;
     font-family: verdana;
     font-size: 10px;
-/*    background-color: #eee; */
     margin: 0;
     padding-top: 3px;
     padding-bottom: 2px;
@@ -205,7 +210,6 @@ body {
 }
 
 .swsmaster td.w {
-    white-space: normal;
     width: 300px;
 }
 

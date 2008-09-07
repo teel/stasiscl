@@ -548,13 +548,14 @@ my %fingerprints = (
     mobContinue => [ 16060, 16124, 16125, 16126, 16127, 16148, 16150, 16149 ],
     mobEnd => [ 16060 ],
     timeout => 15,
+    lockout => 120,
 },
 
 "horsemen" => {
     long => "Four Horsemen",
-    mobStart => [ 16064, 16065, 16062, 16063 ],
-    mobContinue => [ 16064, 16065, 16062, 16063 ],
-    mobEnd => [ 16064, 16065, 16062, 16063 ],
+    mobStart => [ 16064, 16065, 30549, 16063 ],
+    mobContinue => [ 16064, 16065, 30549, 16063 ],
+    mobEnd => [ 16064, 16065, 30549, 16063 ],
     timeout => 15,
     endAll => 1,
 },
@@ -626,6 +627,7 @@ sub new {
     
     $params{scratch} = {};
     $params{splits} = [];
+    $params{lastkill} = {};
     
     # Callback args:
     # at split start:   ( $short, $start )
@@ -693,25 +695,32 @@ sub process {
     # See if we should start a new encounter.
     if( !$self->{go} ) {
         if( $fstart{$actor_id} && !$self->{scratch}{$fstart{$actor_id}}{start} && (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) ) {
-            # The actor should start a new encounter.
-            $self->{scratch}{$fstart{$actor_id}}{start} = $entry->{t};
-            $self->{scratch}{$fstart{$actor_id}}{end} = $entry->{t};
+            # Check timeout.
+            my $timeout = $fingerprints{$fstart{$actor_id}}{timeout};
+            if( !$timeout || !$self->{lastkill}{$fstart{$actor_id}} || $entry->{t} - $self->{lastkill}{$fstart{$actor_id}} >= $timeout ) {
+                # The actor should start a new encounter.
+                $self->{scratch}{$fstart{$actor_id}}{start} = $entry->{t};
+                $self->{scratch}{$fstart{$actor_id}}{end} = $entry->{t};
 
-            my $short = $fingerprints{$fstart{$actor_id}}{short} || lc $fstart{$actor_id};
-            $short =~ s/\s+.*$//;
-            $short =~ s/[^\w]//g;
-            $self->_bstart( $short, $entry->{t} );
+                my $short = $fingerprints{$fstart{$actor_id}}{short} || lc $fstart{$actor_id};
+                $short =~ s/\s+.*$//;
+                $short =~ s/[^\w]//g;
+                $self->_bstart( $short, $entry->{t} );
+            }
         }
 
         if( $fstart{$target_id} && !$self->{scratch}{$fstart{$target_id}}{start} && (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) ) {
-            # The target should start a new encounter.
-            $self->{scratch}{$fstart{$target_id}}{start} = $entry->{t};
-            $self->{scratch}{$fstart{$target_id}}{end} = $entry->{t};
+            my $timeout = $fingerprints{$fstart{$target_id}}{timeout};
+            if( !$timeout || !$self->{lastkill}{$fstart{$target_id}} || $entry->{t} - $self->{lastkill}{$fstart{$target_id}} >= $timeout ) {
+                # The target should start a new encounter.
+                $self->{scratch}{$fstart{$target_id}}{start} = $entry->{t};
+                $self->{scratch}{$fstart{$target_id}}{end} = $entry->{t};
 
-            my $short = $fingerprints{$fstart{$target_id}}{short} || lc $fstart{$target_id};
-            $short =~ s/\s+.*$//;
-            $short =~ s/[^\w]//g;
-            $self->_bstart( $short, $entry->{t} );
+                my $short = $fingerprints{$fstart{$target_id}}{short} || lc $fstart{$target_id};
+                $short =~ s/\s+.*$//;
+                $short =~ s/[^\w]//g;
+                $self->_bstart( $short, $entry->{t} );
+            }
         }
     }
 }
@@ -732,12 +741,13 @@ sub _bend {
     my ( $self, $short, $start, $long, $kill, $end ) = @_;
     
     $self->{go} = 0;
+    $self->{lastkill}{$short} = $end if $kill;
     
     push @{$self->{splits}}, {
         short => $short,
         long => $long,
         start => $start,
-        kill => 0,
+        kill => $kill,
         end => $end,
     };
     
