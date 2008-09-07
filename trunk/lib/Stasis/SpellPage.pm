@@ -128,7 +128,7 @@ sub page {
                 # Master row
                 $PAGE .= $pm->tableRow( 
                     header => \@header,
-                    data => Stasis::ActorPage->_rowDamage( $row->{row}, $pm->actorLink( $row->{key} ), "Source" ),
+                    data => Stasis::ActorPage::_rowDamage( $self, $row->{row}, $pm->actorLink( $row->{key} ), "Source" ),
                     type => "master",
                     name => "dmgout_$id",
                 );
@@ -137,14 +137,11 @@ sub page {
                 foreach my $slave (@{ $row->{slaves} }) {
                     $PAGE .= $pm->tableRow( 
                         header => \@header,
-                        data => Stasis::ActorPage->_rowDamage( $slave->{row}, $pm->actorLink( $slave->{key} ), "Source" ),
+                        data => Stasis::ActorPage::_rowDamage( $self, $slave->{row}, $pm->actorLink( $slave->{key} ), "Source" ),
                         type => "slave",
                         name => "dmgout_$id",
                     );
                 }
-                
-                # JavaScript close
-                $PAGE .= $pm->jsClose("dmgout_$id");
             }
         }
     }
@@ -188,7 +185,7 @@ sub page {
                 # Master row
                 $PAGE .= $pm->tableRow( 
                     header => \@header,
-                    data => Stasis::ActorPage->_rowDamage( $row->{row}, $pm->actorLink( $row->{key} ), "Target" ),
+                    data => Stasis::ActorPage::_rowDamage( $self, $row->{row}, $pm->actorLink( $row->{key} ), "Target" ),
                     type => "master",
                     name => "dmgin_$id",
                 );
@@ -197,14 +194,11 @@ sub page {
                 foreach my $slave (@{ $row->{slaves} }) {
                     $PAGE .= $pm->tableRow( 
                         header => \@header,
-                        data => Stasis::ActorPage->_rowDamage( $slave->{row}, $pm->actorLink( $slave->{key} ), "Target" ),
+                        data => Stasis::ActorPage::_rowDamage( $self, $slave->{row}, $pm->actorLink( $slave->{key} ), "Target" ),
                         type => "slave",
                         name => "dmgin_$id",
                     );
                 }
-                
-                # JavaScript close
-                $PAGE .= $pm->jsClose("dmgin_$id");
             }
         }
     }
@@ -254,7 +248,7 @@ sub page {
                 # Master row
                 $PAGE .= $pm->tableRow( 
                     header => \@header,
-                    data => Stasis::ActorPage->_rowHealing( $row->{row}, $pm->actorLink( $row->{key} ), "Source" ),
+                    data => Stasis::ActorPage::_rowHealing( $self, $row->{row}, $pm->actorLink( $row->{key} ), "Source" ),
                     type => "master",
                     name => "healout_$id",
                 );
@@ -263,14 +257,11 @@ sub page {
                 foreach my $slave (@{ $row->{slaves} }) {
                     $PAGE .= $pm->tableRow( 
                         header => \@header,
-                        data => Stasis::ActorPage->_rowHealing( $slave->{row}, $pm->actorLink( $slave->{key} ), "Source" ),
+                        data => Stasis::ActorPage::_rowHealing( $self, $slave->{row}, $pm->actorLink( $slave->{key} ), "Source" ),
                         type => "slave",
                         name => "healout_$id",
                     );
                 }
-                
-                # JavaScript close
-                $PAGE .= $pm->jsClose("healout_$id");
             }
         }
     }
@@ -315,7 +306,7 @@ sub page {
                 # Master row
                 $PAGE .= $pm->tableRow( 
                     header => \@header,
-                    data => Stasis::ActorPage->_rowHealing( $row->{row}, $pm->actorLink( $row->{key} ), "Target" ),
+                    data => Stasis::ActorPage::_rowHealing( $self, $row->{row}, $pm->actorLink( $row->{key} ), "Target" ),
                     type => "master",
                     name => "healin_$id",
                 );
@@ -324,14 +315,11 @@ sub page {
                 foreach my $slave (@{ $row->{slaves} }) {
                     $PAGE .= $pm->tableRow( 
                         header => \@header,
-                        data => Stasis::ActorPage->_rowHealing( $slave->{row}, $pm->actorLink( $slave->{key} ), "Target" ),
+                        data => Stasis::ActorPage::_rowHealing( $self, $slave->{row}, $pm->actorLink( $slave->{key} ), "Target" ),
                         type => "slave",
                         name => "healin_$id",
                     );
                 }
-                
-                # JavaScript close
-                $PAGE .= $pm->jsClose("healin_$id");
             }
         }
     }
@@ -391,9 +379,6 @@ sub page {
                         name => "castout_$id",
                     );
                 }
-
-                # JavaScript close
-                $PAGE .= $pm->jsClose("castout_$id");
             }
         }
     }
@@ -447,9 +432,6 @@ sub page {
                         name => "castin_$id",
                     );
                 }
-
-                # JavaScript close
-                $PAGE .= $pm->jsClose("castin_$id");
             }
         }
     }
@@ -515,9 +497,6 @@ sub page {
                         name => "power_$id",
                     );
                 }
-
-                # JavaScript close
-                $PAGE .= $pm->jsClose("power_$id");
             }
         }
     }
@@ -580,9 +559,6 @@ sub page {
                         name => "ea_$id",
                     );
                 }
-
-                # JavaScript close
-                $PAGE .= $pm->jsClose("ea_$id");
             }
         }
     }

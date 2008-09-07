@@ -208,7 +208,7 @@ sub page {
             "R-Avg Crit",
             "R-Avg Tick",
             "R-CriCruGla %",
-            "MDPBARI %",
+            "R-Avoidance",
         );
         
         # Group by ability.
@@ -255,7 +255,7 @@ sub page {
             "R-Time",
             "",
             "R-CriCruGla %",
-            "MDPBARI %",
+            "R-Avoidance",
         );
         
         # Group by target.
@@ -304,7 +304,7 @@ sub page {
             "R-Time",
             "",
             "R-CriCruGla %",
-            "MDPBARI %",
+            "R-Avoidance",
         );
         
         # Group by source.
@@ -936,8 +936,6 @@ sub page {
                             name => "death_$id",
                         );
                 }
-
-                $PAGE .= $pm->jsClose("death_$id");
             }
         }
 
@@ -987,7 +985,7 @@ sub _decodespell {
 }
 
 sub _tidypct {
-    my ($self,$n) = @_;
+    my $n = pop;
     
     if( floor($n) == $n ) {
         return sprintf "%d", $n;
@@ -1222,13 +1220,16 @@ sub _rowDamage {
         "R-DPS" => $sdata->{total} && $time && sprintf( "%d", $sdata->{total}/$time ),
         "R-Time" => $time && sprintf( "%02d:%02d", $time/60, $time%60 ),
         "R-Hits" => $sdata->{hitCount} && sprintf( "%d", $sdata->{hitCount} ),
-        "R-Avg Hit" => $sdata->{hitCount} && $sdata->{hitTotal} && sprintf( "<span class=\"tip\" title=\"Range: %d&ndash;%d\">%d</span>", $sdata->{hitMin}, $sdata->{hitMax}, $sdata->{hitTotal} / $sdata->{hitCount} ),
+        "R-Avg Hit" => $sdata->{hitCount} && $sdata->{hitTotal} && $self->{pm}->tip( int($sdata->{hitTotal} / $sdata->{hitCount}), sprintf( "Range: %d&ndash;%d", $sdata->{hitMin}, $sdata->{hitMax} ) ),
         "R-Ticks" => $sdata->{tickCount} && sprintf( "%d", $sdata->{tickCount} ),
-        "R-Avg Tick" => $sdata->{tickCount} && $sdata->{tickTotal} && sprintf( "<span class=\"tip\" title=\"Range: %d&ndash;%d\">%d</span>", $sdata->{tickMin}, $sdata->{tickMax}, $sdata->{tickTotal} / $sdata->{tickCount} ),
+        "R-Avg Tick" => $sdata->{tickCount} && $sdata->{tickTotal} && $self->{pm}->tip( int($sdata->{tickTotal} / $sdata->{tickCount}), sprintf( "Range: %d&ndash;%d", $sdata->{tickMin}, $sdata->{tickMax} ) ),
         "R-Crits" => $sdata->{critCount} && sprintf( "%d", $sdata->{critCount} ),
-        "R-Avg Crit" => $sdata->{critCount} && $sdata->{critTotal} && sprintf( "<span class=\"tip\" title=\"Range: %d&ndash;%d\">%d</span>", $sdata->{critMin}, $sdata->{critMax}, $sdata->{critTotal} / $sdata->{critCount} ),
-        "R-CriCruGla %" => $swings && sprintf( "%s/%s/%s", $self->_tidypct( ($sdata->{critCount}||0) / $swings * 100 ), $self->_tidypct( ($sdata->{crushing}||0) / $swings * 100 ), $self->_tidypct( ($sdata->{glancing}||0) / $swings * 100 ) ),
-        "MDPBARI %" => $swings && sprintf( "%s/%s/%s/%s/%s/%s/%s", $self->_tidypct( ($sdata->{missCount}||0) / $swings * 100 ), $self->_tidypct( ($sdata->{dodgeCount}||0) / $swings * 100 ), $self->_tidypct( ($sdata->{parryCount}||0) / $swings * 100 ), $self->_tidypct( ($sdata->{blockCount}||0) / $swings * 100 ), $self->_tidypct( ($sdata->{absorbCount}||0) / $swings * 100 ), $self->_tidypct( ($sdata->{resistCount}||0) / $swings * 100 ), $self->_tidypct( ($sdata->{immuneCount}||0) / $swings * 100 ) ),
+        "R-Avg Crit" => $sdata->{critCount} && $sdata->{critTotal} && $self->{pm}->tip( int($sdata->{critTotal} / $sdata->{critCount}), sprintf( "Range: %d&ndash;%d", $sdata->{critMin}, $sdata->{critMax} ) ),
+        "R-CriCruGla %" => $swings && sprintf( "%s/%s/%s", _tidypct( ($sdata->{critCount}||0) / $swings * 100 ), _tidypct( ($sdata->{crushing}||0) / $swings * 100 ), _tidypct( ($sdata->{glancing}||0) / $swings * 100 ) ),
+        "R-Avoidance" => $swings && $self->{pm}->tip( 
+            ( _tidypct( 100 - ( ($sdata->{hitCount}||0) + ($sdata->{critCount}||0) ) / $swings * 100 ) . "%" ),
+            sprintf( "%s%% miss<br />%s%% dodge<br />%s%% parry<br />%s%% block<br />%s%% absorb<br />%s%% resist<br />%s%% immune", _tidypct( ($sdata->{missCount}||0) / $swings * 100 ), _tidypct( ($sdata->{dodgeCount}||0) / $swings * 100 ), _tidypct( ($sdata->{parryCount}||0) / $swings * 100 ), _tidypct( ($sdata->{blockCount}||0) / $swings * 100 ), _tidypct( ($sdata->{absorbCount}||0) / $swings * 100 ), _tidypct( ($sdata->{resistCount}||0) / $swings * 100 ), _tidypct( ($sdata->{immuneCount}||0) / $swings * 100 ) )
+        ),
     };
 }
 
@@ -1245,12 +1246,12 @@ sub _rowHealing {
         "R-Eff. Heal" => $sdata->{effective}||0,
         "R-Overheal %" => $sdata->{total} && sprintf( "%0.1f%%", ($sdata->{total} - ($sdata->{effective}||0) ) / $sdata->{total} * 100 ),
         "R-Hits" => $sdata->{hitCount} && sprintf( "%d", $sdata->{hitCount} ),
-        "R-Avg Hit" => $sdata->{hitCount} && $sdata->{hitTotal} && sprintf( "<span class=\"tip\" title=\"Range: %d&ndash;%d\">%d</span>", $sdata->{hitMin}, $sdata->{hitMax}, $sdata->{hitTotal} / $sdata->{hitCount} ),
+        "R-Avg Hit" => $sdata->{hitCount} && $sdata->{hitTotal} && $self->{pm}->tip( int($sdata->{hitTotal} / $sdata->{hitCount}), sprintf( "Range: %d&ndash;%d", $sdata->{hitMin}, $sdata->{hitMax} ) ),
         "R-Ticks" => $sdata->{tickCount} && sprintf( "%d", $sdata->{tickCount} ),
-        "R-Avg Tick" => $sdata->{tickCount} && $sdata->{tickTotal} && sprintf( "<span class=\"tip\" title=\"Range: %d&ndash;%d\">%d</span>", $sdata->{tickMin}, $sdata->{tickMax}, $sdata->{tickTotal} / $sdata->{tickCount} ),
+        "R-Avg Tick" => $sdata->{tickCount} && $sdata->{tickTotal} && $self->{pm}->tip( int($sdata->{tickTotal} / $sdata->{tickCount}), sprintf( "Range: %d&ndash;%d", $sdata->{tickMin}, $sdata->{tickMax} ) ),
         "R-Crits" => $sdata->{critCount} && sprintf( "%d", $sdata->{critCount} ),
-        "R-Avg Crit" => $sdata->{critCount} && $sdata->{critTotal} && sprintf( "<span class=\"tip\" title=\"Range: %d&ndash;%d\">%d</span>", $sdata->{critMin}, $sdata->{critMax}, $sdata->{critTotal} / $sdata->{critCount} ),
-        "R-Crit %" => $sdata->{count} && $sdata->{tickCount} && ($sdata->{count} - $sdata->{tickCount} > 0) && sprintf( "%0.1f%%", ($sdata->{critCount}||0) / ($sdata->{count} - $sdata->{tickCount}) * 100 ),
+        "R-Avg Crit" => $sdata->{critCount} && $sdata->{critTotal} && $self->{pm}->tip( int($sdata->{critTotal} / $sdata->{critCount}), sprintf( "Range: %d&ndash;%d", $sdata->{critMin}, $sdata->{critMax} ) ),
+        "R-Crit %" => $sdata->{count} && $sdata->{critCount} && ($sdata->{count} - $sdata->{critCount} > 0) && sprintf( "%0.1f%%", ($sdata->{critCount}||0) / ($sdata->{count} - $sdata->{critCount}) * 100 ),
     };
 }
 

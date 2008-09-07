@@ -91,9 +91,9 @@ sub ext_sum {
             
             if( $key =~ /[Mm](in|ax)$/ ) {
                 # Minimum or maximum
-                if( lc $1 eq "in" && (!$sd1->{$key} || $val < $sd1->{$key}) ) {
+                if( lc $1 eq "in" && $val && (!$sd1->{$key} || $val < $sd1->{$key}) ) {
                     $sd1->{$key} = $val;
-                } elsif( lc $1 eq "ax" && (!$sd1->{$key} || $val > $sd1->{$key}) ) {
+                } elsif( lc $1 eq "ax" && $val && (!$sd1->{$key} || $val > $sd1->{$key}) ) {
                     $sd1->{$key} = $val;
                 }
             } else {
