@@ -548,7 +548,6 @@ my %fingerprints = (
     mobContinue => [ 16060, 16124, 16125, 16126, 16127, 16148, 16150, 16149 ],
     mobEnd => [ 16060 ],
     timeout => 15,
-    lockout => 120,
 },
 
 "horsemen" => {
@@ -625,9 +624,8 @@ sub new {
     my $class = shift;
     my %params = @_;
     
-    $params{scratch} = {};
+    delete $params{scratch};
     $params{splits} = [];
-    $params{lastkill} = {};
     
     # Callback args:
     # at split start:   ( $short, $start )
@@ -643,92 +641,77 @@ sub process {
     # Figure out what to use for the actor and target identifiers.
     # This will be either the name (version 1) or the NPC part of the ID (version 2)
     
-    my ($atype, $anpc, $aspawn ) = Stasis::MobUtil::splitguid( $entry->{actor} );
-    my ($ttype, $tnpc, $tspawn ) = Stasis::MobUtil::splitguid( $entry->{target} );
-    
-    my $actor_id = $anpc || $entry->{actor};
-    my $target_id = $tnpc || $entry->{target};
+    my $actor_id = $entry->{actor} ? (Stasis::MobUtil::splitguid( $entry->{actor} ))[1] || $entry->{actor} : 0;
+    my $target_id = $entry->{target} ? (Stasis::MobUtil::splitguid( $entry->{target} ))[1] || $entry->{target} : 0;
     
     # See if we should end, or continue, an encounter currently in progress.
-    while( my ($kboss, $vboss) = each %{$self->{scratch}} ) {
-        # If we are currently in an encounter with this boss then see what we should do.
-        if( $vboss->{start} ) {
-            if( $entry->{t} > $vboss->{end} + $fingerprints{$kboss}{timeout} ) {
-                # This fingerprint timed out without ending.
-                # Record it as an attempt.
+    if( my $vboss = $self->{scratch} ) {
+        my $kboss = $vboss->{short};
+        
+        if( $entry->{t} > $vboss->{end} + $vboss->{timeout} ) {
+            # This fingerprint timed out without ending.
+            # Record it as an attempt.
+            
+            $self->_bend(
+                $kboss,
+                $vboss->{start},
+                $fingerprints{$kboss}{long},
+                0,
+                $vboss->{end},
+            );
+            
+            # Reset the fingerprint.
+            delete $self->{scratch};
+        } elsif( ($fcontinue{$actor_id} && $fcontinue{$actor_id} eq $kboss) || ($fcontinue{$target_id} && $fcontinue{$target_id} eq $kboss) ) {
+            # We should continue this encounter.
+            $vboss->{end} = $entry->{t};
+            
+            # Also possibly end it.
+            if( $entry->{action} eq "UNIT_DIED" && $fend{$target_id} && $fend{$target_id} eq $kboss ) {
+                $vboss->{dead}{$target_id} = 1;
                 
-                $self->_bend(
-                    $kboss,
-                    $vboss->{start},
-                    $fingerprints{$kboss}{long},
-                    0,
-                    $vboss->{end},
-                );
-                
-                # Reset this fingerprint.
-                delete $self->{scratch}{$kboss};
-            } elsif( ($fcontinue{$actor_id} && $fcontinue{$actor_id} eq $kboss) || ($fcontinue{$target_id} && $fcontinue{$target_id} eq $kboss) ) {
-                # We should continue this encounter.
-                $vboss->{end} = $entry->{t};
+                if( !$fingerprints{$kboss}{endAll} || ( scalar keys %{$vboss->{dead}} == scalar @{$fingerprints{$kboss}{mobEnd}} ) ) {
+                    $self->_bend(
+                        $kboss,
+                        $vboss->{start},
+                        $fingerprints{$kboss}{long},
+                        1,
+                        $vboss->{end},
+                    );
 
-                # Also possibly end it.
-                if( $entry->{action} eq "UNIT_DIED" && $fend{$target_id} && $fend{$target_id} eq $kboss ) {
-                    $vboss->{dead}{$target_id} = 1;
-                    
-                    if( !$fingerprints{$kboss}{endAll} || ( scalar keys %{$vboss->{dead}} == scalar @{$fingerprints{$kboss}{mobEnd}} ) ) {
-                        $self->_bend(
-                            $kboss,
-                            $vboss->{start},
-                            $fingerprints{$kboss}{long},
-                            1,
-                            $vboss->{end},
-                        );
-
-                        # Reset this fingerprint.
-                        delete $self->{scratch}{$kboss};
-                    }
+                    # Reset this fingerprint.
+                    delete $self->{scratch};
                 }
             }
         }
-    }
-    
-    # See if we should start a new encounter.
-    if( !$self->{go} ) {
-        if( $fstart{$actor_id} && !$self->{scratch}{$fstart{$actor_id}}{start} && (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) ) {
-            # Check timeout.
-            my $timeout = $fingerprints{$fstart{$actor_id}}{timeout};
-            if( !$timeout || !$self->{lastkill}{$fstart{$actor_id}} || $entry->{t} - $self->{lastkill}{$fstart{$actor_id}} >= $timeout ) {
-                # The actor should start a new encounter.
-                $self->{scratch}{$fstart{$actor_id}}{start} = $entry->{t};
-                $self->{scratch}{$fstart{$actor_id}}{end} = $entry->{t};
-
-                my $short = $fingerprints{$fstart{$actor_id}}{short} || lc $fstart{$actor_id};
-                $short =~ s/\s+.*$//;
-                $short =~ s/[^\w]//g;
-                $self->_bstart( $short, $entry->{t} );
-            }
-        }
-
-        if( $fstart{$target_id} && !$self->{scratch}{$fstart{$target_id}}{start} && (grep $entry->{action} eq $_, qw(SPELL_DAMAGE SPELL_DAMAGE_PERIODIC SPELL_MISS SWING_DAMAGE SWING_MISS)) ) {
-            my $timeout = $fingerprints{$fstart{$target_id}}{timeout};
-            if( !$timeout || !$self->{lastkill}{$fstart{$target_id}} || $entry->{t} - $self->{lastkill}{$fstart{$target_id}} >= $timeout ) {
-                # The target should start a new encounter.
-                $self->{scratch}{$fstart{$target_id}}{start} = $entry->{t};
-                $self->{scratch}{$fstart{$target_id}}{end} = $entry->{t};
-
-                my $short = $fingerprints{$fstart{$target_id}}{short} || lc $fstart{$target_id};
-                $short =~ s/\s+.*$//;
-                $short =~ s/[^\w]//g;
-                $self->_bstart( $short, $entry->{t} );
-            }
+    } else {
+        # See if we should start a new encounter.
+        if( $fstart{$actor_id} && ( $entry->{action} eq "SPELL_DAMAGE" || $entry->{action} eq "SWING_DAMAGE" || $entry->{action} eq "SPELL_MISS" || $entry->{action} eq "SWING_MISS" || $entry->{action} eq "SPELL_DAMAGE_PERIODIC" ) ) {
+            # The actor should start a new encounter.
+            $self->{scratch} = {
+                short => $fstart{$actor_id},
+                timeout => $fingerprints{$fstart{$actor_id}}{timeout},
+                start => $entry->{t},
+                end => $entry->{t},
+            };
+            
+            $self->_bstart( $fstart{$actor_id}, $entry->{t} );
+        } if( $fstart{$target_id} && ( $entry->{action} eq "SPELL_DAMAGE" || $entry->{action} eq "SWING_DAMAGE" || $entry->{action} eq "SPELL_MISS" || $entry->{action} eq "SWING_MISS" || $entry->{action} eq "SPELL_DAMAGE_PERIODIC" ) ) {
+            # The target should start a new encounter.
+            $self->{scratch} = {
+                short => $fstart{$target_id},
+                timeout => $fingerprints{$fstart{$target_id}}{timeout},
+                start => $entry->{t},
+                end => $entry->{t},
+            };
+            
+            $self->_bstart( $fstart{$target_id}, $entry->{t} );
         }
     }
 }
 
 sub _bstart {
     my ( $self, $short, $start ) = @_;
-    
-    $self->{go} = 1;
     
     # Callback.
     $self->{callback}->(
@@ -739,9 +722,6 @@ sub _bstart {
 
 sub _bend {
     my ( $self, $short, $start, $long, $kill, $end ) = @_;
-    
-    $self->{go} = 0;
-    $self->{lastkill}{$short} = $end if $kill;
     
     push @{$self->{splits}}, {
         short => $short,
@@ -765,18 +745,14 @@ sub finish {
     my $self = shift;
     
     # End of the log file -- close up any open bosses.
-    while( my ($boss, $print) = each (%fingerprints) ) {
-        if( $self->{scratch}{$boss}{start} ) {
-            if( $self->{scratch}{$boss}{end} && $self->{scratch}{$boss}{start} ) {
-                $self->_bend(
-                    $boss,
-                    $self->{scratch}{$boss}{start},
-                    $fingerprints{$boss}{long},
-                    0,
-                    $self->{scratch}{$boss}{end},
-                );
-            }
-        }
+    if( my $vboss = $self->{scratch} ) {
+        $self->_bend(
+            $vboss->{short},
+            $vboss->{start},
+            $fingerprints{$vboss->{short}}{long},
+            0,
+            $vboss->{end},
+        );
     }
     
     # Delete scratch.
