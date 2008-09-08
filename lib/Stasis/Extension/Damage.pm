@@ -62,57 +62,8 @@ sub process {
         $spell = $entry->{extra}{spellid};
     }
     
-    # Create an empty hash if it does not exist yet.
-    if( !exists( $self->{actors}{ $actor }{ $spell }{ $entry->{target} } ) ) {
-        $self->{actors}{ $actor }{ $spell }{ $entry->{target} } = {
-            # Aggregate information
-            # "count" includes misses
-            count => 0,
-            total => 0,
-            min => 0,
-            max => 0,
-            
-            # Hits
-            hitCount => 0,
-            hitTotal => 0,
-            hitMin => 0,
-            hitMax => 0,
-            
-            # Crits
-            critCount => 0,
-            critTotal => 0,
-            critMin => 0,
-            critMax => 0,
-            
-            # Dot ticks
-            tickCount => 0,
-            tickTotal => 0,
-            tickMin => 0,
-            tickMax => 0,
-            
-            # Important mods, these are all counts and are going to overlap with
-            # the counts listed above.
-            partialResist => 0,
-            partialBlock => 0,
-            crushing => 0,
-            glancing => 0,
-            
-            # Complete misses
-            # Note we do not track partial resists or partial blocks
-            dodgeCount => 0,
-            absorbCount => 0,
-            resistCount => 0,
-            parryCount => 0,
-            missCount => 0,
-            blockCount => 0,
-            reflectCount => 0,
-            deflectCount => 0,
-            immuneCount => 0,
-        }
-    };
-    
     # Get the spell hash.
-    my $ddata = $self->{actors}{ $actor }{ $spell }{ $entry->{target} };
+    my $ddata = ($self->{actors}{ $actor }{ $spell }{ $entry->{target} } ||= {});
     
     # Add to targets.
     $self->{targets}{ $entry->{target} }{ $spell }{ $actor } ||= $ddata;
@@ -152,8 +103,21 @@ sub process {
             );
         
         # Add any mods.
-        $ddata->{partialBlock}++ if $entry->{extra}{blocked};
-        $ddata->{partialResist}++ if $entry->{extra}{resisted};
+        if( $entry->{extra}{blocked} ) {
+            $ddata->{partialBlockCount} ++;
+            $ddata->{partialBlockTotal} += $entry->{extra}{blocked};
+        }
+        
+        if( $entry->{extra}{resisted} ) {
+            $ddata->{partialResistCount} ++;
+            $ddata->{partialResistTotal} += $entry->{extra}{resisted};
+        }
+        
+        if( $entry->{extra}{absorbed} ) {
+            $ddata->{partialAbsorbCount} ++;
+            $ddata->{partialAbsorbTotal} += $entry->{extra}{absorbed};
+        }
+        
         $ddata->{crushing}++ if $entry->{extra}{crushing};
         $ddata->{glancing}++ if $entry->{extra}{glancing};
     } elsif( $entry->{extra}{misstype} ) {

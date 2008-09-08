@@ -272,3 +272,10 @@ body {
 .swsmaster .colorMob {
     color: #464646;
 }
+
+div.swstip {
+    text-align: left;
+    font-size: 10px;
+    font-family: verdana;
+    color: #111;
+}

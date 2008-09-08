@@ -1204,6 +1204,30 @@ sub _dispelRowsOut {
     return @rows;
 }
 
+sub _avoidanceText {
+    my $sdata = pop;
+    
+    my $swings = ($sdata->{count}||0) - ($sdata->{tickCount}||0);
+    my $pct = _tidypct( 100 - ( ($sdata->{hitCount}||0) + ($sdata->{critCount}||0) ) / $swings * 100 ) . "%";
+    
+    my @text;
+    my @atype = qw(miss dodge parry block absorb resist immune);
+    foreach my $type (@atype) {
+        push @text, _tidypct( $sdata->{$type . "Count"} / $swings * 100 ) . "% total $type" if $sdata->{$type . "Count"};
+    }
+    
+    my $f = 1;
+    my @ptype = qw(block resist absorb);
+    foreach (@ptype) {
+        my $type = $_;
+        $type =~ s/^(\w)/"partial" . uc $1/e;
+        push @text, "" if $sdata->{$type . "Count"} && @text && $f++ == 1;
+        push @text, _tidypct( $sdata->{$type . "Count"} / $sdata->{count} * 100 ) . "% partial ${_} (avg " . int($sdata->{$type . "Total"}/$sdata->{$type . "Count"}) . ")" if $sdata->{$type . "Count"};
+    }
+    
+    return ($pct, @text ? join( ";", @text ) : "None" );
+}
+
 sub _rowDamage {
     my $self = shift;
     my $sdata = shift;
@@ -1226,10 +1250,7 @@ sub _rowDamage {
         "R-Crits" => $sdata->{critCount} && sprintf( "%d", $sdata->{critCount} ),
         "R-Avg Crit" => $sdata->{critCount} && $sdata->{critTotal} && $self->{pm}->tip( int($sdata->{critTotal} / $sdata->{critCount}), sprintf( "Range: %d&ndash;%d", $sdata->{critMin}, $sdata->{critMax} ) ),
         "R-CriCruGla %" => $swings && sprintf( "%s/%s/%s", _tidypct( ($sdata->{critCount}||0) / $swings * 100 ), _tidypct( ($sdata->{crushing}||0) / $swings * 100 ), _tidypct( ($sdata->{glancing}||0) / $swings * 100 ) ),
-        "R-Avoidance" => $swings && $self->{pm}->tip( 
-            ( _tidypct( 100 - ( ($sdata->{hitCount}||0) + ($sdata->{critCount}||0) ) / $swings * 100 ) . "%" ),
-            sprintf( "%s%% miss<br />%s%% dodge<br />%s%% parry<br />%s%% block<br />%s%% absorb<br />%s%% resist<br />%s%% immune", _tidypct( ($sdata->{missCount}||0) / $swings * 100 ), _tidypct( ($sdata->{dodgeCount}||0) / $swings * 100 ), _tidypct( ($sdata->{parryCount}||0) / $swings * 100 ), _tidypct( ($sdata->{blockCount}||0) / $swings * 100 ), _tidypct( ($sdata->{absorbCount}||0) / $swings * 100 ), _tidypct( ($sdata->{resistCount}||0) / $swings * 100 ), _tidypct( ($sdata->{immuneCount}||0) / $swings * 100 ) )
-        ),
+        "R-Avoidance" => $swings && $self->{pm}->tip( _avoidanceText($sdata) ),
     };
 }
 
@@ -1240,7 +1261,6 @@ sub _rowHealing {
     my $header = shift;
     
     # We're printing a row based on $sdata.
-    
     return {
         ($header || "Ability") => $title,
         "R-Eff. Heal" => $sdata->{effective}||0,

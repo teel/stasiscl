@@ -189,7 +189,7 @@ Parses a single line.
 =cut
 
 sub parse {
-    return $_[0]->{version} == 1 ? parse1(@_) : parse2(@_);
+    $_[0]->{version} == 1 ? goto &parse1 : goto &parse2;
 }
 
 sub parse1 {

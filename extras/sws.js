@@ -72,7 +72,13 @@ function initTabs() {
     var spans = document.getElementsByTagName('span');
     for( var x = 0 ; x < spans.length ; x ++ ) {
         if( spans[x].className == 'tip' ) {
-            var myTooltip = new YAHOO.widget.Tooltip( "t" + spans[x].id, { context: spans[x].id, preventoverlap: false } );
+            var title = spans[x].getAttribute('title');
+            var myTooltip = new YAHOO.widget.Tooltip( "t" + spans[x].id, {
+                context: spans[x].id,
+                preventoverlap: false,
+                text: '<div class="swstip">' + title.replace( /;/g, "<br />" ) + '</div>'
+                }
+            );
         }
     }
 }
