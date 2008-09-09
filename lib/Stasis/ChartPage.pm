@@ -507,7 +507,7 @@ sub page {
 
         $XML .= sprintf( '  <raid dpstime="%d" start="%s" dps="%d" comment="%s" lg="%d" dmg="%d" dir="%s">' . "\n",
             100,
-            $raidStart*1000 - 8*3600000,
+            $raidStart*1000,
             $raidDPS,
             $self->{name},
             $raidPresence*60000,
