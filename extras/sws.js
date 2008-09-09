@@ -70,16 +70,17 @@ function hashTab() {
 
 function initTabs() {
     var spans = document.getElementsByTagName('span');
+    var tips = [];
     for( var x = 0 ; x < spans.length ; x ++ ) {
         if( spans[x].className == 'tip' ) {
             var title = spans[x].getAttribute('title');
-            var myTooltip = new YAHOO.widget.Tooltip( "t" + spans[x].id, {
-                context: spans[x].id,
-                preventoverlap: false,
-                text: '<div class="swstip">' + title.replace( /;/g, "<br />" ) + '</div>'
-                }
-            );
+            spans[x].setAttribute('title', '<div class="swstip">' + title.replace( /;/g, "<br />" ) + '</div>' );
+            tips[tips.length] = spans[x];
         }
+    }
+    
+    if( tips.length > 0 ) {
+        var myTooltip = new YAHOO.widget.Tooltip( "swstips", { context: tips } );
     }
 }
 
