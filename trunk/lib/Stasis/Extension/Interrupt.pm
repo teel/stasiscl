@@ -35,7 +35,7 @@ sub start {
 }
 
 sub actions {
-    return qw(SPELL_INTERRUPT);
+    map { $_ => \&process } qw(SPELL_INTERRUPT);
 }
 
 sub process {

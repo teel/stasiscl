@@ -35,7 +35,7 @@ sub start {
 }
 
 sub actions {
-    return qw(SPELL_CAST_SUCCESS);
+    map { $_ => \&process } qw(SPELL_CAST_SUCCESS);
 }
 
 sub process {

@@ -29,6 +29,7 @@ use Carp;
 use Exporter "import";
 
 our @EXPORT_OK = qw(ext_sum ext_copy);
+our @ISA = "Stasis::EventListener";
 
 # Meant to be called statically like:
 # Stasis::Extension->factory "Aura" 
@@ -56,22 +57,10 @@ sub new {
     }, $class;
 }
 
-# Subclasses may implement this function, which should return a list of
-# actions that they are interested in. Empty list means all actions.
-sub actions {
-    return ();
-}
-
 # Subclasses may implement this function, which will be called once at
 # the start of processing.
 sub start {
     return 1;
-}
-
-# Subclasses must implement this function, which will be called repeatedly
-# Each call will be a log entry from Stasis::Parser
-sub process {
-    croak "Not implemented.";
 }
 
 # Subclasses may implement this function, which will be called once at

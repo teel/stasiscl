@@ -36,28 +36,63 @@ sub start {
 }
 
 sub actions {
-    return qw(SPELL_AURA_APPLIED SPELL_AURA_REMOVED UNIT_DIED);
+    SPELL_AURA_APPLIED => \&process_applied,
+    SPELL_AURA_REMOVED => \&process_removed,
+    UNIT_DIED => \&process_death,
 }
 
-sub process {
-    my ($self, $entry) = @_;
+sub process_death {
+    my ($self, $entry) = @_;    
     
-    # Forcibly fade all auras when a unit dies.    
-    if( $entry->{action} eq "UNIT_DIED" ) {
-        if( exists $self->{actors}{ $entry->{target} } ) {
-            foreach my $vaura (values %{ $self->{actors}{ $entry->{target} } } ) {
-                if( @{ $vaura->{spans} } ) {
-                    my ($start, $end) = unpack "dd", $vaura->{spans}->[-1];
-                    
-                    if( !$end ) {
-                        $vaura->{spans}->[-1] = pack "dd", $start, $entry->{t};
-                    }
+    # Forcibly fade all auras when a unit dies.
+    if( exists $self->{actors}{ $entry->{target} } ) {
+        foreach my $vaura (values %{ $self->{actors}{ $entry->{target} } } ) {
+            if( @{ $vaura->{spans} } ) {
+                my ($start, $end) = unpack "dd", $vaura->{spans}->[-1];
+                
+                if( !$end ) {
+                    $vaura->{spans}->[-1] = pack "dd", $start, $entry->{t};
                 }
             }
         }
-        
-        return;
     }
+}
+
+sub process_applied {
+    my ($self, $entry) = @_;
+
+    # Create a blank entry if none exists.
+    my $sdata = $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} } ||= {
+        gains => 0,
+        fades => 0,
+        type => undef,
+        spans => [],
+    };
+    
+    # Get the most recent span.
+    my ($sstart, $send) = @{$sdata->{spans}} ? unpack( "dd", $sdata->{spans}->[-1] ) : (undef, undef);
+    
+    # An aura was gained, update the timeline.
+    if( $send || !defined $sstart ) {
+        # Either this is the first span, or the previous one has ended. We should make a new one.
+        push @{$sdata->{spans}}, pack "dd", $entry->{t}, 0;
+        
+        # In other cases, this means that we probably missed the fade message or this
+        # is a dose application.
+        
+        # The best we can do in that situation is nothing, just keep the aura on even
+        # though it may have faded at some point.
+    }
+    
+    # Update the number of times this aura was gained.
+    $sdata->{gains} ++;
+    
+    # Update the type of this aura.
+    $sdata->{type} ||= $entry->{extra}{auratype};
+}
+
+sub process_removed {
+    my ($self, $entry) = @_;
     
     # Create a blank entry if none exists.
     my $sdata = $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} } ||= {
@@ -70,46 +105,24 @@ sub process {
     # Get the most recent span.
     my ($sstart, $send) = @{$sdata->{spans}} ? unpack( "dd", $sdata->{spans}->[-1] ) : (undef, undef);
     
-    if( $entry->{action} eq "SPELL_AURA_APPLIED" ) {
-        # An aura was gained, update the timeline.
-        if( $send || !defined $sstart ) {
-            # Either this is the first span, or the previous one has ended. We should make a new one.
-            push @{$sdata->{spans}}, pack "dd",
-                $entry->{t},
-                0;
-            
-            # In other cases, this means that we probably missed the fade message or this
-            # is a dose application.
-            
-            # The best we can do in that situation is nothing, just keep the aura on even
-            # though it may have faded at some point.
+    # An aura faded, update the timeline.
+    if( defined $sstart && !$send ) {
+        # We should end the most recent span.
+        $sdata->{spans}->[-1] = pack "dd", $sstart, $entry->{t};
+    } else {
+        # There is no span in progress, we probably missed the gain message.
+        if( !$sdata->{gains} && !$sdata->{fades} ) {
+            # if this is the first fade and there were no gains, let's assume it was up since 
+            # before the log started (brave assumption)
+            push @{$sdata->{spans}}, pack "dd", 0, $entry->{t};
         }
-        
-        # Update the number of times this aura was gained.
-        $sdata->{gains} ++;
-        
-        # Update the type of this aura.
-        $sdata->{type} ||= $entry->{extra}{auratype};
-    } elsif( $entry->{action} eq "SPELL_AURA_REMOVED" ) {
-        # An aura faded, update the timeline.
-        if( defined $sstart && !$send ) {
-            # We should end the most recent span.
-            $sdata->{spans}->[-1] = pack "dd", $sstart, $entry->{t};
-        } else {
-            # There is no span in progress, we probably missed the gain message.
-            if( !$sdata->{gains} && !$sdata->{fades} ) {
-                # if this is the first fade and there were no gains, let's assume it was up since 
-                # before the log started (brave assumption)
-                push @{$sdata->{spans}}, pack "dd", 0, $entry->{t};
-            }
-        }
-        
-        # Update the number of times this aura faded.
-        $sdata->{fades} ++;
-        
-        # Update the type of this aura.
-        $sdata->{type} ||= $entry->{extra}{auratype};
     }
+    
+    # Update the number of times this aura faded.
+    $sdata->{fades} ++;
+    
+    # Update the type of this aura.
+    $sdata->{type} ||= $entry->{extra}{auratype};
 }
 
 # Returns type, gains, fades, and total uptime for a set of auras

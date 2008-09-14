@@ -662,42 +662,6 @@ sub page {
             };
         }
         
-        # if( $self->{meta} ) {
-        #     # Add meta auras.
-        #     my %meta = (
-        #         "+25% Armor" => [ 16237, 15359 ],
-        #         "Faerie Fire" => [ 26993, 27011 ],
-        #         "Mangle" => [ 33987, 33983 ],
-        #     );
-        #     
-        #     while( my ($kmeta, $vmeta) = each(%meta) ) {
-        #         if( my $atime = $self->{ext}{Aura}->aura( start => $pstart, end => $pend, actor => [$MOB], spell => $vmeta ) ) {
-        #             my $n = 0;
-        #             my $row = {
-        #                 gains => 0,
-        #                 fades => 0,
-        #                 time => $atime,
-        #                 meta => 1,
-        #             };
-        #             
-        #             foreach my $id (@$vmeta) {
-        #                 if( my $vaura = $self->{ext}{Aura}{actors}{$MOB}{$id} ) {
-        #                     $n ++;
-        #                     $row->{gains} += $vaura->{gains};
-        #                     $row->{fades} += $vaura->{fades};
-        #                     $row->{type} = $vaura->{type};
-        #                 }
-        #             }
-        #             
-        #             push @rows, {
-        #                 key => $kmeta,
-        #                 row => $row,
-        #             } if $n > 1;
-        #         }
-        #         
-        #     }
-        # }
-        
         @rows = sort { $a->{row}{type} cmp $b->{row}{type} || $b->{row}{time} <=> $a->{row}{time} } @rows;
         
         if( @rows ) {
@@ -884,62 +848,52 @@ sub page {
             );
 
         # Loop through all deaths.
-        my $id = 0;
+        my $n = 0;
+        my %dnum;
+        
         foreach my $player (@PLAYER) {
             foreach my $death (@{$self->{ext}{Death}{actors}{$player}}) {
-                if( !$id ) {
+                my $id = lc $death->{actor};
+                $id = $self->{pm}->tameText($id);
+                
+                if( !$n++ ) {
                     $PAGE .= $pm->tabStart("Deaths");
                     $PAGE .= $pm->tableStart;
                     $PAGE .= $pm->tableHeader("Deaths", @header);
                 }
                 
-                $id++;
-
                 # Get the last line of the autopsy.
-                my $lastline = pop @{$death->{autopsy}};
-                push @{$death->{autopsy}}, $lastline;
+                my $lastline = $death->{autopsy}->[-1];
+                my $text = Stasis::Parser->toString( 
+                    $lastline->{entry}, 
+                    sub { $self->{pm}->actorLink( $_[0], 1 ) }, 
+                    sub { $self->{pm}->spellLink( $_[0], $self->{ext}{Index}->spellname($_[0]) ) } 
+                );
 
-                # Print the front row.
-                
-                my $text = $lastline->{text}||"";
-                $text =~ s/\[\[([^\[\]]+?)\]\]/ $pm->actorLink($1, 1) /eg;
-                $text =~ s/\{\{([^\{\}]+?)\}\}/ $pm->spellLink($1, $self->{ext}{Index}->spellname($1)) /eg;
-                
                 my $t = $death->{t} - $raidStart;
                 $PAGE .= $pm->tableRow(
-                        header => \@header,
-                        data => {
-                            "Death Time" => $death->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
-                            "R-Health" => $lastline->{hp} || "",
-                            "Event" => $text,
-                        },
-                        type => "master",
-                        name => "death_$id",
-                    );
+                    header => \@header,
+                    data => {
+                        "Death Time" => $death->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
+                        "R-Health" => $lastline->{hp} || "",
+                        "Event" => $text,
+                    },
+                    type => "master",
+                    url => sprintf( "death_%s_%d.html", $id, ++$dnum{ $death->{actor} } ),
+                );
 
                 # Print subsequent rows.
                 foreach my $line (@{$death->{autopsy}}) {
-                    my $t = ($line->{t}||0) - $raidStart;
-                    
-                    my $text = $line->{text}||"";
-                    $text =~ s/\[\[([^\[\]]+?)\]\]/ $pm->actorLink($1, 1) /eg;
-                    $text =~ s/\{\{([^\{\}]+?)\}\}/ $pm->spellLink($1, $self->{ext}{Index}->spellname($1)) /eg;
-
                     $PAGE .= $pm->tableRow(
-                            header => \@header,
-                            data => {
-                                "Death Time" => $line->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
-                                "R-Health" => $line->{hp} || "",
-                                "Event" => $text,
-                            },
-                            type => "slave",
-                            name => "death_$id",
-                        );
+                        header => \@header,
+                        data => {},
+                        type => "slave",
+                    );
                 }
             }
         }
 
-        if( $id ) {
+        if( $n ) {
             $PAGE .= $pm->tableEnd;
             $PAGE .= $pm->tabEnd;
         }
@@ -1110,7 +1064,7 @@ sub _castRowsIn {
 sub _castRowsOut {
     my $self = shift;
     my $ext = shift;
-
+    
     my @rows;
     
     foreach my $kactor (@_) {
