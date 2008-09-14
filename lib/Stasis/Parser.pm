@@ -1027,8 +1027,6 @@ sub parse2 {
     $result->{target} = 0 unless $result->{target_name};
     $result->{actor} = 0 unless $result->{actor_name};
     
-    # TODO: Add 'extraamount' to Damage.
-    
     # Action specific processing
     if( $result->{action} eq "SWING_DAMAGE" ) {
         if( @col <= 8 ) {
@@ -1106,7 +1104,6 @@ sub parse2 {
         @{$result->{extra}}{@fspell} = @col;
     } else {
         # Unrecognized action
-        carp( "Unrecognized action: " . $result->{action} );
         $result->{extra} = {};
     }
     
