@@ -39,56 +39,65 @@ sub start {
 }
 
 sub actions {
-    return qw(ENVIRONMENTAL_DAMAGE SWING_DAMAGE SWING_MISSED RANGE_DAMAGE RANGE_MISSED SPELL_DAMAGE DAMAGE_SPLIT SPELL_MISSED SPELL_PERIODIC_DAMAGE SPELL_PERIODIC_MISSED DAMAGE_SHIELD DAMAGE_SHIELD_MISSED SPELL_HEAL SPELL_PERIODIC_HEAL SPELL_AURA_APPLIED SPELL_AURA_REMOVED UNIT_DIED SPELL_AURA_APPLIED_DOSE);
+    map( { $_ => \&process_heal } qw(SPELL_HEAL SPELL_PERIODIC_HEAL) ),
+    map( { $_ => \&process_damage } qw(ENVIRONMENTAL_DAMAGE SWING_DAMAGE RANGE_DAMAGE SPELL_DAMAGE DAMAGE_SPLIT SPELL_PERIODIC_DAMAGE DAMAGE_SHIELD) ),
+    map( { $_ => \&process_death } qw(UNIT_DIED) ),
+    map( { $_ => \&process_common } qw(SWING_MISSED RANGE_MISSED SPELL_MISSED SPELL_PERIODIC_MISSED DAMAGE_SHIELD_MISSED SPELL_AURA_APPLIED SPELL_AURA_APPLIED_DOSE SPELL_AURA_REMOVED) ),
 }
 
-sub process {
+sub process_heal {
     my ($self, $entry) = @_;
     
-    # HP tracking, done in the same manner as overheal tracking for Healing.pm
-    if( $entry->{action} eq "SPELL_HEAL" || $entry->{action} eq "SPELL_PERIODIC_HEAL" ) {
-        # This was a heal. Add the HP to the target.
-        $self->{ohtrack}{ $entry->{target} } += $entry->{extra}{amount};
-    
-        # Account for overhealing, if it happened, by removing the excess.
-        $self->{ohtrack}{ $entry->{target} } = 0 if( $self->{ohtrack}{ $entry->{target} } > 0 );
-    } elsif( grep $entry->{action} eq $_, qw(ENVIRONMENTAL_DAMAGE SWING_DAMAGE RANGE_DAMAGE SPELL_DAMAGE DAMAGE_SPLIT SPELL_PERIODIC_DAMAGE DAMAGE_SHIELD) ) {
-        # If someone is taking damage we need to debit the HP.
-        $self->{ohtrack}{ $entry->{target} } -= $entry->{extra}{amount};
-    } elsif( $entry->{action} eq "UNIT_DIED" ) {
-        # Make a deaths array if it doesn't exist already.
-        if( $self->{dtrack}{ $entry->{target} } ) {
-            $self->{actors}{ $entry->{target} } ||= [];
+    # This was a heal. Add the HP to the target.
+    $self->{ohtrack}{ $entry->{target} } += $entry->{extra}{amount};
 
-            # Push this death onto it.
-            push @{$self->{actors}{ $entry->{target} }}, {
-                "t" => $entry->{t},
-                "actor" => $entry->{target},
-                "autopsy" => $self->{dtrack}{ $entry->{target} } || [],
-            };
-        }
-        
-        # Delete the death tracker log.
-        delete $self->{dtrack}{ $entry->{target} };
-        
-        # Bail out.
-        return;
-    } elsif( ! grep $entry->{action} eq $_, qw(SPELL_AURA_APPLIED SPELL_AURA_APPLIED_DOSE SPELL_AURA_REMOVED) ) {
-        # Bail out now.
-        # If this action was a damage, miss, or heal we will fall through to the next section.
-        return;
+    # Account for overhealing, if it happened, by removing the excess.
+    $self->{ohtrack}{ $entry->{target} } = 0 if( $self->{ohtrack}{ $entry->{target} } > 0 );
+    
+    goto &process_common;
+}
+
+sub process_damage {
+    my ($self, $entry) = @_;
+    
+    # If someone is taking damage we need to debit the HP.
+    $self->{ohtrack}{ $entry->{target} } -= $entry->{extra}{amount};
+    
+    goto &process_common;
+}
+
+sub process_death {
+    my ($self, $entry) = @_;
+    
+    # Make a deaths array if it doesn't exist already.
+    if( $self->{dtrack}{ $entry->{target} } ) {
+        $self->{actors}{ $entry->{target} } ||= [];
+
+        # Push this death onto it.
+        push @{$self->{actors}{ $entry->{target} }}, {
+            "t" => $entry->{t},
+            "actor" => $entry->{target},
+            "autopsy" => $self->{dtrack}{ $entry->{target} } || [],
+        };
     }
+    
+    # Delete the death tracker log.
+    delete $self->{dtrack}{ $entry->{target} };
+}
+
+sub process_common {
+    my ($self, $entry) = @_;
     
     # Add a combat event to the death tracker log.
     $self->{dtrack}{ $entry->{target} } ||= [];
     push @{ $self->{dtrack}{ $entry->{target} } }, {
         "t" => $entry->{t},
         "hp" => $self->{ohtrack}{ $entry->{target} },
-        "text" => Stasis::Parser->toString( $entry, sub { "[[" . ($_[0]||0) . "]]" }, sub { "{{" . ($_[0]||0) . "}}" } ),
+        "entry" => $entry,
     };
     
     # Shorten the list if it got too long.
-    shift @{ $self->{dtrack}{ $entry->{target} } } if scalar @{ $self->{dtrack}{ $entry->{target} } } > $self->{_autopsylen};
+    shift @{ $self->{dtrack}{ $entry->{target} } } if @{ $self->{dtrack}{ $entry->{target} } } > $self->{_autopsylen};
 }
 
 1;

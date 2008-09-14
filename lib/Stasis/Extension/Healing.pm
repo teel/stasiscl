@@ -30,16 +30,6 @@ use Stasis::Extension::Damage;
 
 our @ISA = "Stasis::Extension";
 
-my %damage_actions = (
-    ENVIRONMENTAL_DAMAGE => 1,
-    SWING_DAMAGE => 1,
-    RANGE_DAMAGE => 1,
-    SPELL_DAMAGE => 1,
-    DAMAGE_SPLIT => 1,
-    SPELL_PERIODIC_DAMAGE => 1,
-    DAMAGE_SHIELD => 1,
-);
-
 sub start {
     my $self = shift;
     my %params = @_;
@@ -50,101 +40,78 @@ sub start {
 }
 
 sub actions {
-    return qw(ENVIRONMENTAL_DAMAGE SWING_DAMAGE RANGE_DAMAGE SPELL_DAMAGE DAMAGE_SPLIT SPELL_PERIODIC_DAMAGE DAMAGE_SHIELD SPELL_HEAL SPELL_PERIODIC_HEAL);
+    map( { $_ => \&process_healing } qw(SPELL_HEAL SPELL_PERIODIC_HEAL) ),
+    
+    map( { $_ => \&process_damage } qw(ENVIRONMENTAL_DAMAGE SWING_DAMAGE RANGE_DAMAGE SPELL_DAMAGE DAMAGE_SPLIT SPELL_PERIODIC_DAMAGE DAMAGE_SHIELD) )
 }
 
-sub process {
+sub process_healing {
     my ($self, $entry) = @_;
     
-    ################
-    # NORMAL LOGIC #
-    ################
+    # This was a heal. Create an empty hash if it does not exist yet.
+    my $hdata = ($self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} } ||= {});
     
-    if( $entry->{action} eq "SPELL_HEAL" || $entry->{action} eq "SPELL_PERIODIC_HEAL" ) {
-        # This was a heal. Create an empty hash if it does not exist yet.
-        if( !exists( $self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} } ) ) {
-            $self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} } = {
-                count => 0,
-                total => 0,
-                effective => 0,
-                hitCount => 0,
-                hitTotal => 0,
-                hitEffective => 0,
-                hitMin => 0,
-                hitMax => 0,
-                critCount => 0,
-                critTotal => 0,
-                critEffective => 0,
-                critMin => 0,
-                critMax => 0,
-                tickCount => 0,
-                tickTotal => 0,
-                tickEffective => 0,
-                tickMin => 0,
-                tickMax => 0,
-            }
-        }
-        
-        my $hdata = $self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} };
-        
-        # Add to targets.
-        $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} } ||= $hdata;
-        
-        # Add the HP to the target for overheal-tracking purposes.
-        $self->{ohtrack}{ $entry->{target} } += $entry->{extra}{amount};
-        
-        # Figure out how much effective healing there was.
-        my $effective;
-        if( exists $entry->{extra}{extraamount} ) {
-            # WLK-style. Overhealing is included.
-            $effective = $entry->{extra}{amount} - $entry->{extra}{extraamount};
-        } else {
-            # TBC-style. Overhealing is not included.
-            if( $self->{ohtrack}{ $entry->{target} } > 0 ) {
-                $effective = $entry->{extra}{amount} - $self->{ohtrack}{ $entry->{target} };
+    # Add to targets.
+    $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} } ||= $hdata;
+    
+    # Add the HP to the target for overheal-tracking purposes.
+    $self->{ohtrack}{ $entry->{target} } += $entry->{extra}{amount};
+    
+    # Figure out how much effective healing there was.
+    my $effective;
+    if( exists $entry->{extra}{extraamount} ) {
+        # WLK-style. Overhealing is included.
+        $effective = $entry->{extra}{amount} - $entry->{extra}{extraamount};
+    } else {
+        # TBC-style. Overhealing is not included.
+        if( $self->{ohtrack}{ $entry->{target} } > 0 ) {
+            $effective = $entry->{extra}{amount} - $self->{ohtrack}{ $entry->{target} };
 
-                # Reset HP to zero (meaning full).
-                $self->{ohtrack}{ $entry->{target} } = 0;
-            } else {
-                $effective = $entry->{extra}{amount};
-            }
-        }
-    
-        # Add total healing to the healer.
-        $hdata->{count} += 1;
-        $hdata->{total} += $entry->{extra}{amount};
-        $hdata->{effective} += $effective;
-    
-        # Add this as the appropriate kind of healing: tick, hit, or crit.
-        my $type;
-        if( $entry->{action} eq "SPELL_PERIODIC_HEAL" ) {
-            $type = "tick";
-        } elsif( $entry->{extra}{critical} ) {
-            $type = "crit";
+            # Reset HP to zero (meaning full).
+            $self->{ohtrack}{ $entry->{target} } = 0;
         } else {
-            $type = "hit";
+            $effective = $entry->{extra}{amount};
         }
-        
-        $hdata->{"${type}Count"} += 1;
-        $hdata->{"${type}Total"} += $entry->{extra}{amount};
-        $hdata->{"${type}Effective"} += $effective;
-        
-        # Update min/max hit size.
-        $hdata->{"${type}Min"} = $entry->{extra}{amount}
-            if( 
-                !$hdata->{"${type}Min"} ||
-                $entry->{extra}{amount} < $hdata->{"${type}Min"}
-            );
-
-        $hdata->{"${type}Max"} = $entry->{extra}{amount}
-            if( 
-                !$hdata->{"${type}Max"} ||
-                $entry->{extra}{amount} > $hdata->{"${type}Max"}
-            );
-    } elsif( $damage_actions{ $entry->{action} } ) {
-        # If someone is taking damage we need to debit it for overheal tracking.
-        $self->{ohtrack}{ $entry->{target} } -= $entry->{extra}{amount};
     }
+
+    # Add total healing to the healer.
+    $hdata->{count} += 1;
+    $hdata->{total} += $entry->{extra}{amount};
+    $hdata->{effective} += $effective;
+
+    # Add this as the appropriate kind of healing: tick, hit, or crit.
+    my $type;
+    if( $entry->{action} eq "SPELL_PERIODIC_HEAL" ) {
+        $type = "tick";
+    } elsif( $entry->{extra}{critical} ) {
+        $type = "crit";
+    } else {
+        $type = "hit";
+    }
+    
+    $hdata->{"${type}Count"} += 1;
+    $hdata->{"${type}Total"} += $entry->{extra}{amount};
+    $hdata->{"${type}Effective"} += $effective;
+    
+    # Update min/max hit size.
+    $hdata->{"${type}Min"} = $entry->{extra}{amount}
+        if( 
+            !$hdata->{"${type}Min"} ||
+            $entry->{extra}{amount} < $hdata->{"${type}Min"}
+        );
+
+    $hdata->{"${type}Max"} = $entry->{extra}{amount}
+        if( 
+            !$hdata->{"${type}Max"} ||
+            $entry->{extra}{amount} > $hdata->{"${type}Max"}
+        );
+}
+
+sub process_damage {
+    my ($self, $entry) = @_;
+    
+    # If someone is taking damage we need to debit it for overheal tracking.
+    $self->{ohtrack}{ $entry->{target} } -= $entry->{extra}{amount};
 }
 
 sub sum {

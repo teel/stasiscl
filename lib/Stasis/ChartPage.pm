@@ -428,63 +428,50 @@ sub page {
     $PAGE .= "";
 
     my @deathHeader = (
-            "Death",
-            "Time",
-            "R-Health",
-            "Event",
-        );
-        
+        "Death",
+        "Time",
+        "R-Health",
+        "Event",
+    );
     
     $PAGE .= $pm->tabStart("Deaths");
     $PAGE .= $pm->tableStart();
     
+    my %dnum;
     if( scalar @deathlist ) {
         $PAGE .= $pm->tableHeader("Deaths", @deathHeader);
-        my $deathid = 0;
         foreach my $death (@deathlist) {
-            # Increment death ID.
-            $deathid++;
-
+            my $id = lc $death->{actor};
+            $id = $self->{pm}->tameText($id);
+            
             # Get the last line of the autopsy.
-            my $lastline = pop @{$death->{autopsy}};
-            push @{$death->{autopsy}}, $lastline;
-
-            # Print the front row.
-            my $text = $lastline->{text}||"";
-            $text =~ s/\[\[([^\[\]]+?)\]\]/ $pm->actorLink($1, 1) /eg;
-            $text =~ s/\{\{([^\{\}]+?)\}\}/ $pm->spellLink($1, $self->{ext}{Index}->spellname($1)) /eg;
+            my $lastline = $death->{autopsy}->[-1];
+            my $text = Stasis::Parser->toString( 
+                $lastline->{entry}, 
+                sub { $self->{pm}->actorLink( $_[0], 1 ) }, 
+                sub { $self->{pm}->spellLink( $_[0], $self->{ext}{Index}->spellname($_[0]) ) } 
+            );
             
             my $t = $death->{t} - $raidStart;
             $PAGE .= $pm->tableRow(
-                    header => \@deathHeader,
-                    data => {
-                        "Death" => $pm->actorLink( $death->{actor},  $self->{ext}{Index}->actorname($death->{actor}), $self->{raid}{$death->{actor}}{class} ),
-                        "Time" => $death->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
-                        "R-Health" => $lastline->{hp} || "",
-                        "Event" => $text,
-                    },
-                    type => "master",
-                    name => "death_$deathid",
-                );
-
+                header => \@deathHeader,
+                data => {
+                    "Death" => $pm->actorLink( $death->{actor},  $self->{ext}{Index}->actorname($death->{actor}), $self->{raid}{$death->{actor}}{class} ),
+                    "Time" => $death->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
+                    "R-Health" => $lastline->{hp} || "",
+                    "Event" => $text,
+                },
+                type => "master",
+                url => sprintf( "death_%s_%d.html", $id, ++$dnum{ $death->{actor} } ),
+            );
+            
             # Print subsequent rows.
             foreach my $line (@{$death->{autopsy}}) {
-                my $t = ($line->{t}||0) - $raidStart;
-                
-                my $text = $line->{text}||"";
-                $text =~ s/\[\[([^\[\]]+?)\]\]/ $pm->actorLink($1, 1) /eg;
-                $text =~ s/\{\{([^\{\}]+?)\}\}/ $pm->spellLink($1, $self->{ext}{Index}->spellname($1)) /eg;
-                
                 $PAGE .= $pm->tableRow(
-                        header => \@deathHeader,
-                        data => {
-                            "Death" => $line->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
-                            "R-Health" => $line->{hp} || "",
-                            "Event" => $text,
-                        },
-                        type => "slave",
-                        name => "death_$deathid",
-                    );
+                    header => \@deathHeader,
+                    data => {},
+                    type => "slave",
+                );
             }
         }
     }

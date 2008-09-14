@@ -28,6 +28,15 @@ use warnings;
 use POSIX;
 use Carp;
 use Stasis::MobUtil;
+use Stasis::EventListener;
+
+our @ISA = "Stasis::EventListener";
+
+use constant {
+    # After a boss is killed, don't allow another one of the same type to 
+    # start for this long (seconds).
+    LOCKOUT_TIME => 900,
+};
 
 # Fingerprints of various boss encounters.
 my %fingerprints = (
@@ -483,7 +492,7 @@ my %fingerprints = (
     mobStart => [ 15956 ],
     mobContinue => [ 15956 ],
     mobEnd => [ 15956 ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "faerlina" => {
@@ -491,7 +500,7 @@ my %fingerprints = (
     mobStart => [ 15953 ],
     mobContinue => [ 15953 ],
     mobEnd => [ 15953 ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "maexxna" => {
@@ -499,7 +508,7 @@ my %fingerprints = (
     mobStart => [ 15952 ],
     mobContinue => [ 15952 ],
     mobEnd => [ 15952 ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "patchwerk" => {
@@ -507,7 +516,7 @@ my %fingerprints = (
     mobStart => [ 16028 ],
     mobContinue => [ 16028 ],
     mobEnd => [ 16028 ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "grobbulus" => {
@@ -515,7 +524,7 @@ my %fingerprints = (
     mobStart => [ 15931 ],
     mobContinue => [ 15931 ],
     mobEnd => [ 15931 ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "gluth" => {
@@ -523,7 +532,7 @@ my %fingerprints = (
     mobStart => [ 15932 ],
     mobContinue => [ 15932, 16360 ],
     mobEnd => [ 15932 ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "thaddius" => {
@@ -531,7 +540,7 @@ my %fingerprints = (
     mobStart => [ 15928, 15929, 15930 ],
     mobContinue => [ 15928, 15929, 15930 ],
     mobEnd => [ 15928 ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "razuvious" => {
@@ -539,7 +548,7 @@ my %fingerprints = (
     mobStart => [ 16061 ],
     mobContinue => [ 16061, 16803 ],
     mobEnd => [ 16061 ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "gothik" => {
@@ -547,7 +556,7 @@ my %fingerprints = (
     mobStart => [ 16060, 16124, 16125, 16126, 16127, 16148, 16150, 16149 ],
     mobContinue => [ 16060, 16124, 16125, 16126, 16127, 16148, 16150, 16149 ],
     mobEnd => [ 16060 ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "horsemen" => {
@@ -555,7 +564,7 @@ my %fingerprints = (
     mobStart => [ 16064, 16065, 30549, 16063 ],
     mobContinue => [ 16064, 16065, 30549, 16063 ],
     mobEnd => [ 16064, 16065, 30549, 16063 ],
-    timeout => 15,
+    timeout => 30,
     endAll => 1,
 },
 
@@ -564,7 +573,7 @@ my %fingerprints = (
     mobStart => [ 15954 ],
     mobContinue => [ 15954, 16983, 16981 ],
     mobEnd => [ 15954 ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "heigan" => {
@@ -572,7 +581,7 @@ my %fingerprints = (
     mobStart => [ 15936 ],
     mobContinue => [ 15936, 16236 ],
     mobEnd => [ 15936 ],
-    timeout => 15,
+    timeout => 60,
 },
 
 "loatheb" => {
@@ -580,15 +589,15 @@ my %fingerprints = (
     mobStart => [ 16011 ],
     mobContinue => [ 16011 ],
     mobEnd => [ 16011 ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "sapphiron" => {
     long => "Sapphiron",
     mobStart => [ 15989 ],
-    mobContinue => [ 15989 ],
+    mobContinue => [ 15989, 16474 ],
     mobEnd => [ 15989 ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "kelthuzad" => {
@@ -596,7 +605,27 @@ my %fingerprints = (
     mobStart => [ 15990, 16427, 16428, 16429 ],
     mobContinue => [ 15990, 16427, 16428, 16429, 16441 ],
     mobEnd => [ 15990 ],
-    timeout => 15,
+    timeout => 30,
+},
+
+##########################
+# SINGLE BOSS ENCOUNTERS #
+##########################
+
+"sartharion" => {
+    long => "Sartharion",
+    mobStart => [ 28860 ],
+    mobContinue => [ 28860 ],
+    mobEnd => [ 28860 ],
+    timeout => 30,
+},
+
+"archavon" => {
+    long => "Archavon",
+    mobStart => [ 31125 ],
+    mobContinue => [ 31125 ],
+    mobEnd => [ 31125 ],
+    timeout => 30,
 },
 
 );
@@ -627,12 +656,48 @@ sub new {
     delete $params{scratch};
     $params{splits} = [];
     
+    # Lockout after kills
+    $params{lockout} = {};
+    
     # Callback args:
     # at split start:   ( $short, $start )
     # at split end:     ( $short, $start, $long, $kill, $end )
     $params{callback} ||= undef;
     
     bless \%params, $class;
+}
+
+sub actions {
+    map( { $_ => \&process } qw(SWING_DAMAGE SWING_MISSED RANGE_DAMAGE RANGE_MISSED SPELL_PERIODIC_DAMAGE SPELL_DAMAGE SPELL_MISSED UNIT_DIED) ),
+    map( { $_ => \&process_timeout_check } qw(SPELL_AURA_APPLIED SPELL_AURA_REMOVED SPELL_CAST_SUCCESS) ),
+}
+
+sub process_timeout_check {
+    my ($self, $entry) = @_;
+    
+    # Check for timeout.
+    my $vboss;
+    if( ( $vboss = $self->{scratch} ) && $entry->{t} > $vboss->{end} + $vboss->{timeout} ) {
+        # This fingerprint timed out without ending.
+        # Record it as an attempt.
+        
+        $self->_bend(
+            $vboss->{short},
+            $vboss->{start},
+            $fingerprints{ $vboss->{short} }{long},
+            0,
+            $vboss->{end},
+        );
+        
+        # Reset the fingerprint.
+        delete $self->{scratch};
+        
+        # 1 means timeout.
+        return 1;
+    }
+    
+    # 0 means no timeout.
+    return 0;
 }
 
 sub process {
@@ -648,21 +713,7 @@ sub process {
     if( my $vboss = $self->{scratch} ) {
         my $kboss = $vboss->{short};
         
-        if( $entry->{t} > $vboss->{end} + $vboss->{timeout} ) {
-            # This fingerprint timed out without ending.
-            # Record it as an attempt.
-            
-            $self->_bend(
-                $kboss,
-                $vboss->{start},
-                $fingerprints{$kboss}{long},
-                0,
-                $vboss->{end},
-            );
-            
-            # Reset the fingerprint.
-            delete $self->{scratch};
-        } elsif( ($fcontinue{$actor_id} && $fcontinue{$actor_id} eq $kboss) || ($fcontinue{$target_id} && $fcontinue{$target_id} eq $kboss) ) {
+        if( ! $self->process_timeout_check( $entry ) && ( ($fcontinue{$actor_id} && $fcontinue{$actor_id} eq $kboss) || ($fcontinue{$target_id} && $fcontinue{$target_id} eq $kboss) ) ) {
             # We should continue this encounter.
             $vboss->{end} = $entry->{t};
             
@@ -686,7 +737,7 @@ sub process {
         }
     } else {
         # See if we should start a new encounter.
-        if( $fstart{$actor_id} && ( $entry->{action} eq "SPELL_DAMAGE" || $entry->{action} eq "SWING_DAMAGE" || $entry->{action} eq "SPELL_MISS" || $entry->{action} eq "SWING_MISS" || $entry->{action} eq "SPELL_DAMAGE_PERIODIC" ) ) {
+        if( $fstart{$actor_id} && ( !$self->{lockout}{ $fstart{$actor_id} } || $self->{lockout}{ $fstart{$actor_id} } < $entry->{t} - 300 ) ) {
             # The actor should start a new encounter.
             $self->{scratch} = {
                 short => $fstart{$actor_id},
@@ -696,7 +747,7 @@ sub process {
             };
             
             $self->_bstart( $fstart{$actor_id}, $entry->{t} );
-        } if( $fstart{$target_id} && ( $entry->{action} eq "SPELL_DAMAGE" || $entry->{action} eq "SWING_DAMAGE" || $entry->{action} eq "SPELL_MISS" || $entry->{action} eq "SWING_MISS" || $entry->{action} eq "SPELL_DAMAGE_PERIODIC" ) ) {
+        } if( $fstart{$target_id} && ( !$self->{lockout}{ $fstart{$target_id} } || $self->{lockout}{ $fstart{$target_id} } < $entry->{t} - LOCKOUT_TIME ) ) {
             # The target should start a new encounter.
             $self->{scratch} = {
                 short => $fstart{$target_id},
@@ -723,6 +774,9 @@ sub _bstart {
 sub _bend {
     my ( $self, $short, $start, $long, $kill, $end ) = @_;
     
+    # Record lockout time.
+    $self->{lockout}{$short} = $end if $kill;
+    
     push @{$self->{splits}}, {
         short => $short,
         long => $long,
@@ -739,6 +793,11 @@ sub _bend {
         $kill,
         $end,
     ) if( $self->{callback} );
+}
+
+sub name {
+    my $boss = pop;
+    return $boss && $fingerprints{$boss} && $fingerprints{$boss}{long};
 }
 
 sub finish {

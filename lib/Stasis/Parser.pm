@@ -1189,7 +1189,7 @@ sub toString {
     my $target = $actor_callback ? $actor_callback->( $entry->{target} ) : ($entry->{target_name} || "Environment");
     my $spell = $spell_callback ? $spell_callback->( $entry->{extra}{spellid} ) : ($entry->{extra}{spellname});
     my $extraspell = $spell_callback ? $spell_callback->( $entry->{extra}{extraspellid} ) : ($entry->{extra}{extraspellname});
-    my $text;
+    my $text = "";
     
     if( $entry->{action} eq "SWING_DAMAGE" ) {
         $text = sprintf "[%s] %s [%s] %d",
@@ -1209,8 +1209,9 @@ sub toString {
             $target,
             lc( $entry->{extra}{misstype} );
     } elsif( $entry->{action} eq "RANGE_DAMAGE" ) {
-        $text = sprintf "[%s] %s [%s] %d",
+        $text = sprintf "[%s] %s %s [%s] %d",
             $actor,
+            $spell,
             $entry->{extra}{critical} ? "crit" : "hit",
             $target,
             $entry->{extra}{amount};
@@ -1220,6 +1221,12 @@ sub toString {
         $text .= sprintf " (%d absorbed)", $entry->{extra}{absorbed} if $entry->{extra}{absorbed};
         $text .= " (crushing)" if $entry->{extra}{crushing};
         $text .= " (glancing)" if $entry->{extra}{glancing};
+    } elsif( $entry->{action} eq "RANGE_MISSED" ) {
+        $text = sprintf "[%s] %s [%s] %s",
+            $actor,
+            $spell,
+            $target,
+            lc( $entry->{extra}{misstype} );
     } elsif( $entry->{action} eq "SPELL_DAMAGE" ) {
         $text = sprintf "[%s] %s %s [%s] %d",
             $actor,
@@ -1257,7 +1264,7 @@ sub toString {
             $spell,
             $target,
             $entry->{extra}{amount},
-            $entry->{extra}{powertype};
+            $self->_powerName( $entry->{extra}{powertype} );
     } elsif( $entry->{action} eq "SPELL_PERIODIC_MISSED" ) {
         $text = sprintf "[%s] %s [%s] %s",
             $actor,
@@ -1293,35 +1300,35 @@ sub toString {
             $spell,
             $target,
             $entry->{extra}{amount},
-            $entry->{extra}{powertype};
+            $self->_powerName( $entry->{extra}{powertype} );
     } elsif( $entry->{action} eq "SPELL_PERIODIC_LEECH" ) {
         $text = sprintf "[%s] %s leech [%s] %d %s",
             $actor,
             $spell,
             $target,
             $entry->{extra}{amount},
-            $entry->{extra}{powertype};
+            $self->_powerName( $entry->{extra}{powertype} );
     } elsif( $entry->{action} eq "SPELL_PERIODIC_ENERGIZE" ) {
         $text = sprintf "[%s] %s energize [%s] %d %s",
             $actor,
             $spell,
             $target,
             $entry->{extra}{amount},
-            $entry->{extra}{powertype};
+            $self->_powerName( $entry->{extra}{powertype} );
     } elsif( $entry->{action} eq "SPELL_DRAIN" ) {
         $text = sprintf "[%s] %s drain [%s] %d %s",
             $actor,
             $spell,
             $target,
             $entry->{extra}{amount},
-            $entry->{extra}{powertype};
+            $self->_powerName( $entry->{extra}{powertype} );
     } elsif( $entry->{action} eq "SPELL_LEECH" ) {
         $text = sprintf "[%s] %s leech [%s] %d %s",
             $actor,
             $spell,
             $target,
             $entry->{extra}{amount},
-            $entry->{extra}{powertype};
+            $self->_powerName( $entry->{extra}{powertype} );
     } elsif( $entry->{action} eq "SPELL_INTERRUPT" ) {
         $text = sprintf "[%s] %sinterrupt [%s] %s",
             $actor,

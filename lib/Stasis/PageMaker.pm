@@ -167,12 +167,12 @@ sub tableRow {
         
         if( !$firstflag && $params{type} eq "master" ) {
             # This is the first one (flag hasn't been set yet)
-            $result .= sprintf "<td%s>(<a class=\"toggle\" id=\"as%s\" href=\"javascript:toggleTableSection(%s);\">+</a>) %s</td>", $align, $params{name}, $params{name}, $params{data}{$col} =~ /^\d+$/ ? $self->_commify($params{data}{$col}) : $params{data}{$col};
+            $result .= sprintf "<td%s>(<a class=\"toggle\" id=\"as%s\" href=\"javascript:toggleTableSection(%s%s);\">+</a>) %s</td>", $align, $params{name}, $params{name}, $params{url} ? ",'" . $params{url} . "'" : "", $params{data}{$col} =~ /^\d+$/ ? $self->_commify($params{data}{$col}) : $params{data}{$col};
         } else {
             if( $params{data}{$col} ) {
                 $result .= "<td${align}>" . ($params{data}{$col} =~ /^\d+$/ ? $self->_commify($params{data}{$col}) : $params{data}{$col}) . "</td>";
             } else {
-                $result .= "<td${align}>&nbsp;</td>";
+                $result .= "<td${align}></td>";
             }
         }
         
@@ -231,6 +231,9 @@ sub pageHeader {
     # Reset table row ID
     $self->{id} = 0;
     
+    # Reset tip ID
+    $self->{tid} = 0;
+    
     #my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime( $start );
     #my $starttxt = sprintf "%4d-%02d-%02d %02d:%02d:%02d", $year + 1900, $mon + 1, $mday, $hour, $min, $sec;
     my $starttxt = asctime localtime $start;
@@ -243,9 +246,10 @@ sub pageHeader {
 <script type="text/javascript" src="../extras/sws.js"></script>
 
 <!-- YUI -->
-<link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/2.5.2/build/container/assets/container.css">
-<script type="text/javascript" src="http://yui.yahooapis.com/2.5.2/build/yahoo-dom-event/yahoo-dom-event.js"></script>
-<script type="text/javascript" src="http://yui.yahooapis.com/2.5.2/build/container/container-min.js"></script>
+<link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/2.5.2/build/container/assets/skins/sam/container.css"> 
+<script type="text/javascript" src="http://yui.yahooapis.com/2.5.2/build/yahoo-dom-event/yahoo-dom-event.js"></script> 
+<script type="text/javascript" src="http://yui.yahooapis.com/2.5.2/build/connection/connection-min.js"></script> 
+<script type="text/javascript" src="http://yui.yahooapis.com/2.5.2/build/container/container-min.js"></script> 
 
 </head>
 <body class="yui-skin-sam" onLoad="hashTab();">

@@ -21,32 +21,15 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package Stasis::Extension::ExtraAttack;
+package Stasis::EventListener;
 
 use strict;
 use warnings;
-use Stasis::Extension;
 
-our @ISA = "Stasis::Extension";
-
-sub start {
-    my $self = shift;
-    $self->{actors} = {};
-}
-
+# Subclasses may implement this function, which should return a hash of
+# actions to coderefs.
 sub actions {
-    map { $_ => \&process } qw(SPELL_EXTRA_ATTACKS);
-}
-
-sub process {
-    my ($self, $entry) = @_;
-    
-    if( $entry->{action} eq "SPELL_EXTRA_ATTACKS" ) {
-        # Store this in the same format as power gains (Power.pm)
-        # Except there will be no "type" key
-        $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} }{amount} += $entry->{extra}{amount};
-        $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} }{count} += 1;
-    }
+    return ();
 }
 
 1;

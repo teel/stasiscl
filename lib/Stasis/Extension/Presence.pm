@@ -26,27 +26,44 @@ package Stasis::Extension::Presence;
 use strict;
 use warnings;
 use Stasis::Extension;
+use Stasis::Parser;
 
 our @ISA = "Stasis::Extension";
 
 sub start {
     my $self = shift;
     $self->{actors} = {};
+    $self->{start} = {};
+    $self->{end} = {};
     delete $self->{total};
 }
 
+sub actions {
+    map { $_ => \&process } keys %Stasis::Parser::action_map;
+}
+
 sub process {
-    my ($self, $entry) = @_;
-    
-    if( $entry->{actor} ) {
-        my ($start, $end) = $self->{actors}{ $entry->{actor} } && unpack "dd", $self->{actors}{ $entry->{actor} };
-        $self->{actors}{ $entry->{actor} } = pack "dd", $start||$entry->{t}, $entry->{t};
+    my $guid;
+    if( $guid = $_[1]->{actor} ) {
+        $_[0]->{start}{ $guid } ||= $_[1]->{t};
+        $_[0]->{end}{ $guid } = $_[1]->{t};
     }
     
-    if( $entry->{target} ) {
-        my ($start, $end) = $self->{actors}{ $entry->{target} } && unpack "dd", $self->{actors}{ $entry->{target} };
-        $self->{actors}{ $entry->{target} } = pack "dd", $start||$entry->{t}, $entry->{t};
+    if( $guid = $_[1]->{target} ) {
+        $_[0]->{start}{ $guid } ||= $_[1]->{t};
+        $_[0]->{end}{ $guid } = $_[1]->{t};
     }
+}
+
+sub finish {
+    my ($self) = @_;
+    
+    foreach (keys %{$self->{start}}) {
+        $self->{actors}{$_} = pack "dd", $self->{start}{$_}, $self->{end}{$_};
+    }
+    
+    delete $self->{start};
+    delete $self->{end};
 }
 
 # Returns (start, end, total) for the raid or for an actor

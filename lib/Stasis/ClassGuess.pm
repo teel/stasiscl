@@ -329,15 +329,250 @@ sub new {
     bless \%params, $class;
 }
 
-sub process {
-    return $_[0]->{version} == 1 ? process1(@_) : process2(@_);
+sub actions {
+    map( { $_ => \&process_misc } qw(SPELL_DAMAGE SPELL_PERIODIC_DAMAGE SPELL_HEAL SPELL_PERIODIC_HEAL SPELL_CAST_SUCCESS) ),
+    
+    SPELL_SUMMON => sub {
+        my ($self, $entry) = @_;
+        
+        if( !$self->{scratch2}{class}{ $entry->{target} } ) {
+            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
+
+            # Follow the pet chain.
+            my $owner = $entry->{actor};
+            while( $self->{scratch2}{class}{ $owner } && $self->{scratch2}{class}{ $owner } eq "Pet" ) {
+                # Find the pet's owner.
+                foreach my $kpet (keys %{$self->{scratch2}{pets}}) {
+                    if( $self->{scratch2}{pets}{ $kpet }{ $owner } ) {
+                        $owner = $kpet;
+                        last;
+                    }
+                }
+            }
+
+            $self->{scratch2}{pets}{ $owner }{ $entry->{target} } ++;
+
+            # Shaman elemental totems (Fire and Earth respectively)
+            if( $entry->{extra}{spellid} == 2894 || $entry->{extra}{spellid} == 2062 ) {
+                # Associate totem with shaman by SPELL_SUMMON event.
+                $self->{scratch2}{totems}{ $entry->{target} } = $entry->{actor};
+            }
+        }
+    },
+
+    SPELL_PERIODIC_ENERGIZE => sub {
+        my ($self, $entry) = @_;
+        return unless $entry->{actor} && $entry->{target};
+        
+        # Feed Pet Effect
+        if( !$self->{scratch2}{class}{ $entry->{target} } && $entry->{extra}{spellid} == 1539 ) {
+            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
+            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+        }
+    },
+    
+    SPELL_ENERGIZE => sub {
+        my ($self, $entry) = @_;
+        return unless $entry->{actor} && $entry->{target};
+        
+        if( !$self->{scratch2}{class}{ $entry->{target} } ) {
+            # Go for the Throat
+            if( $entry->{extra}{spellid} == 34953 ) {
+                $self->{scratch2}{class}{ $entry->{target} } = "Pet";
+                $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+            }
+            
+            # Mana Feed
+            elsif( $entry->{extra}{spellid} == 32553 ) {
+                $self->{scratch2}{class}{ $entry->{target} } = "Pet";
+                $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+            }
+            
+            # Soul Leech Mana
+            elsif( $entry->{action} eq "SPELL_ENERGIZE" && $entry->{extra}{spellid} == 54607 ) {
+                $self->{scratch2}{class}{ $entry->{target} } = "Pet";
+                $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+            }
+        }
+
+    },
+    
+    SPELL_LEECH => sub {
+        my ($self, $entry) = @_;
+        return unless $entry->{actor} && $entry->{target};
+        
+        # Dark Pact
+        if( !$self->{scratch2}{class}{ $entry->{target} } && $entry->{extra}{spellid} == 27265 ) {
+            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
+            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+        }
+    },
+    
+    SPELL_INSTAKILL => sub {
+        my ($self, $entry) = @_;
+        
+        # Dark Pact
+        if( !$self->{scratch2}{class}{ $entry->{target} } && $entry->{extra}{spellid} == 18788 ) {
+            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
+            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+        }
+    },
+    
+    DAMAGE_SPLIT => sub {
+        my ($self, $entry) = @_;
+        
+        # Soul Link
+        if( !$self->{scratch2}{class}{ $entry->{target} } && $entry->{extra}{spellid} == 25288 ) {
+            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
+            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+        }
+    }
+}
+
+sub process_misc {
+    my ( $self, $entry ) = @_;
+    
+    # Skip if actor and target are not set.
+    return unless $entry->{actor} && $entry->{target};
+    
+    # Think about classifying the actor.
+    if( !$self->{scratch2}{class}{ $entry->{actor} } ) {
+        # Get the type.
+        my ($atype, $anpc, $aspawn ) = Stasis::MobUtil::splitguid( $entry->{actor} );
+        
+        # See if this actor is a player.
+        if( ($atype & 0x00F0) == 0 ) {
+            my $spell = Stasis::SpellUtil->spell( $entry->{extra}{spellid} );
+            if( $spell && $spell->{class} ) {
+                $self->{scratch2}{class}{ $entry->{actor} } = $spell->{class};
+            }
+        }
+        
+        # See if this actor is a pet. Make sure it wasn't identified in the previous block, though.
+        if( !$self->{scratch2}{class}{ $entry->{actor} } && $entry->{target} ne $entry->{actor} ) {
+            if( $entry->{action} eq "SPELL_PERIODIC_HEAL" && $entry->{extra}{spellid} == 24529 ) {
+                # Spirit Bond
+                $self->{scratch2}{class}{ $entry->{actor} } = "Pet";
+                $self->{scratch2}{pets}{ $entry->{target} }{ $entry->{actor} } ++;
+            }
+            
+            # Greater Fire and Earth elementals (pre-2.4.3 code)
+            if( $anpc == 15438 || $anpc == 15352 ) {
+                while( my ($totemid, $shamanid) = each(%{$self->{scratch2}{totems}}) ) {
+                    # Associate totem with this elemental by consecutive spawncount.
+                    my @totem = Stasis::MobUtil::splitguid( $totemid );
+                    my @elemental = Stasis::MobUtil::splitguid( $entry->{actor} );
+                    if( $totem[2] + 1 == $elemental[2] ) {
+                        $self->{scratch2}{class}{ $entry->{actor} } = "Pet";
+                        $self->{scratch2}{pets}{ $shamanid }{ $entry->{actor} } ++;
+                    }
+                }
+            }
+        }
+    }
+    
+    # Check for pet-looking things.
+    if( !$self->{scratch2}{class}{ $entry->{target} } ) {
+        if( $entry->{extra}{spellid} == 27046 && $entry->{action} eq "SPELL_PERIODIC_HEAL" ) {
+            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
+            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
+        }
+    }
 }
 
 sub finish {
-    return $_[0]->{version} == 1 ? finish1(@_) : finish2(@_);
+    my ( $self ) = @_;
+    
+    # We will eventually return this list of raid members.
+    # Keys will be raid member IDs and values will be two element hashes
+    # Each hash will have at least two keys: "class" (a string) and "pets" (an array of pet IDs)
+    my %raid;
+    
+    while( my ($actorid, $actorclass) = each (%{$self->{scratch2}{class}})) {
+        next if $actorclass eq "Pet";
+        
+        $raid{$actorid} = {
+            class => $actorclass,
+            pets => [],
+        };
+    }
+    
+    while( my ($actorid, $pethash) = each (%{$self->{scratch2}{pets}})) {
+        if( exists $raid{$actorid} ) {
+            push @{$raid{$actorid}{pets}}, keys %$pethash;
+            
+            foreach my $petid (keys %$pethash) {
+                $raid{$petid}{class} = "Pet";
+            }
+        }
+    }
+    
+    return %raid;
+}
+
+sub finish1 {
+    #####################
+    # OLD CODE - UNUSED #
+    #####################
+
+    my ( $self ) = @_;
+    
+    # We will eventually return this list of raid members.
+    # Keys will be raid member IDs and values will be two element hashes
+    # Each hash will have at least two keys: "class" (a string) and "pets" (an array of pet IDs)
+    my %raid;
+    
+    # Prepare the final results for each actor.
+    while( my ($aname, $adata) = each(%{$self->{scratch1}}) ) {
+        # Skip this bit if the actor has no guessed classes or proper ID.
+        next unless $adata->{class} && $aname;
+        
+        # Check if we should assign a class.
+        my %matches;
+        
+        foreach my $mclass (keys %{ $adata->{class} }) {
+            $matches{$mclass} = 0;
+            $matches{$mclass} += scalar keys %{$adata->{class}{$mclass}{damage}} if $adata->{class}{$mclass}{damage};
+            $matches{$mclass} += scalar keys %{$adata->{class}{$mclass}{healing}} if $adata->{class}{$mclass}{healing};
+            $matches{$mclass} += scalar keys %{$adata->{class}{$mclass}{casts}} if $adata->{class}{$mclass}{casts};
+            $matches{$mclass} += scalar keys %{$adata->{class}{$mclass}{auras}} if $adata->{class}{$mclass}{auras};
+        }
+        
+        # Sort.
+        my @class_names = sort { $matches{$b} <=> $matches{$a} } keys %matches;
+        my @class_numbers = map { $matches{$_} } @class_names;
+        
+        # Make a decision.
+        if( @class_names == 1 && $class_numbers[0] > 1 ) {
+            # If we only guessed one class, and it had two or more hits, go with it.
+            $raid{ $aname }{class} = $class_names[0];
+        } elsif( @class_names > 1 && $class_numbers[0] > 3 ) {
+            # If we matched more than one class, still use the best match if it had four or more hits.
+            $raid{ $aname }{class} = $class_names[0];
+        }
+        
+        # Copy over pets if we guessed a class.
+        if( exists $raid{ $aname } && exists $raid{ $aname }{class} ) {
+            $adata->{pets} ||= {};
+            
+            my @pets = keys %{$adata->{pets}};
+            $raid{ $aname }{pets} = \@pets;
+            
+            # Also mark each of those pets as a "Pet"
+            foreach (@pets) {
+                $raid{$_}{class} = "Pet";
+            }
+        }
+    }
+    
+    return %raid;
 }
 
 sub process1 {
+    #####################
+    # OLD CODE - UNUSED #
+    #####################
+    
     my ( $self, $entry ) = @_;
     
     # Skip entries with no action.
@@ -453,210 +688,6 @@ sub process1 {
     if( $entry->{action} eq "SPELL_ENERGIZE" && $entry->{extra}{spellname} eq "Life Tap" ) {
         $self->{scratch1}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
     }
-}
-
-sub process2 {
-    my ( $self, $entry ) = @_;
-    
-    # Skip if actor and target are not set.
-    return unless $entry->{actor} && $entry->{target};
-    
-    # Think about classifying the actor.
-    if( !$self->{scratch2}{class}{ $entry->{actor} } ) {
-        # Get the type.
-        my ($atype, $anpc, $aspawn ) = Stasis::MobUtil::splitguid( $entry->{actor} );
-        
-        # See if this actor is a player.
-        if( ($atype & 0x00F0) == 0 && ($entry->{action} eq "SPELL_MISS" || $entry->{action} eq "SPELL_DAMAGE" || $entry->{action} eq "SPELL_PERIODIC_MISS" || $entry->{action} eq "SPELL_PERIODIC_DAMAGE" || $entry->{action} eq "SPELL_HEAL" || $entry->{action} eq "SPELL_PERIODIC_HEAL" || $entry->{action} eq "SPELL_CAST_SUCCESS") )
-        {
-            my $spell = Stasis::SpellUtil->spell( $entry->{extra}{spellid} );
-            if( $spell && $spell->{class} ) {
-                $self->{scratch2}{class}{ $entry->{actor} } = $spell->{class};
-            }
-        }
-        
-        # See if this actor is a pet. Make sure it wasn't identified in the previous block, though.
-        if( !$self->{scratch2}{class}{ $entry->{actor} } && $entry->{target} ne $entry->{actor} ) {
-            if( $entry->{action} eq "SPELL_PERIODIC_HEAL" && $entry->{extra}{spellid} == 24529 ) {
-                # Spirit Bond
-                $self->{scratch2}{class}{ $entry->{actor} } = "Pet";
-                $self->{scratch2}{pets}{ $entry->{target} }{ $entry->{actor} } ++;
-            }
-            
-            # Greater Fire and Earth elementals (pre-2.4.3 code)
-            if( $anpc == 15438 || $anpc == 15352 ) {
-                while( my ($totemid, $shamanid) = each(%{$self->{scratch2}{totems}}) ) {
-                    # Associate totem with this elemental by consecutive spawncount.
-                    my @totem = Stasis::MobUtil::splitguid( $totemid );
-                    my @elemental = Stasis::MobUtil::splitguid( $entry->{actor} );
-                    if( $totem[2] + 1 == $elemental[2] ) {
-                        $self->{scratch2}{class}{ $entry->{actor} } = "Pet";
-                        $self->{scratch2}{pets}{ $shamanid }{ $entry->{actor} } ++;
-                    }
-                }
-            }
-        }
-    }
-    
-    # Think about classifying the target as a pet.
-    if( !$self->{scratch2}{class}{ $entry->{target} } && $entry->{target} ne $entry->{actor} ) {
-        # Summons
-        if( $entry->{action} eq "SPELL_SUMMON" ) {
-            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
-            
-            # Follow the pet chain.
-            my $owner = $entry->{actor};
-            while( $self->{scratch2}{class}{ $owner } && $self->{scratch2}{class}{ $owner } eq "Pet" ) {
-                # Find the pet's owner.
-                foreach my $kpet (keys %{$self->{scratch2}{pets}}) {
-                    if( $self->{scratch2}{pets}{ $kpet }{ $owner } ) {
-                        $owner = $kpet;
-                        last;
-                    }
-                }
-            }
-            
-            $self->{scratch2}{pets}{ $owner }{ $entry->{target} } ++;
-
-            # Shaman elemental totems (Fire and Earth respectively)
-            if( $entry->{extra}{spellid} == 2894 || $entry->{extra}{spellid} == 2062 ) {
-                # Associate totem with shaman by SPELL_SUMMON event.
-                $self->{scratch2}{totems}{ $entry->{target} } = $entry->{actor};
-            }
-        }
-        
-        # Mend Pet
-        elsif( $entry->{action} eq "SPELL_PERIODIC_HEAL" && $entry->{extra}{spellid} == 27046 ) {
-            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
-            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
-        }
-
-        # Feed Pet Effect
-        elsif( $entry->{action} eq "SPELL_PERIODIC_ENERGIZE" && $entry->{extra}{spellid} == 1539 ) {
-            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
-            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
-        }
-
-        # Go for the Throat
-        elsif( $entry->{action} eq "SPELL_ENERGIZE" && $entry->{extra}{spellid} == 34953 ) {
-            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
-            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
-        }
-
-        # Dark Pact
-        elsif( $entry->{action} eq "SPELL_LEECH" && $entry->{extra}{spellid} == 27265 ) {
-            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
-            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
-        }
-
-        # Demonic Sacrifice
-        elsif( $entry->{action} eq "SPELL_INSTAKILL" && $entry->{extra}{spellid} == 18788 ) {
-            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
-            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
-        }
-
-        # Soul Link
-        elsif( $entry->{action} eq "DAMAGE_SPLIT" && $entry->{extra}{spellid} == 25228 ) {
-            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
-            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
-        }
-
-        # Mana Feed
-        elsif( $entry->{action} eq "SPELL_ENERGIZE" && $entry->{extra}{spellid} == 32553 ) {
-            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
-            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
-        }
-        
-        # Soul Leech Mana
-        elsif( $entry->{action} eq "SPELL_ENERGIZE" && $entry->{extra}{spellid} == 54607 ) {
-            $self->{scratch2}{class}{ $entry->{target} } = "Pet";
-            $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
-        }
-    }
-}
-
-sub finish1 {
-    my ( $self ) = @_;
-    
-    # We will eventually return this list of raid members.
-    # Keys will be raid member IDs and values will be two element hashes
-    # Each hash will have at least two keys: "class" (a string) and "pets" (an array of pet IDs)
-    my %raid;
-    
-    # Prepare the final results for each actor.
-    while( my ($aname, $adata) = each(%{$self->{scratch1}}) ) {
-        # Skip this bit if the actor has no guessed classes or proper ID.
-        next unless $adata->{class} && $aname;
-        
-        # Check if we should assign a class.
-        my %matches;
-        
-        foreach my $mclass (keys %{ $adata->{class} }) {
-            $matches{$mclass} = 0;
-            $matches{$mclass} += scalar keys %{$adata->{class}{$mclass}{damage}} if $adata->{class}{$mclass}{damage};
-            $matches{$mclass} += scalar keys %{$adata->{class}{$mclass}{healing}} if $adata->{class}{$mclass}{healing};
-            $matches{$mclass} += scalar keys %{$adata->{class}{$mclass}{casts}} if $adata->{class}{$mclass}{casts};
-            $matches{$mclass} += scalar keys %{$adata->{class}{$mclass}{auras}} if $adata->{class}{$mclass}{auras};
-        }
-        
-        # Sort.
-        my @class_names = sort { $matches{$b} <=> $matches{$a} } keys %matches;
-        my @class_numbers = map { $matches{$_} } @class_names;
-        
-        # Make a decision.
-        if( @class_names == 1 && $class_numbers[0] > 1 ) {
-            # If we only guessed one class, and it had two or more hits, go with it.
-            $raid{ $aname }{class} = $class_names[0];
-        } elsif( @class_names > 1 && $class_numbers[0] > 3 ) {
-            # If we matched more than one class, still use the best match if it had four or more hits.
-            $raid{ $aname }{class} = $class_names[0];
-        }
-        
-        # Copy over pets if we guessed a class.
-        if( exists $raid{ $aname } && exists $raid{ $aname }{class} ) {
-            $adata->{pets} ||= {};
-            
-            my @pets = keys %{$adata->{pets}};
-            $raid{ $aname }{pets} = \@pets;
-            
-            # Also mark each of those pets as a "Pet"
-            foreach (@pets) {
-                $raid{$_}{class} = "Pet";
-            }
-        }
-    }
-    
-    return %raid;
-}
-
-sub finish2 {
-    my ( $self ) = @_;
-    
-    # We will eventually return this list of raid members.
-    # Keys will be raid member IDs and values will be two element hashes
-    # Each hash will have at least two keys: "class" (a string) and "pets" (an array of pet IDs)
-    my %raid;
-    
-    while( my ($actorid, $actorclass) = each (%{$self->{scratch2}{class}})) {
-        next if $actorclass eq "Pet";
-        
-        $raid{$actorid} = {
-            class => $actorclass,
-            pets => [],
-        };
-    }
-    
-    while( my ($actorid, $pethash) = each (%{$self->{scratch2}{pets}})) {
-        if( exists $raid{$actorid} ) {
-            push @{$raid{$actorid}{pets}}, keys %$pethash;
-            
-            foreach my $petid (keys %$pethash) {
-                $raid{$petid}{class} = "Pet";
-            }
-        }
-    }
-    
-    return %raid;
 }
 
 1;

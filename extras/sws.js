@@ -1,42 +1,107 @@
-function toggleTableSection(secName) {
-    var number = 0;
-    var text = '?';
+function toggleTableSection(secName, url) {
+    // 'url' is for death reports
+    // it would work with anything else but it isn't used for that
     
     var trs = document.getElementsByTagName('tr');
     for( var x = 0 ; x < trs.length ; x ++ ) {
         att = trs[x].getAttribute('name');
-        if( att == 'section_' + secName || att == 's' + secName ) {
-            if( trs[x].className == 's' ) {
-                if( trs[x].style.display == 'none' || !trs[x].style.display ) {
-                    try {
-            			trs[x].style.display = 'table-row';
-            		} catch (e) {
-            			// for IE
-            			trs[x].style.display = 'block';
-            		}
+        if( (trs[x].className == 's' || trs[x].className == 'sectionSlave') && att == 's' + secName ) {
+            if( trs[x].style.display == 'none' || (!trs[x].style.display && trs[x].className == 's') ) {
+                // Making things visible.
+                
+                if( url && ! trs[x].cells[0].innerHTML ) {
+                    var success = function(o) {
+                        if( o.responseText !== undefined ) {
+                            var autopsy = eval('(' + o.responseText + ')');
+
+                            var xi = 0;
+                            var trs = document.getElementsByTagName('tr');
+                            for( var x = 0 ; x < trs.length ; x ++ ) {
+                                att = trs[x].getAttribute('name');
+                                if( att == 's' + secName ) {
+                                    var tmin = Math.floor(autopsy[xi].t / 60);
+                                    var tsec = Math.floor(autopsy[xi].t % 60);
+                                    var tms  = Math.floor(( autopsy[xi].t - Math.floor( autopsy[xi].t ) ) * 1000);
+                                    if( tms < 10 ) {
+                                        tms = "00" + tms;
+                                    } else if( tms < 100 ) {
+                                        tms = "0" + tms;
+                                    }
+
+                                    trs[x].cells[0].innerHTML = ( tmin < 10 ? '0' + tmin.toString() : tmin.toString() ) + ":" + ( tsec < 10 ? '0' + tsec.toString() : tsec.toString() ) + "." + tms;
+
+                                    if( autopsy[xi].hp != "0" ) {
+                                        trs[x].cells[ trs[x].cells.length - 2 ].innerHTML = autopsy[xi].hp;
+                                    } else {
+                                        trs[x].cells[ trs[x].cells.length - 2 ].innerHTML = "";
+                                    }
+
+                                    trs[x].cells[ trs[x].cells.length - 1 ].innerHTML = autopsy[xi++].str;
+                                }
+                            }
+                            
+                            showTableSection(secName);
+                        }
+                    };
+
+                    var failure = function(o) { };
+
+                    var callback = {
+                        success: success,
+                        failure: failure,
+                        argument: {}
+                    };
+
+                    var request = YAHOO.util.Connect.asyncRequest('GET', url, callback);
                 } else {
-                    trs[x].style.display = 'none';
+                    showTableSection(secName);
                 }
+                
+                return;
             } else {
-                trs[x].style.display = trs[x].style.display == 'none' ? '' : 'none';
+                // Making things invisible.
+                hideTableSection(secName);
+                return;
             }
-            
-            text = trs[x].style.display == 'none' ? '+' : '-';
-            number ++;
+        }
+    }
+}
+
+function showTableSection(secName) {
+    var trs = document.getElementsByTagName('tr');
+    for( var x = 0 ; x < trs.length ; x ++ ) {
+        att = trs[x].getAttribute('name');
+        if( (trs[x].className == 's' || trs[x].className == 'sectionSlave') && att == 's' + secName ) {
+            // Making things visible.
+            try {
+    			trs[x].style.display = 'table-row';
+    		} catch (e) {
+    			// for IE
+    			trs[x].style.display = 'block';
+    		}
         }
     }
     
-    if( number > 0 ) {
-        a1 = document.getElementById('a_section_'+secName);
-        a2 = document.getElementById('as'+secName);
-        
-        if( a1 ) {
-            a1.innerHTML = text;
+    a = document.getElementById('as'+secName);
+    
+    if( a ) {
+        a.innerHTML = '-';
+    }
+}
+
+function hideTableSection(secName) {
+    var trs = document.getElementsByTagName('tr');
+    for( var x = 0 ; x < trs.length ; x ++ ) {
+        att = trs[x].getAttribute('name');
+        if( (trs[x].className == 's' || trs[x].className == 'sectionSlave') && att == 's' + secName ) {
+            trs[x].style.display = 'none';
         }
-        
-        if( a2 ) {
-            a2.innerHTML = text;
-        }
+    }
+    
+    a = document.getElementById('as'+secName);
+    
+    if( a ) {
+        a.innerHTML = '+';
     }
 }
 
@@ -80,10 +145,6 @@ function initTabs() {
     }
     
     if( tips.length > 0 ) {
-        var myTooltip = new YAHOO.widget.Tooltip( "swstips", { context: tips } );
+        var myTooltip = new YAHOO.widget.Tooltip( "swstips", { context: tips, showdelay: 0, hidedelay: 0 } );
     }
-}
-
-function loadclip(url, id) {
-    
 }

@@ -31,52 +31,42 @@ use Stasis::Parser;
 sub new {
     my $class = shift;
     my %exts;
-    my @handlers;
-    
-    # Initialize the handler arrays.
-    $handlers[0] = [];
-    foreach (values %Stasis::Parser::action_map) {
-        $handlers[$_] = [];
-    }
 
     foreach (@_) {
         my $ext = Stasis::Extension->factory($_);
-        my @actions = $ext->actions();
-        
-        # Assign this to %exts
         $exts{$_} = $ext;
-        
-        if( @actions ) {
-            # Only listening for certain actions.
-            foreach my $action (@actions) {
-                push @{ $handlers[ $Stasis::Parser::action_map{$action} ] }, $ext;
-            }
-        } else {
-            # Listening for all actions.
-            push @{ $handlers[0] }, $ext;
-        }
     }
     
-    bless {
-        exts => \%exts,
-        handlers => \@handlers,
-    }, $class;
+    bless \%exts, $class;
 }
 
 sub start {
-    foreach (values %{$_[0]->{exts}}) {
-        $_->start();
+    my ($self, $ed) = @_;
+    foreach my $ext (values %$self) {
+        $ext->start;
+        $ed->add($ext);
     }
 }
 
-sub process {
-    $_->process($_[1]) foreach (@{ $_[0]->{handlers}->[ $Stasis::Parser::action_map{ $_[1]->{action} } ] });
-    $_->process($_[1]) foreach (@{ $_[0]->{handlers}->[0] });
+sub suspend {
+    my ($self, $ed) = @_;
+    foreach my $ext (values %$self) {
+        $ed->remove($ext);
+    }
+}
+
+sub resume {
+    my ($self, $ed) = @_;
+    foreach my $ext (values %$self) {
+        $ed->add($ext);
+    }
 }
 
 sub finish {
-    foreach (values %{$_[0]->{exts}}) {
-        $_->finish();
+    my ($self, $ed) = @_;
+    foreach my $ext (values %$self) {
+        $ext->finish;
+        $ed->remove($ext);
     }
 }
 

@@ -21,31 +21,55 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package Stasis::Extension::ExtraAttack;
+package Stasis::EventDispatcher;
 
 use strict;
 use warnings;
-use Stasis::Extension;
+use Stasis::Parser;
 
-our @ISA = "Stasis::Extension";
-
-sub start {
-    my $self = shift;
-    $self->{actors} = {};
+sub new {
+    my $class = shift;
+    my %exts;
+    my @handlers;
+    
+    # Initialize the handler arrays.
+    $handlers[0] = [];
+    foreach (values %Stasis::Parser::action_map) {
+        $handlers[$_] = [];
+    }
+    
+    bless \@handlers, $class;
 }
 
-sub actions {
-    map { $_ => \&process } qw(SPELL_EXTRA_ATTACKS);
+# Add an EventListener
+sub add {
+    my ($self, $listener) = @_;
+    
+    # Flush it first.
+    $self->remove($listener);
+    
+    # Now add it.
+    my %actions = $listener->actions;
+    while( my ($action, $handler) = each (%actions) ) {
+        push @{ $self->[ $Stasis::Parser::action_map{$action} ] }, [ $handler, $listener ];
+    }
+}
+
+# Remove an EventListener
+sub remove {
+    my ($self, $listener) = @_;
+    
+    foreach my $action (values %Stasis::Parser::action_map) {
+        $self->[$action] = [ grep { $_->[1] != $listener } @{$self->[$action]} ];
+    }
 }
 
 sub process {
     my ($self, $entry) = @_;
     
-    if( $entry->{action} eq "SPELL_EXTRA_ATTACKS" ) {
-        # Store this in the same format as power gains (Power.pm)
-        # Except there will be no "type" key
-        $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} }{amount} += $entry->{extra}{amount};
-        $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} }{count} += 1;
+    return unless $entry->{action};
+    foreach my $caller (@{ $self->[ $Stasis::Parser::action_map{ $entry->{action} } || 0 ] }) {
+        $caller->[0]->($caller->[1], $entry);
     }
 }
 

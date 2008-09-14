@@ -27,6 +27,7 @@ use strict;
 use warnings;
 use Stasis::SpellUtil;
 use Stasis::Extension;
+use Stasis::Parser;
 
 our @ISA = "Stasis::Extension";
 
@@ -34,6 +35,10 @@ sub start {
     my $self = shift;
     $self->{actors} = {};
     $self->{spells} = {};
+}
+
+sub actions {
+    map { $_ => \&process } keys %Stasis::Parser::action_map;
 }
 
 sub process {
