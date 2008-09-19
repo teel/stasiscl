@@ -597,7 +597,7 @@ my %fingerprints = (
     mobStart => [ 15989 ],
     mobContinue => [ 15989, 16474 ],
     mobEnd => [ 15989 ],
-    timeout => 30,
+    timeout => 60,
 },
 
 "kelthuzad" => {

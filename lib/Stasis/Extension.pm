@@ -76,37 +76,28 @@ sub ext_sum {
     # Merge the rest of @_ into $sd1.
     foreach my $sd2 (@_) {
         while( my ($key, $val) = each (%$sd2) ) {
-            $sd1->{$key} ||= 0;
             
-            if( $key =~ /[Mm](in|ax)$/ ) {
-                # Minimum or maximum
-                if( lc $1 eq "in" && $val && (!$sd1->{$key} || $val < $sd1->{$key}) ) {
-                    $sd1->{$key} = $val;
-                } elsif( lc $1 eq "ax" && $val && (!$sd1->{$key} || $val > $sd1->{$key}) ) {
-                    $sd1->{$key} = $val;
+            if( $sd1->{$key} ) {
+                if( $key =~ /[Mm](in|ax)$/ ) {
+                    # Minimum or maximum
+                    if( lc $1 eq "in" && $val && $val < $sd1->{$key} ) {
+                        $sd1->{$key} = $val;
+                    } elsif( lc $1 eq "ax" && $val && $val > $sd1->{$key} ) {
+                        $sd1->{$key} = $val;
+                    }
+                } elsif( $key ne "type" ) {
+                    # Total
+                    $sd1->{$key} += $val;
                 }
             } else {
-                # Total
-                $sd1->{$key} += $val;
+                # Use the new value.
+                $sd1->{$key} = $val;
             }
         }
     }
     
     # Return $sd1.
     return $sd1;
-}
-
-# NOT object oriented.
-sub ext_copy {
-    my ($ref) = @_;
-    
-    # Shallow copy hashref $ref into $copy.
-    my %copy;
-    while( my ($key, $val) = each (%$ref) ) {
-        $copy{$key} = $val;
-    }
-    
-    return \%copy;
 }
 
 1;

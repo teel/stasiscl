@@ -1200,6 +1200,11 @@ sub toString {
         $text .= sprintf " (%d absorbed)", $entry->{extra}{absorbed} if $entry->{extra}{absorbed};
         $text .= " (crushing)" if $entry->{extra}{crushing};
         $text .= " (glancing)" if $entry->{extra}{glancing};
+        
+        # WLK log overdamage
+        if( $entry->{extra}{extraamount} ) {
+            $text .= sprintf " {%s}", $entry->{extra}{extraamount};
+        }
     } elsif( $entry->{action} eq "SWING_MISSED" ) {
         $text = sprintf "[%s] melee [%s] %s",
             $actor,
@@ -1218,6 +1223,11 @@ sub toString {
         $text .= sprintf " (%d absorbed)", $entry->{extra}{absorbed} if $entry->{extra}{absorbed};
         $text .= " (crushing)" if $entry->{extra}{crushing};
         $text .= " (glancing)" if $entry->{extra}{glancing};
+        
+        # WLK log overdamage
+        if( $entry->{extra}{extraamount} ) {
+            $text .= sprintf " {%s}", $entry->{extra}{extraamount};
+        }
     } elsif( $entry->{action} eq "RANGE_MISSED" ) {
         $text = sprintf "[%s] %s [%s] %s",
             $actor,
@@ -1237,6 +1247,11 @@ sub toString {
         $text .= sprintf " (%d absorbed)", $entry->{extra}{absorbed} if $entry->{extra}{absorbed};
         $text .= " (crushing)" if $entry->{extra}{crushing};
         $text .= " (glancing)" if $entry->{extra}{glancing};
+        
+        # WLK log overdamage
+        if( $entry->{extra}{extraamount} ) {
+            $text .= sprintf " {%s}", $entry->{extra}{extraamount};
+        }
     } elsif( $entry->{action} eq "SPELL_MISSED" ) {
         $text = sprintf "[%s] %s [%s] %s",
             $actor,
@@ -1249,7 +1264,7 @@ sub toString {
             $spell,
             $entry->{extra}{critical} ? "crit heal" : "heal",
             $target,
-            ( $entry->{extra}{amount} - ($entry->{extra}{extraamount}||0) );
+            $entry->{extra}{amount};
         
         # WLK log overhealing
         if( $entry->{extra}{extraamount} ) {
@@ -1280,12 +1295,17 @@ sub toString {
         $text .= sprintf " (%d absorbed)", $entry->{extra}{absorbed} if $entry->{extra}{absorbed};
         $text .= " (crushing)" if $entry->{extra}{crushing};
         $text .= " (glancing)" if $entry->{extra}{glancing};
+        
+        # WLK log overdamage
+        if( $entry->{extra}{extraamount} ) {
+            $text .= sprintf " {%s}", $entry->{extra}{extraamount};
+        }
     } elsif( $entry->{action} eq "SPELL_PERIODIC_HEAL" ) {
         $text = sprintf "[%s] %s hot [%s] %d",
             $actor,
             $spell,
             $target,
-            ( $entry->{extra}{amount} - ($entry->{extra}{extraamount}||0) );
+            $entry->{extra}{amount};
         
         # WLK log overhealing
         if( $entry->{extra}{extraamount} ) {
@@ -1382,7 +1402,7 @@ sub toString {
     } elsif( $entry->{action} eq "SPELL_CAST_FAILED" ) {
 
     } elsif( $entry->{action} eq "DAMAGE_SHIELD" ) {
-        $text = sprintf "[%s] %s reflect %s [%s] %d",
+        $text = sprintf "[%s] %s reflect %s[%s] %d",
             $actor,
             $spell,
             $entry->{extra}{critical} ? "crit " : "",

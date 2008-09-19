@@ -155,4 +155,9 @@ sub number {
     return $self->{lookup_n}{$actor} || 0;
 }
 
+sub captain_for {
+    my ($self, $actor) = @_;
+    return $self->{lookup}{$actor} ? $self->{lookup}{$actor}{members}[0] : $actor;
+}
+
 1;

@@ -449,7 +449,7 @@ sub page {
             my $text = Stasis::Parser->toString( 
                 $lastline->{entry}, 
                 sub { $self->{pm}->actorLink( $_[0], 1 ) }, 
-                sub { $self->{pm}->spellLink( $_[0], $self->{ext}{Index}->spellname($_[0]) ) } 
+                sub { $self->{pm}->spellLink( $_[0] ) } 
             );
             
             my $t = $death->{t} - $raidStart;

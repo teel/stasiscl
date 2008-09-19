@@ -47,11 +47,13 @@ sub process_death {
     # Forcibly fade all auras when a unit dies.
     if( exists $self->{actors}{ $entry->{target} } ) {
         foreach my $vaura (values %{ $self->{actors}{ $entry->{target} } } ) {
-            if( @{ $vaura->{spans} } ) {
-                my ($start, $end) = unpack "dd", $vaura->{spans}->[-1];
-                
-                if( !$end ) {
-                    $vaura->{spans}->[-1] = pack "dd", $start, $entry->{t};
+            foreach my $vactor (values %$vaura) {
+                if( @{ $vactor->{spans} } ) {
+                    my ($start, $end) = unpack "dd", $vactor->{spans}[-1];
+
+                    if( !$end ) {
+                        $vactor->{spans}[-1] = pack "dd", $start, $entry->{t};
+                    }
                 }
             }
         }
@@ -62,7 +64,8 @@ sub process_applied {
     my ($self, $entry) = @_;
 
     # Create a blank entry if none exists.
-    my $sdata = $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} } ||= {
+    # Stored "backwards", the person the aura is applied to (the target) is first.
+    my $sdata = $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} || 0 } ||= {
         gains => 0,
         fades => 0,
         type => undef,
@@ -95,7 +98,7 @@ sub process_removed {
     my ($self, $entry) = @_;
     
     # Create a blank entry if none exists.
-    my $sdata = $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} } ||= {
+    my $sdata = $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} || 0 } ||= {
         gains => 0,
         fades => 0,
         type => undef,
@@ -133,11 +136,17 @@ sub aura {
     
     $params{actor} ||= [];
     $params{spell} ||= [];
+    $params{target} ||= [];
     $params{expand} ||= [];
+    
+    # Code reference to get a key for grouping actors.
+    my $keyActor = $params{keyActor} || sub { return $_[0] };
+    
+    # Presence information
     $params{p} ||= {};
     
     # Filter the expand list.
-    my @expand = map { $_ eq "actor" || $_ eq "spell" ? $_ : () } @{$params{expand}};
+    my @expand = map { $_ eq "actor" || $_ eq "spell" || $_ eq "target" ? $_ : () } @{$params{expand}};
     
     # We'll eventually return this.
     my %ret;
@@ -146,28 +155,44 @@ sub aura {
     my @refs;
     
     # Examine what we were told to.
-    foreach my $kactor (scalar @{$params{actor}} ? @{$params{actor}} : keys %{$self->{actors}}) {
-        my $vactor = $self->{actors}{$kactor} or next;
-        my ($start, $end) = unpack "dd", $params{p}{$kactor};
+    foreach my $ktarget (scalar @{$params{target}} ? @{$params{target}} : keys %{$self->{actors}}) {
+        my $vtarget = $self->{actors}{$ktarget} or next;
+        my ($start, $end) = unpack "dd", $params{p}{$ktarget};
+        my $ktarget_use;
         
-        foreach my $kspell (scalar @{$params{spell}} ? @{$params{spell}} : keys %$vactor) {
-            my $vspell = $vactor->{$kspell} or next;
+        foreach my $kspell (scalar @{$params{spell}} ? @{$params{spell}} : keys %$vtarget) {
+            my $vspell = $vtarget->{$kspell} or next;
             
-            # Get a reference to the hash we want to add to.
-            my $ref = \%ret;
-            foreach (@expand) {
-                $ref = $ref->{ $_ eq "actor" ? $kactor : $kspell } ||= {};
+            foreach my $kactor (scalar @{$params{actor}} ? @{$params{actor}} : keys %$vspell) {
+                my $vactor = $vspell->{$kactor} or next;
+                my $kactor_use;
+            
+                # Get a reference to the hash we want to add to.
+                my $ref = \%ret;
+                foreach (@expand) {
+                    my $key;
+                    if( $_ eq "spell" ) {
+                        $key = $kspell;
+                    } elsif( $_ eq "target" ) {
+                        $key = $keyActor->($ktarget);
+                    } else {
+                        # actor
+                        $key = $keyActor->($kactor);
+                    }
+                    
+                    $ref = $ref->{$key} ||= {};
+                }
+                
+                # Add the info.
+                push @refs, $ref if ! %$ref;
+            
+                $ref->{type} ||= $vactor->{type};
+                $ref->{gains} += $vactor->{gains};
+                $ref->{fades} += $vactor->{fades};
+                $ref->{spans} ||= [];
+                
+                push @{$ref->{spans}}, map { ($a, $b) = unpack "dd", $_; pack "dd", $a||$start, $b||$end } @{$vactor->{spans}};
             }
-            
-            # Add the info.
-            push @refs, $ref if ! %$ref;
-            
-            $ref->{type} ||= $vspell->{type};
-            $ref->{gains} += $vspell->{gains};
-            $ref->{fades} += $vspell->{fades};
-            $ref->{spans} ||= [];
-            
-            push @{$ref->{spans}}, map { ($a, $b) = unpack "dd", $_; pack "dd", $a||$start, $b||$end } @{$vspell->{spans}};
         }
     }
     

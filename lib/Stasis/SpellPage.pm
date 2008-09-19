@@ -568,7 +568,7 @@ sub page {
     #########
     
     {
-        my @auraHeader = (
+        my @header = (
             "Name",
             "Type",
             "R-Uptime",
@@ -577,45 +577,79 @@ sub page {
             "R-Faded",
         );
         
-        # Get aura information.
-        my $auras = $self->{ext}{Aura}->aura( p => $self->{ext}{Presence}{actors}, spell => [$SPELL], expand => ["actor"] ),
-        
         # Get aura rows.
         my @rows;
+        my $auraCollapse = $self->{ext}{Aura}->aura( 
+            p => $self->{ext}{Presence}{actors},
+            keyActor => sub { $self->{grouper}->captain_for($_[0]) }, 
+            spell => [$SPELL], 
+            expand => ["target"]
+        );
         
-        while( my ($kactor, $vactor) = each(%$auras) ) {
-            push @rows, {
-                key => $kactor,
-                row => $vactor,
+        my $auraExpand = $self->{ext}{Aura}->aura( 
+            p => $self->{ext}{Presence}{actors}, 
+            keyActor => sub { $self->{grouper}->captain_for($_[0]) }, 
+            spell => [$SPELL], 
+            expand => ["target", "actor"]
+        );
+        
+        while( my ($ktarget, $vtarget) = each(%$auraExpand) ) {
+            my $row = {
+                key => $ktarget,
+                row => $auraCollapse->{$ktarget},
+                slaves => [],
             };
+            
+            push @rows, $row;
+            while( my ($kactor, $vactor) = each(%$vtarget) ) {
+                # Add the slave.
+                push @{$row->{slaves}}, {
+                    key => $kactor,
+                    row => $vactor,
+                };
+            }
         }
-        
+
+        # Sort master rows.
         @rows = sort { $a->{row}{type} cmp $b->{row}{type} || $b->{row}{time} <=> $a->{row}{time} } @rows;
         
+        foreach my $row (@rows) {
+            # Sort slaves.
+            $row->{slaves} = [ sort { $a->{row}{type} cmp $b->{row}{type} || $b->{row}{time} <=> $a->{row}{time} } @{$row->{slaves}} ];
+        }
+        
         if( @rows ) {
-            $defaultTab ||= "Casts and Gains";
-            
-            $PAGE .= $pm->tableHeader("Buffs and Debuffs", @auraHeader);
-            foreach my $row (@rows) {
-                my $id = lc $row->{key};
-                $id = $pm->tameText($id);
-                
-                my $ptime = $self->{ext}{Presence}->presence($row->{key});
-
-                $PAGE .= $pm->tableRow( 
-                    header => \@auraHeader,
-                    data => {
-                        "Name" => $pm->actorLink( $row->{key}, 1 ),
-                        "Type" => ($row->{row}{type} && lc $row->{row}{type}) || "unknown",
-                        "R-Gained" => $row->{row}{gains},
-                        "R-Faded" => $row->{row}{fades},
-                        "R-%" => $ptime && sprintf( "%0.1f%%", $row->{row}{time} / $ptime * 100 ),
-                        "R-Uptime" => $row->{row}{time} && sprintf( "%02d:%02d", $row->{row}{time}/60, $row->{row}{time}%60 ),
-                    },
-                    type => "",
-                    name => "aura_$id",
-                );
-            }
+            $PAGE .= $pm->tableHeader("Buffs and Debuffs", @header);
+            $PAGE .= $pm->tableRows(
+                header => \@header,
+                rows => \@rows,
+                master => sub {
+                    my $group = $self->{grouper}->group($_[0]->{key});
+                    my $ptime = $self->{ext}{Presence}->presence( $group ? @{$group->{members}} : $_[0]->{key} );
+                    
+                    return {
+                        "Name" => $pm->actorLink( $_[0]->{key} ),
+                        "Type" => (($_[0]->{row}{type} && lc $_[0]->{row}{type}) || "unknown"),
+                        "R-Gained" => $_[0]->{row}{gains},
+                        "R-Faded" => $_[0]->{row}{fades},
+                        "R-%" => $ptime && sprintf( "%0.1f%%", $_[0]->{row}{time} / $ptime * 100 ),
+                        "R-Uptime" => $_[0]->{row}{time} && sprintf( "%02d:%02d", $_[0]->{row}{time}/60, $_[0]->{row}{time}%60 ),
+                    };
+                },
+                slave => sub {
+                    my $group = $self->{grouper}->group($_[0]->{key});
+                    my $ptime = $self->{ext}{Presence}->presence( $group ? @{$group->{members}} : $_[0]->{key} );
+                    
+                    return {
+                        "Name" => $pm->actorLink( $_[0]->{key} ),
+                        "Type" => (($_[0]->{row}{type} && lc $_[0]->{row}{type}) || "unknown"),
+                        "R-Gained" => $_[0]->{row}{gains},
+                        "R-Faded" => $_[0]->{row}{fades},
+                        "R-%" => $ptime && sprintf( "%0.1f%%", $_[0]->{row}{time} / $ptime * 100 ),
+                        "R-Uptime" => $_[0]->{row}{time} && sprintf( "%02d:%02d", $_[0]->{row}{time}/60, $_[0]->{row}{time}%60 ),
+                    };
+                }
+            );
         }
     }
     
@@ -721,20 +755,12 @@ sub _damageOrHealingRows {
     my @rows_out;
     
     # Get a report.
-    my $de = $ext->sum( spell => [ $kspell ], expand => [ "actor", "target" ] );
+    my $de = $ext->sum( spell => [ $kspell ], keyActor => sub { $self->{grouper}->captain_for($_[0]) }, expand => [ "actor", "target" ] );
     
     while( my ($kactor, $vactor) = each(%$de) ) {
-        # Figure out the key for this actor.
-        my $gactor = $self->{grouper}->group($kactor);
-        my $kactor_use = $gactor ? $self->{grouper}->captain($gactor) : $kactor;
-            
         while( my ($ktarget, $vtarget) = each(%$vactor) ) {
-            # Figure out the key for this target.
-            my $gtarget = $self->{grouper}->group($ktarget);
-            my $ktarget_use = $gtarget ? $self->{grouper}->captain($gtarget) : $ktarget;
-            
-            Stasis::ActorPage->_rowadd( \@rows_in, $ktarget_use, $kactor_use, $vtarget );
-            Stasis::ActorPage->_rowadd( \@rows_out, $kactor_use, $ktarget_use, $vtarget );
+            Stasis::ActorPage->_rowadd( \@rows_in, $ktarget, $kactor, $vtarget );
+            Stasis::ActorPage->_rowadd( \@rows_out, $kactor, $ktarget, $vtarget );
         }
     }
     
