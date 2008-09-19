@@ -333,7 +333,7 @@ sub tameText {
 
 sub actorLink {
     my $self = shift;
-    my $id = shift;
+    my $id = shift || 0;
     my $single = shift;
     
     $single = 0 if $self->{collapse};
@@ -359,10 +359,8 @@ sub actorLink {
 sub spellLink {
     my $self = shift;
     my $id = shift;
-    my $name = shift;
-    
-    $name ||= "";
-    
+    my $name = shift || $self->{ext}{Index}->spellname($id);
+
     if( $id && $id =~ /^[0-9]+$/ ) {
         return sprintf "<a href=\"spell_%s.html\" rel=\"spell=%s\" class=\"spell\">%s</a>", $id, $id, HTML::Entities::encode_entities($name);
         #return sprintf "<a href=\"http://www.wowhead.com/?spell=%s\" target=\"swswh_%s\" class=\"spell\">%s</a>", $id, $id, HTML::Entities::encode_entities($name);

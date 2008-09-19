@@ -26,7 +26,7 @@ package Stasis::Extension::Damage;
 use strict;
 use warnings;
 use Carp;
-use Stasis::Extension qw(ext_copy ext_sum);
+use Stasis::Extension qw(ext_sum);
 
 our @ISA = "Stasis::Extension";
 
@@ -136,6 +136,9 @@ sub sum {
     $params{target} ||= [];
     $params{expand} ||= [];
     
+    # Code reference to get a key for grouping actors.
+    my $keyActor = $params{keyActor} || sub { return $_[0] };
+    
     # Filter the expand list.
     my @expand = map { $_ eq "actor" || $_ eq "spell" || $_ eq "target" ? $_ : () } @{$params{expand}};
     
@@ -166,9 +169,11 @@ sub sum {
                         $key = $kspell;
                     } elsif( $_ eq "target" ) {
                         $key = $start == $self->{targets} ? $k1 : $k2;
+                        $key = $keyActor->($key);
                     } else {
                         # actor
                         $key = $start == $self->{actors} ? $k1 : $k2;
+                        $key = $keyActor->($key);
                     }
                     
                     $ref = $ref->{$key} ||= {};

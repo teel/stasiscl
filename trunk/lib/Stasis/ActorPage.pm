@@ -30,7 +30,7 @@ use HTML::Entities;
 use Stasis::Parser;
 use Stasis::PageMaker;
 use Stasis::ActorGroup;
-use Stasis::Extension qw(ext_sum ext_copy);
+use Stasis::Extension qw(ext_sum);
 
 sub new {
     my $class = shift;
@@ -47,7 +47,6 @@ sub new {
     $params{pm} ||= Stasis::PageMaker->new( raid => $params{raid}, ext => $params{ext}, grouper => $params{grouper}, collapse => $params{collapse} );
     $params{name} ||= "Untitled";
     $params{server} ||= "";
-    $params{meta} ||= 0;
     
     bless \%params, $class;
 }
@@ -191,8 +190,8 @@ sub page {
     # DAMAGE #
     ##########
     
-    my $deOut = $self->{ext}{Damage}->sum( actor => \@playpet, expand => [ "actor", "spell", "target" ] );
-    my $heOut = $self->{ext}{Healing}->sum( actor => \@playpet, expand => [ "actor", "spell", "target" ] );
+    my $deOut = $self->{ext}{Damage}->sum( actor => \@playpet, keyActor => sub { $self->{grouper}->captain_for($_[0]) }, expand => [ "actor", "spell", "target" ] );
+    my $heOut = $self->{ext}{Healing}->sum( actor => \@playpet, keyActor => sub { $self->{grouper}->captain_for($_[0]) }, expand => [ "actor", "spell", "target" ] );
     
     $PAGE .= $pm->tabStart("Damage");
     $PAGE .= $pm->tableStart;
@@ -494,7 +493,7 @@ sub page {
                 },
                 slave => sub {
                     return {
-                        "Source" => $pm->spellLink( $_[0]->{key}, $self->{ext}{Index}->spellname( $_[0]->{key} ) ),
+                        "Source" => $pm->spellLink( $_[0]->{key} ),
                         "R-Eff. Heal" => $_[0]->{row}{effective},
                         "R-Count" => $_[0]->{row}{count},
                         "R-Overheal %" => $_[0]->{row}{total} && sprintf( "%0.1f%%", ( $_[0]->{row}{total} - ($_[0]->{row}{effective}||0) ) / $_[0]->{row}{total} * 100 ),
@@ -534,7 +533,7 @@ sub page {
             rows => \@rows,
             master => sub {
                 return {
-                    "Name" => $pm->spellLink( $_[0]->{key}, $self->{ext}{Index}->spellname($_[0]->{key}) ),
+                    "Name" => $pm->spellLink( $_[0]->{key} ),
                     "R-Targets" => scalar @{$_[0]->{slaves}},
                     "R-Casts" => $_[0]->{row}{count},
                 };
@@ -638,7 +637,7 @@ sub page {
     #########
     
     if( !$do_group ) {
-        my @auraHeader = (
+        my @header = (
             "Name",
             "Type",
             "R-Uptime",
@@ -649,41 +648,71 @@ sub page {
         
         # Get aura rows.
         my @rows;
+        my $auraCollapse = $self->{ext}{Aura}->aura( 
+            p => $self->{ext}{Presence}{actors},
+            keyActor => sub { $self->{grouper}->captain_for($_[0]) }, 
+            target => [$MOB], 
+            expand => ["spell"]
+        );
         
-        # Get presence for $MOB.
-        # my ($mpstart, $mpend, $mptime) = $self->{ext}{Presence}->presence($MOB);
+        my $auraExpand = $self->{ext}{Aura}->aura( 
+            p => $self->{ext}{Presence}{actors}, 
+            keyActor => sub { $self->{grouper}->captain_for($_[0]) }, 
+            target => [$MOB], 
+            expand => ["spell", "actor"]
+        );
         
-        # Get the auras.
-        my $auras = $self->{ext}{Aura}->aura( p => $self->{ext}{Presence}{actors}, actor => [$MOB], expand => ["spell"] );
-        while( my ($kspell, $vspell) = each(%$auras) ) {
-            push @rows, {
+        while( my ($kspell, $vspell) = each(%$auraExpand) ) {
+            my $row = {
                 key => $kspell,
-                row => $vspell,
+                row => $auraCollapse->{$kspell},
+                slaves => [],
             };
+            
+            push @rows, $row;
+            while( my ($ktarget, $vtarget) = each(%$vspell) ) {
+                # Add the slave.
+                push @{$row->{slaves}}, {
+                    key => $ktarget,
+                    row => $vtarget,
+                };
+            }
         }
-        
+
+        # Sort master rows.
         @rows = sort { $a->{row}{type} cmp $b->{row}{type} || $b->{row}{time} <=> $a->{row}{time} } @rows;
         
+        foreach my $row (@rows) {
+            # Sort slaves.
+            $row->{slaves} = [ sort { $a->{row}{type} cmp $b->{row}{type} || $b->{row}{time} <=> $a->{row}{time} } @{$row->{slaves}} ];
+        }
+        
         if( @rows ) {
-            $PAGE .= $pm->tableHeader("Buffs and Debuffs", @auraHeader);
-            foreach my $row (@rows) {
-                my $id = lc $row->{key};
-                $id = $pm->tameText($id);
-
-                $PAGE .= $pm->tableRow( 
-                    header => \@auraHeader,
-                    data => {
-                        "Name" => ( $row->{row}{meta} ? $row->{key} : $pm->spellLink( $row->{key}, $self->{ext}{Index}->spellname( $row->{key} ) ) ),
-                        "Type" => (($row->{row}{type} && lc $row->{row}{type}) || "unknown") . ( $row->{row}{meta} ? " (meta)" : "" ),
-                        "R-Gained" => $row->{row}{gains},
-                        "R-Faded" => $row->{row}{fades},
-                        "R-%" => $ptime && sprintf( "%0.1f%%", $row->{row}{time} / $ptime * 100 ),
-                        "R-Uptime" => $row->{row}{time} && sprintf( "%02d:%02d", $row->{row}{time}/60, $row->{row}{time}%60 ),
-                    },
-                    type => "",
-                    name => "aura_$id",
-                );
-            }
+            $PAGE .= $pm->tableHeader("Buffs and Debuffs", @header);
+            $PAGE .= $pm->tableRows(
+                header => \@header,
+                rows => \@rows,
+                master => sub {
+                    return {
+                        "Name" => $pm->spellLink( $_[0]->{key} ),
+                        "Type" => (($_[0]->{row}{type} && lc $_[0]->{row}{type}) || "unknown"),
+                        "R-Gained" => $_[0]->{row}{gains},
+                        "R-Faded" => $_[0]->{row}{fades},
+                        "R-%" => $ptime && sprintf( "%0.1f%%", $_[0]->{row}{time} / $ptime * 100 ),
+                        "R-Uptime" => $_[0]->{row}{time} && sprintf( "%02d:%02d", $_[0]->{row}{time}/60, $_[0]->{row}{time}%60 ),
+                    };
+                },
+                slave => sub {
+                    return {
+                        "Name" => $pm->actorLink( $_[0]->{key} ),
+                        "Type" => (($_[0]->{row}{type} && lc $_[0]->{row}{type}) || "unknown"),
+                        "R-Gained" => $_[0]->{row}{gains},
+                        "R-Faded" => $_[0]->{row}{fades},
+                        "R-%" => $ptime && sprintf( "%0.1f%%", $_[0]->{row}{time} / $ptime * 100 ),
+                        "R-Uptime" => $_[0]->{row}{time} && sprintf( "%02d:%02d", $_[0]->{row}{time}/60, $_[0]->{row}{time}%60 ),
+                    };
+                }
+            );
         }
     }
     
@@ -720,7 +749,7 @@ sub page {
                 },
                 slave => sub {
                     return {
-                        "Name" => $pm->spellLink( $_[0]->{key}, $self->{ext}{Index}->spellname($_[0]->{key}) ),
+                        "Name" => $pm->spellLink( $_[0]->{key} ),
                         "R-Casts" => $_[0]->{row}{count},
                         "R-Resists" => $_[0]->{row}{resist},
                     };
@@ -756,7 +785,7 @@ sub page {
                 },
                 slave => sub {
                     return {
-                        "Name" => $pm->spellLink( $_[0]->{key}, $self->{ext}{Index}->spellname($_[0]->{key}) ),
+                        "Name" => $pm->spellLink( $_[0]->{key} ),
                         "R-Casts" => $_[0]->{row}{count},
                         "R-Resists" => $_[0]->{row}{resist},
                     };
@@ -791,7 +820,7 @@ sub page {
                 },
                 slave => sub {
                     return {
-                        "Name" => $pm->spellLink( $_[0]->{key}, $self->{ext}{Index}->spellname($_[0]->{key}) ),
+                        "Name" => $pm->spellLink( $_[0]->{key} ),
                         "R-Interrupts" => $_[0]->{row}{count},
                     };
                 }
@@ -825,7 +854,7 @@ sub page {
                 },
                 slave => sub {
                     return {
-                        "Name" => $pm->spellLink( $_[0]->{key}, $self->{ext}{Index}->spellname($_[0]->{key}) ),
+                        "Name" => $pm->spellLink( $_[0]->{key} ),
                         "R-Interrupts" => $_[0]->{row}{count},
                     };
                 }
@@ -867,7 +896,7 @@ sub page {
                 my $text = Stasis::Parser->toString( 
                     $lastline->{entry}, 
                     sub { $self->{pm}->actorLink( $_[0], 1 ) }, 
-                    sub { $self->{pm}->spellLink( $_[0], $self->{ext}{Index}->spellname($_[0]) ) } 
+                    sub { $self->{pm}->spellLink( $_[0] ) } 
                 );
 
                 my $t = $death->{t} - $raidStart;
@@ -922,16 +951,16 @@ sub _decodespell {
     if( $encoded_spellid =~ /^([A-Za-z0-9]+): (.+)$/ ) {
         if( ! grep $_ eq $1, @PLAYER ) {
             $spellactor = $1;
-            $spellname = sprintf( "%s: %s", $pm->actorLink( $1 ), $pm->spellLink( $2, $self->{ext}{Index}->spellname($2) ) );
+            $spellname = sprintf( "%s: %s", $pm->actorLink( $1 ), $pm->spellLink( $2 ) );
             $spellid = $2;
         } else {
             $spellactor = $1;
-            $spellname = $pm->spellLink( $2, $self->{ext}{Index}->spellname($2) );
+            $spellname = $pm->spellLink( $2 );
             $spellid = $2;
         }
     } else {
         $spellactor = $PLAYER[0];
-        $spellname = $pm->spellLink( $encoded_spellid, $self->{ext}{Index}->spellname($encoded_spellid) );
+        $spellname = $pm->spellLink( $encoded_spellid );
         $spellid = $encoded_spellid;
     }
     
@@ -953,21 +982,32 @@ sub _targetRowsIn {
     my $ext = shift;
     
     # Get a report.
-    my $de = $ext->sum( target => [@_], expand => [ "actor", "spell" ] );
+    my $de = $ext->sum( target => [@_], keyActor => sub { $self->{grouper}->captain_for($_[0]) }, expand => [ "actor", "spell" ] );
 
     # Group by ability.
     my @rows;
 
     while( my ($kactor, $vactor) = each(%$de) ) {
-        my $gactor = $self->{grouper}->group($kactor);
-        my $kactor_use = $gactor && $_[0] ne $kactor ? $self->{grouper}->captain($gactor) : $kactor;
-
+        my $ractor = {
+            key => $kactor,
+            row => {},
+            slaves => [],
+        };
+        
+        push @rows, $ractor;
+        
         while( my ($kspell, $vspell) = each(%$vactor) ) {
-            # Add the row.
-            $self->_rowadd( \@rows, $kactor_use, $kspell, $vspell );
+            # Add to the master.
+            ext_sum( $ractor->{row}, $vspell );
+            
+            # Add a slave.
+            push @{$ractor->{slaves}}, {
+                key => $kspell,
+                row => $vspell,
+            };
         }
     }
-
+    
     return @rows;
 }
 
@@ -979,20 +1019,13 @@ sub _targetRowsOut {
     my @rows;
 
     while( my ($kactor, $vactor) = each(%$de) ) {
-        my $gactor = $self->{grouper}->group($kactor);
-        my $kactor_use = $gactor && $_[0] ne $kactor ? $self->{grouper}->captain($gactor) : $kactor;
-
         while( my ($kspell, $vspell) = each(%$vactor) ) {
             # Encoded spell name.
-            my $espell = "$kactor_use: $kspell";
-
+            my $espell = "$kactor: $kspell";
+            
             while( my ($ktarget, $vtarget) = each(%$vspell) ) {
-                # $vtarget is a spell hash.
-                my $gtarget = $self->{grouper}->group($ktarget);
-                my $ktarget_use = $gtarget ? $self->{grouper}->captain($gtarget) : $ktarget;
-
                 # Add the row.
-                $self->_rowadd( \@rows, $ktarget_use, $espell, $vtarget );
+                $self->_rowadd( \@rows, $ktarget, $espell, $vtarget );
             }
         }
     }
@@ -1008,20 +1041,26 @@ sub _abilityRows {
     my @rows;
 
     while( my ($kactor, $vactor) = each(%$de) ) {
-        my $gactor = $self->{grouper}->group($kactor);
-        my $kactor_use = $gactor && $_[0] ne $kactor ? $self->{grouper}->captain($gactor) : $kactor;
-
         while( my ($kspell, $vspell) = each(%$vactor) ) {
             # Encoded spell name.
-            my $espell = "$kactor_use: $kspell";
+            my $espell = "$kactor: $kspell";
+            my $rspell = {
+                key => $espell,
+                row => {},
+                slaves => [],
+            };
+            
+            push @rows, $rspell;
 
             while( my ($ktarget, $vtarget) = each(%$vspell) ) {
-                # $vtarget is a spell hash.
-                my $gtarget = $self->{grouper}->group($ktarget);
-                my $ktarget_use = $gtarget ? $self->{grouper}->captain($gtarget) : $ktarget;
-
-                # Add the row.
-                $self->_rowadd( \@rows, $espell, $ktarget_use, $vtarget );
+                # Add to the master.
+                ext_sum( $rspell->{row}, $vtarget );
+                
+                # Add a slave.
+                push @{$rspell->{slaves}}, {
+                    key => $ktarget,
+                    row => $vtarget,
+                };
             }
         }
     }
@@ -1244,7 +1283,7 @@ sub _rowadd {
     
     if( $row ) {
         # Add to an existing row.
-        ext_sum( $row->{row}, $vtarget );
+        $row->{row} = ext_sum( {}, $row->{row}, $vtarget );
         
         # Either add to an existing slave, or create a new one.
         my $slave;
@@ -1257,23 +1296,23 @@ sub _rowadd {
         
         if( $slave ) {
             # Add to an existing slave.
-            ext_sum( $slave->{row}, $vtarget );
+            $slave->{row} = ext_sum( {}, $slave->{row}, $vtarget );
         } else {
             # Create a new slave.
             push @{$row->{slaves}}, {
                 key => $skey,
-                row => ext_copy( $vtarget ),
+                row => $vtarget,
             }
         }
     } else {
         # Create a new row.
         push @$rows, {
             key => $mkey,
-            row => ext_copy( $vtarget ),
+            row => $vtarget,
             slaves => [
                 {
                     key => $skey,
-                    row => ext_copy( $vtarget ),
+                    row => $vtarget,
                 }
             ]
         }
