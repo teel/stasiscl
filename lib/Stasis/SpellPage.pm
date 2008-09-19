@@ -637,8 +637,8 @@ sub page {
                     };
                 },
                 slave => sub {
-                    my $group = $self->{grouper}->group($_[0]->{key});
-                    my $ptime = $self->{ext}{Presence}->presence( $group ? @{$group->{members}} : $_[0]->{key} );
+                    my $group = $self->{grouper}->group($_[1]->{key});
+                    my $ptime = $self->{ext}{Presence}->presence( $group ? @{$group->{members}} : $_[1]->{key} );
                     
                     return {
                         "Name" => $pm->actorLink( $_[0]->{key} ),
