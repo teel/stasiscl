@@ -628,6 +628,14 @@ my %fingerprints = (
     timeout => 30,
 },
 
+"malygos" => {
+    long => "Malygos",
+    mobStart => [ 28859 ],
+    mobContinue => [ 28859 ],
+    mobEnd => [ 28859 ],
+    timeout => 30,
+}
+
 );
 
 # Invert the %fingerprints hash.
