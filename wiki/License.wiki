@@ -21,7 +21,7 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 = About This License =
 
-This is a standard 2-clause BSD license. It's compatible with the GPL, as mentioned on [http://www.gnu.org/philosophy/license-list.html]:
+This is a standard 2-clause BSD license. It's a free software license and compatible with the GPL, as mentioned on [http://www.gnu.org/philosophy/license-list.html]:
 
  This is the original BSD license with the advertising clause and another clause removed. (It is also sometimes called the "2-clause BSD license".) It is a simple, permissive non-copyleft free software license, compatible with the GNU GPL.
 
