@@ -439,7 +439,7 @@ my %fingerprints = (
     mobStart => [ 24850 ],
     mobContinue => [ 24850, 24892 ],
     mobEnd => [ 24892 ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "brutallus" => {
@@ -455,7 +455,7 @@ my %fingerprints = (
     mobStart => [ 25038 ],
     mobContinue => [ 25038, 25268 ],
     mobEnd => [ 25038 ],
-    timeout => 15,
+    timeout => 45,
 },
 
 "twins" => {
@@ -472,7 +472,7 @@ my %fingerprints = (
     mobStart => [ 25741 ],
     mobContinue => [ 25741, 25840, 25798, 25799 ],
     mobEnd => [ 25840 ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "kiljaeden" => {
