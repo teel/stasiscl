@@ -74,27 +74,38 @@ sub page {
         push @playpet, @{$self->{raid}{$_}{pets}} if( exists $self->{raid}{$_} && exists $self->{raid}{$_}{pets} );
     }
     
+    ###########################
+    # DAMAGE AND HEALING SUMS #
+    ###########################
+    
+    my $deOut = $self->{ext}{Damage}->sum( actor => \@playpet, keyActor => sub { $self->{grouper}->captain_for($_[0]) }, expand => [ "actor", "spell", "target" ] );
+    my $heOut = $self->{ext}{Healing}->sum( actor => \@playpet, keyActor => sub { $self->{grouper}->captain_for($_[0]) }, expand => [ "actor", "spell", "target" ] );
+    my $deIn = $self->{ext}{Damage}->sum( target => \@PLAYER, keyActor => sub { $self->{grouper}->captain_for($_[0]) }, expand => [ "actor", "spell" ] );
+    my $heIn = $self->{ext}{Healing}->sum( target => \@PLAYER, keyActor => sub { $self->{grouper}->captain_for($_[0]) }, expand => [ "actor", "spell" ] );
+    
     my $dpsTime = $self->{ext}{Activity}->activity( actor => \@playpet );
     
     # Total damage, and damage from/to enemies (not enemies of the raid, this means enemies of the actor)
-    my $dmg_from_all;
-    my $dmg_from_enemies;
+    my $dmg_from_all = 0;
+    my $dmg_from_mobs = 0;
     
-    my $dmg_to_all;
-    my $dmg_to_enemies;
+    my $dmg_to_all = 0;
+    my $dmg_to_mobs = 0;
     
-    {
-        my @raiders = map { $self->{raid}{$_}{class} ? ( $_ ) : () } keys %{$self->{raid}};
-        
-        my $deInAll = $self->{ext}{Damage}->sum( target => \@PLAYER, fields => [ "total" ] );
-        my $deInFriends = $self->{ext}{Damage}->sum( actor => \@raiders, target => \@PLAYER, fields => [ "total" ] );
-        my $deOutAll = $self->{ext}{Damage}->sum( actor => \@playpet, fields => [ "total" ] );
-        my $deOutFriends = $self->{ext}{Damage}->sum( actor => \@playpet, target => \@raiders, fields => [ "total" ] );
-        
-        $dmg_from_all = $deInAll->{total} || 0;
-        $dmg_from_enemies = $dmg_from_all - ($deInFriends->{total} || 0);
-        $dmg_to_all = $deOutAll->{total} || 0;
-        $dmg_to_enemies = $dmg_to_all - ($deOutFriends->{total} || 0);
+    while( my ($kactor, $vactor) = each(%$deOut) ) {
+        while( my ($kspell, $vspell) = each(%$vactor) ) {
+            while( my ($ktarget, $vtarget) = each(%$vspell) ) {
+                $dmg_to_all += $vtarget->{total} || 0;
+                $dmg_to_mobs += $vtarget->{total} || 0 if !$self->{raid}{$ktarget} || !$self->{raid}{$ktarget}{class};
+            }
+        }
+    }
+    
+    while( my ($kactor, $vactor) = each(%$deIn) ) {
+        while( my ($kspell, $vspell) = each(%$vactor) ) {
+            $dmg_from_all += $vspell->{total} || 0;
+            $dmg_from_mobs += $vspell->{total} || 0 if !$self->{raid}{$kactor} || !$self->{raid}{$kactor}{class};
+        }
     }
     
     ###############
@@ -135,13 +146,13 @@ sub page {
     # Damage Info
     if( $dmg_to_all ) {
         push @summaryRows, (
-            "Damage in" => $dmg_from_all . ( $dmg_from_all - $dmg_from_enemies ? " (" . ($dmg_from_all - $dmg_from_enemies) . " was friendly fire)" : "" ),
-            "Damage out" => $dmg_to_all . ( $dmg_to_all - $dmg_to_enemies ? " (" . ($dmg_to_all - $dmg_to_enemies) . " was friendly fire)" : "" ),
+            "Damage in" => $dmg_from_all . ( $dmg_from_all - $dmg_from_mobs ? " (" . ($dmg_from_all - $dmg_from_mobs) . " was from players)" : "" ),
+            "Damage out" => $dmg_to_all . ( $dmg_to_all - $dmg_to_mobs ? " (" . ($dmg_to_all - $dmg_to_mobs) . " was to players)" : "" ),
         );
     }
     
     # DPS Info
-    if( $ptime && $dmg_to_enemies && $dpsTime ) {
+    if( $ptime && $dmg_to_mobs && $dpsTime ) {
         push @summaryRows, (
             "DPS activity" => sprintf
             (
@@ -150,8 +161,8 @@ sub page {
                 $dpsTime%60, 
                 $dpsTime/$ptime*100, 
             ),
-            "DPS (over presence)" => sprintf( "%d", $dmg_to_enemies/$ptime ),
-            "DPS (over activity)" => sprintf( "%d", $dmg_to_enemies/$dpsTime ),
+            "DPS (over presence)" => sprintf( "%d", $dmg_to_mobs/$ptime ),
+            "DPS (over activity)" => sprintf( "%d", $dmg_to_mobs/$dpsTime ),
         );
     }
     
@@ -189,9 +200,6 @@ sub page {
     ##########
     # DAMAGE #
     ##########
-    
-    my $deOut = $self->{ext}{Damage}->sum( actor => \@playpet, keyActor => sub { $self->{grouper}->captain_for($_[0]) }, expand => [ "actor", "spell", "target" ] );
-    my $heOut = $self->{ext}{Healing}->sum( actor => \@playpet, keyActor => sub { $self->{grouper}->captain_for($_[0]) }, expand => [ "actor", "spell", "target" ] );
     
     $PAGE .= $pm->tabStart("Damage");
     $PAGE .= $pm->tableStart;
@@ -307,7 +315,7 @@ sub page {
         );
         
         # Group by source.
-        my @rows = $self->_targetRowsIn( $self->{ext}{Damage}, @PLAYER );
+        my @rows = $self->_targetRowsIn( $deIn );
         
         # Sort @rows.
         @rows = sort { ($b->{row}{total}||0) <=> ($a->{row}{total}||0) } @rows;
@@ -462,7 +470,7 @@ sub page {
         );
         
         # Group by source.
-        my @rows = $self->_targetRowsIn( $self->{ext}{Healing}, @PLAYER );
+        my @rows = $self->_targetRowsIn( $heIn );
         
         # Sum up all effective healing.
         my $eff_on_me;
@@ -979,10 +987,7 @@ sub _tidypct {
 
 sub _targetRowsIn {
     my $self = shift;
-    my $ext = shift;
-    
-    # Get a report.
-    my $de = $ext->sum( target => [@_], keyActor => sub { $self->{grouper}->captain_for($_[0]) }, expand => [ "actor", "spell" ] );
+    my $de = shift;
 
     # Group by ability.
     my @rows;
@@ -1264,7 +1269,7 @@ sub _rowHealing {
         "R-Avg Tick" => $sdata->{tickCount} && $sdata->{tickTotal} && $self->{pm}->tip( int($sdata->{tickTotal} / $sdata->{tickCount}), sprintf( "Range: %d&ndash;%d", $sdata->{tickMin}, $sdata->{tickMax} ) ),
         "R-Crits" => $sdata->{critCount} && sprintf( "%d", $sdata->{critCount} ),
         "R-Avg Crit" => $sdata->{critCount} && $sdata->{critTotal} && $self->{pm}->tip( int($sdata->{critTotal} / $sdata->{critCount}), sprintf( "Range: %d&ndash;%d", $sdata->{critMin}, $sdata->{critMax} ) ),
-        "R-Crit %" => $sdata->{count} && $sdata->{critCount} && ($sdata->{count} - $sdata->{critCount} > 0) && sprintf( "%0.1f%%", ($sdata->{critCount}||0) / ($sdata->{count} - $sdata->{critCount}) * 100 ),
+        "R-Crit %" => $sdata->{count} && $sdata->{critCount} && ($sdata->{count} - ($sdata->{tickCount}||0) > 0) && sprintf( "%0.1f%%", ($sdata->{critCount}||0) / ($sdata->{count} - ($sdata->{tickCount}||0)) * 100 ),
     };
 }
 
