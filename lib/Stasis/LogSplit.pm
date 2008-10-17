@@ -50,7 +50,7 @@ my %fingerprints = (
     mobStart => [ 16151, "Midnight" ],
     mobContinue => [ 15550, 16151, "Attumen the Huntsman", "Midnight" ],
     mobEnd => [ 15550, "Attumen the Huntsman" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "moroes" => {
@@ -58,7 +58,7 @@ my %fingerprints = (
     mobStart => [ 15687, "Moroes" ],
     mobContinue => [ 15687, "Moroes" ],
     mobEnd => [ 15687, "Moroes" ],
-    timeout => 20,
+    timeout => 30,
 },
 
 "maiden" => {
@@ -66,7 +66,7 @@ my %fingerprints = (
     mobStart => [ 16457, "Maiden of Virtue" ],
     mobContinue => [ 16457, "Maiden of Virtue" ],
     mobEnd => [ 16457, "Maiden of Virtue" ],
-    timeout => 20,
+    timeout => 30,
 },
 
 "crone" => {
@@ -74,7 +74,7 @@ my %fingerprints = (
     mobStart => [ 17535, 17548, 17543, 17547, 17546, "Dorothee", "Tito", "Strawman", "Tinhead", "Roar" ],
     mobContinue => [ 17535, 17548, 17543, 17547, 17546, 18168, "Dorothee", "Tito", "Strawman", "Tinhead", "Roar", "The Crone" ],
     mobEnd => [ 18168, "The Crone" ],
-    timeout => 20,
+    timeout => 30,
 },
 
 "romulo" => {
@@ -83,7 +83,7 @@ my %fingerprints = (
     mobContinue => [ 17533, 17534, "Romulo", "Julianne" ],
     mobEnd => [ 17533, 17534 ],
     endAll => 1,
-    timeout => 20,
+    timeout => 30,
 },
 
 "bbw" => {
@@ -91,7 +91,7 @@ my %fingerprints = (
     mobStart => [ 17521, "The Big Bad Wolf" ],
     mobContinue => [ 17521, "The Big Bad Wolf" ],
     mobEnd => [ 17521, "The Big Bad Wolf" ],
-    timeout => 20,
+    timeout => 30,
 },
 
 "nightbane" => {
@@ -107,7 +107,7 @@ my %fingerprints = (
     mobStart => [ 15691, "The Curator" ],
     mobContinue => [ 15691, "The Curator" ],
     mobEnd => [ 15691, "The Curator" ],
-    timeout => 20,
+    timeout => 30,
 },
 
 "shade" => {
@@ -115,7 +115,7 @@ my %fingerprints = (
     mobStart => [ 16524, "Shade of Aran" ],
     mobContinue => [ 16524, "Shade of Aran" ],
     mobEnd => [ 16524, "Shade of Aran" ],
-    timeout => 20,
+    timeout => 30,
 },
 
 "illhoof" => {
@@ -123,7 +123,7 @@ my %fingerprints = (
     mobStart => [ 15688, "Terestian Illhoof" ],
     mobContinue => [ 15688, "Terestian Illhoof" ],
     mobEnd => [ 15688, "Terestian Illhoof" ],
-    timeout => 20,
+    timeout => 30,
 },
 
 "netherspite" => {
@@ -139,7 +139,7 @@ my %fingerprints = (
     mobStart => [ 15690, "Prince Malchezaar" ],
     mobContinue => [ 15690, "Prince Malchezaar" ],
     mobEnd => [ 15690, "Prince Malchezaar" ],
-    timeout => 20,
+    timeout => 30,
 },
 
 ############
@@ -151,7 +151,7 @@ my %fingerprints = (
     mobStart => [ 23576, "Nalorakk" ],
     mobContinue => [ 23576, "Nalorakk" ],
     mobEnd => [ 23576, "Nalorakk" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "janalai" => {
@@ -159,7 +159,7 @@ my %fingerprints = (
     mobStart => [ 23578, "Jan'alai" ],
     mobContinue => [ 23578, "Jan'alai" ],
     mobEnd => [ 23578, "Jan'alai" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "akilzon" => {
@@ -167,7 +167,7 @@ my %fingerprints = (
     mobStart => [ 23574, "Akil'zon" ],
     mobContinue => [ 23574, "Akil'zon" ],
     mobEnd => [ 23574, "Akil'zon" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "halazzi" => {
@@ -175,7 +175,7 @@ my %fingerprints = (
     mobStart => [ 23577, "Halazzi" ],
     mobContinue => [ 23577, "Halazzi" ],
     mobEnd => [ 23577, "Halazzi" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "hexlord" => {
@@ -183,7 +183,7 @@ my %fingerprints = (
     mobStart => [ 24239, "Hex Lord Malacrass" ],
     mobContinue => [ 24239, "Hex Lord Malacrass" ],
     mobEnd => [ 24239, "Hex Lord Malacrass" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "zuljin" => {
@@ -203,7 +203,7 @@ my %fingerprints = (
     mobStart => [ 18831, "High King Maulgar", "Kiggler the Crazed", "Krosh Firehand", "Olm the Summoner", "Blindeye the Seer" ],
     mobContinue => [ 18831, "High King Maulgar", "Kiggler the Crazed", "Krosh Firehand", "Olm the Summoner", "Blindeye the Seer" ],
     mobEnd => [ 18831, "High King Maulgar" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "gruul" => {
@@ -211,7 +211,7 @@ my %fingerprints = (
     mobStart => [ 19044, "Gruul the Dragonkiller" ],
     mobContinue => [ 19044, "Gruul the Dragonkiller" ],
     mobEnd => [ 19044, "Gruul the Dragonkiller" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "magtheridon" => {
@@ -219,7 +219,7 @@ my %fingerprints = (
     mobStart => [ 17256, "Hellfire Channeler" ],
     mobContinue => [ 17256, 17257, "Magtheridon", "Hellfire Channeler" ],
     mobEnd => [ 17257, "Magtheridon" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 ########################
@@ -231,7 +231,7 @@ my %fingerprints = (
     mobStart => [ 21216, "Hydross the Unstable" ],
     mobContinue => [ 21216, "Hydross the Unstable" ],
     mobEnd => [ 21216, "Hydross the Unstable" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "lurker" => {
@@ -239,7 +239,7 @@ my %fingerprints = (
     mobStart => [ 21217, "The Lurker Below" ],
     mobContinue => [ 21217, 21865, 21873, "The Lurker Below", "Coilfang Ambusher", "Coilfang Guardian" ],
     mobEnd => [ 21217, "The Lurker Below" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "leotheras" => {
@@ -247,7 +247,7 @@ my %fingerprints = (
     mobStart => [ 21806, "Greyheart Spellbinder" ],
     mobContinue => [ 21806, 21215, "Greyheart Spellbinder", "Leotheras the Blind" ],
     mobEnd => [ 21215, "Leotheras the Blind" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "flk" => {
@@ -255,7 +255,7 @@ my %fingerprints = (
     mobStart => [ 21214, "Fathom-Lord Karathress", "Fathom-Guard Caribdis", "Fathom-Guard Sharkkis", "Fathom-Guard Tidalvess" ],
     mobContinue => [ 21214, "Fathom-Lord Karathress", "Fathom-Guard Caribdis", "Fathom-Guard Sharkkis", "Fathom-Guard Tidalvess" ],
     mobEnd => [ 21214, "Fathom-Lord Karathress" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "tidewalker" => {
@@ -263,7 +263,7 @@ my %fingerprints = (
     mobStart => [ 21213, "Morogrim Tidewalker" ],
     mobContinue => [ 21213, "Morogrim Tidewalker" ],
     mobEnd => [ 21213, "Morogrim Tidewalker" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "vashj" => {
@@ -271,7 +271,7 @@ my %fingerprints = (
     mobStart => [ 21212, "Lady Vashj" ],
     mobContinue => [ 21212, 21958, 22056, 22055, 22009, "Lady Vashj", "Enchanted Elemental", "Tainted Elemental", "Coilfang Strider", "Coilfang Elite" ],
     mobEnd => [ 21212, "Lady Vashj" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 ################
@@ -291,7 +291,7 @@ my %fingerprints = (
     mobStart => [ 19516, "Void Reaver" ],
     mobContinue => [ 19516, "Void Reaver" ],
     mobEnd => [ 19516, "Void Reaver" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "solarian" => {
@@ -299,7 +299,7 @@ my %fingerprints = (
     mobStart => [ 18805, "High Astromancer Solarian" ],
     mobContinue => [ 18805, 18806, 18925, "High Astromancer Solarian", "Solarium Priest", "Solarium Agent" ],
     mobEnd => [ 18805, "High Astromancer Solarian" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "kaelthas" => {
@@ -319,7 +319,7 @@ my %fingerprints = (
     mobStart => [ 17767, "Rage Winterchill" ],
     mobContinue => [ 17767, "Rage Winterchill" ],
     mobEnd => [ 17767, "Rage Winterchill" ],
-    timeout => 10,
+    timeout => 30,
 },
 
 "anetheron" => {
@@ -327,7 +327,7 @@ my %fingerprints = (
     mobStart => [ 17808, "Anetheron" ],
     mobContinue => [ 17808, "Anetheron" ],
     mobEnd => [ 17808, "Anetheron" ],
-    timeout => 10,
+    timeout => 30,
 },
 
 "kazrogal" => {
@@ -335,7 +335,7 @@ my %fingerprints = (
     mobStart => [ 17888, "Kaz'rogal" ],
     mobContinue => [ 17888, "Kaz'rogal" ],
     mobEnd => [ 17888, "Kaz'rogal" ],
-    timeout => 10,
+    timeout => 30,
 },
 
 "azgalor" => {
@@ -343,7 +343,7 @@ my %fingerprints = (
     mobStart => [ 17842, "Azgalor" ],
     mobContinue => [ 17842, "Azgalor" ],
     mobEnd => [ 17842, "Azgalor" ],
-    timeout => 10,
+    timeout => 30,
 },
 
 "archimonde" => {
@@ -363,7 +363,7 @@ my %fingerprints = (
     mobStart => [ 22887, "High Warlord Naj'entus" ],
     mobContinue => [ 22887, "High Warlord Naj'entus" ],
     mobEnd => [ 22887, "High Warlord Naj'entus" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "supremus" => {
@@ -371,7 +371,7 @@ my %fingerprints = (
     mobStart => [ 22898, "Supremus" ],
     mobContinue => [ 22898, "Supremus" ],
     mobEnd => [ 22898, "Supremus" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "akama" => {
@@ -379,7 +379,7 @@ my %fingerprints = (
     mobStart => [ 23421, 23524, 23523, 23318, "Ashtongue Channeler", "Ashtongue Spiritbinder", "Ashtongue Elementalist", "Ashtongue Rogue" ],
     mobContinue => [ 23421, 23524, 23523, 23318, 22841, "Ashtongue Channeler", "Ashtongue Defender", "Ashtongue Spiritbinder", "Ashtongue Elementalist", "Ashtongue Rogue", "Shade of Akama" ],
     mobEnd => [ 22841, "Shade of Akama" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "teron" => {
@@ -387,7 +387,7 @@ my %fingerprints = (
     mobStart => [ 22871, "Teron Gorefiend" ],
     mobContinue => [ 22871, "Teron Gorefiend" ],
     mobEnd => [ 22871, "Teron Gorefiend" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "bloodboil" => {
@@ -395,7 +395,7 @@ my %fingerprints = (
     mobStart => [ 22948, "Gurtogg Bloodboil" ],
     mobContinue => [ 22948, "Gurtogg Bloodboil" ],
     mobEnd => [ 22948, "Gurtogg Bloodboil" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "ros" => {
@@ -403,7 +403,7 @@ my %fingerprints = (
     mobStart => [ 23418, "Essence of Suffering" ],
     mobContinue => [ 23418, 23419, 23420, 23469, "Essence of Suffering", "Essence of Desire", "Essence of Anger", "Enslaved Soul" ],
     mobEnd => [ 23420, "Essence of Anger" ],
-    timeout => 20,
+    timeout => 30,
 },
 
 "shahraz" => {
@@ -411,7 +411,7 @@ my %fingerprints = (
     mobStart => [ 22947, "Mother Shahraz" ],
     mobContinue => [ 22947, "Mother Shahraz" ],
     mobEnd => [ 22947, "Mother Shahraz" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "council" => {
@@ -419,7 +419,7 @@ my %fingerprints = (
     mobStart => [ 22950, 22952, 22951, 22949, "High Nethermancer Zerevor", "Veras Darkshadow", "Lady Malande", "Gathios the Shatterer" ],
     mobContinue => [ 22950, 22952, 22951, 22949, "High Nethermancer Zerevor", "Veras Darkshadow", "Lady Malande", "Gathios the Shatterer" ],
     mobEnd => [ 22950, 22952, 22951, 22949, 23426, "The Illidari Council" ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "illidan" => {
@@ -447,7 +447,7 @@ my %fingerprints = (
     mobStart => [ 24882 ],
     mobContinue => [ 24882 ],
     mobEnd => [ 24882 ],
-    timeout => 15,
+    timeout => 30,
 },
 
 "felmyst" => {
@@ -463,7 +463,7 @@ my %fingerprints = (
     mobStart => [ 25166, 25165 ],
     mobContinue => [ 25166, 25165 ],
     mobEnd => [ 25166, 25165 ],
-    timeout => 15,
+    timeout => 30,
     endAll => 1,
 },
 
