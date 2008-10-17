@@ -283,7 +283,7 @@ my %fingerprints = (
     mobStart => [ 19514, "Al'ar" ],
     mobContinue => [ 19514, "Al'ar" ],
     mobEnd => [ 19514, "Al'ar" ],
-    timeout => 30,
+    timeout => 45,
 },
 
 "vr" => {
@@ -307,7 +307,7 @@ my %fingerprints = (
     mobStart => [ 21272, 21273, 21269, 21268, 21274, 21271, 21270, "Warp Slicer", "Phaseshift Bulwark", "Devastation", "Netherstrand Longbow", "Staff of Disintegration", "Infinity Blades", "Cosmic Infuser" ],
     mobContinue => [ 19622, 21272, 21273, 21269, 21268, 21274, 21271, 21270, 20063, 20062, 20064, 20060, "Warp Slicer", "Phaseshift Bulwark", "Devastation", "Netherstrand Longbow", "Staff of Disintegration", "Infinity Blades", "Cosmic Infuser", "Kael'thas Sunstrider", "Phoenix", "Phoenix Egg", "Master Engineer Telonicus", "Grand Astromancer Capernian", "Thaladred the Darkener", "Lord Sanguinar" ],
     mobEnd => [ 19622, "Kael'thas Sunstrider" ],
-    timeout => 15,
+    timeout => 60,
 },
 
 #########
