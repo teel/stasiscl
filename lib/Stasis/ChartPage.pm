@@ -491,8 +491,8 @@ sub page {
         #########################
         # PRINT OPENING XML TAG #
         #########################
-
-        $XML .= sprintf( '  <raid dpstime="%d" start="%s" dps="%d" comment="%s" lg="%d" dmg="%d" dir="%s">' . "\n",
+        
+        $XML .= sprintf( '  <raid dpstime="%d" start="%s" dps="%d" comment="%s" lg="%d" dmg="%d" dir="%s" zone="%s">' . "\n",
             100,
             $raidStart*1000,
             $raidDPS,
@@ -500,6 +500,7 @@ sub page {
             $raidPresence*60000,
             $raidDamage,
             $self->{dirname},
+            Stasis::LogSplit->zone( $self->{short} ) || "",
         );
 
         #########################
@@ -507,20 +508,34 @@ sub page {
         #########################
 
         my %xml_classmap = (
-                "Warrior" => "war",
-                "Druid" => "drd",
-                "Warlock" => "wrl",
-                "Shaman" => "sha",
-                "Paladin" => "pal",
-                "Priest" => "pri",
-                "Rogue" => "rog",
-                "Mage" => "mag",
-                "Hunter" => "hnt",
-            );
+            "Warrior" => "war",
+            "Druid" => "drd",
+            "Warlock" => "wrl",
+            "Shaman" => "sha",
+            "Paladin" => "pal",
+            "Priest" => "pri",
+            "Rogue" => "rog",
+            "Mage" => "mag",
+            "Hunter" => "hnt",
+            "Death Knight" => "dk",
+        );
 
         foreach my $actor (@damagesort) {
             my $ptime = $self->{ext}{Presence}->presence($actor);
             my $dpsTime = $self->{ext}{Activity}->activity( actor => [ $actor, @{ $self->{raid}{$actor}{pets} } ] );
+            
+            # Count decurses.
+            my $decurse = 0;
+            if( exists $self->{ext}{Dispel}{actors}{$actor} ) {
+                while( my ($kspell, $vspell) = each(%{ $self->{ext}{Dispel}{actors}{$actor} } ) ) {
+                    while( my ($ktarget, $vtarget) = each(%$vspell) ) {
+                        while( my ($kextraspell, $vextraspell) = each (%$vtarget) ) {
+                            # Add the row.
+                            $decurse += $vextraspell->{count} - ($vextraspell->{resist}||0);
+                        }
+                    }
+                }
+            }
 
             my %xml_keys = (
                 name => $self->{ext}{Index}->actorname($actor) || "Unknown",
@@ -532,9 +547,9 @@ sub page {
                 heal => $raiderHealing{$actor} && $raidHealing && $raiderHealing{$actor} / $raidHealing * 100 || 0,
                 ovh => $raiderHealing{$actor} && $raiderHealingTotal{$actor} && ceil( ($raiderHealingTotal{$actor} - $raiderHealing{$actor}) / $raiderHealingTotal{$actor} * 100 ) || 0,
                 death => $deathCount{$actor} || 0,
-
+                decurse => $decurse,
+                
                 # Ignored values
-                decurse => 0,
                 pres => 100,
             );
 
