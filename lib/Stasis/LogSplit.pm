@@ -38,6 +38,158 @@ use constant {
     LOCKOUT_TIME => 900,
 };
 
+# Zone names
+my %zones = (
+
+"karazhan" => {
+	long => "Karazhan",
+	bosses => [
+	    "attumen",
+	    "moroes",
+	    "maiden",
+	    "crone",
+	    "romulo",
+	    "bbw",
+	    "nightbane",
+	    "curator",
+	    "shade",
+	    "illhoof",
+	    "netherspite",
+	    "prince",
+	],
+},
+
+"zulaman" => {
+	long => "Zul'Aman",
+	bosses => [
+		"nalorakk",
+		"janalai",
+		"akilzon",
+		"halazzi",
+		"hexlord",
+		"zuljin",
+	],
+},
+
+"gruul" => {
+	long => "Gruul's Lair",
+	bosses => [
+		"maulgar",
+		"gruul",
+	],
+},
+
+"magtheridon" => {
+	long => "Magtheridon's Lair",
+	bosses => [
+	    "magtheridon",
+	]
+},
+
+"serpentshrine" => {
+	long => "Serpentshrine Cavern",
+	bosses => [
+		"hydross",
+		"lurker",
+		"leotheras",
+		"flk",
+		"tidewalker",
+		"vashj",
+	],
+},
+
+"tempestkeep" => {
+	long => "Tempest Keep",
+	bosses => [
+		"alar",
+		"vr",
+		"solarian",
+		"kaelthas",
+	],
+},
+
+"hyjal" => {
+	long => "Hyjal Summit",
+	bosses => [
+		"rage",
+		"anetheron",
+		"kazrogal",
+		"azgalor",
+		"archimonde",
+	],
+},
+
+"blacktemple" => {
+	long => "Black Temple",
+	bosses => [
+		"najentus",
+		"supremus",
+		"akama",
+		"teron",
+		"ros",
+		"bloodboil",
+		"shahraz",
+		"council",
+		"illidan",
+	],
+},
+
+"sunwell" => {
+	long => "Sunwell Plateau",
+	bosses => [
+		"kalecgos",
+		"brutallus",
+		"felmyst",
+		"twins",
+		"muru",
+		"kiljaeden",
+	],
+},
+
+"naxxramas" => {
+	long => "Naxxramas",
+	bosses => [
+		"anubrekhan",
+		"faerlina",
+		"maexxna",
+		"patchwerk",
+		"grobbulus",
+		"gluth",
+		"thaddius",
+		"razuvious",
+		"gothik",
+		"horsemen",
+		"noth",
+		"heigan",
+		"loatheb",
+		"sapphiron",
+		"kelthuzad",
+	],
+},
+
+"obsidiansanctum" => {
+	long => "Obsidian Sanctum",
+	bosses => [
+	    "sartharion",
+	]
+},
+
+"archavon" => {
+    long => "Vault of Archavon",
+    bosses => [
+        "archavon",
+    ]
+},
+
+"eyeofeternity" => {
+    long => "The Eye of Eternity",
+    bosses => [
+        "malygos",
+    ]
+},
+
+);
+
 # Fingerprints of various boss encounters.
 my %fingerprints = (
 
@@ -608,6 +760,26 @@ my %fingerprints = (
     timeout => 30,
 },
 
+##################
+# OUTDOOR BOSSES #
+##################
+
+"kazzak" => {
+    long => "Doom Lord Kazzak",
+    mobStart => [ 18728 ],
+    mobContinue => [ 18728 ],
+    mobEnd => [ 18728 ],
+    timeout => 15,
+},
+
+"doomwalker" => {
+    long => "Doomwalker",
+    mobStart => [ 17711 ],
+    mobContinue => [ 17711 ],
+    mobEnd => [ 17711 ],
+    timeout => 15,
+},
+
 ##########################
 # SINGLE BOSS ENCOUNTERS #
 ##########################
@@ -634,7 +806,19 @@ my %fingerprints = (
     mobContinue => [ 28859 ],
     mobEnd => [ 28859 ],
     timeout => 30,
-}
+},
+
+##################
+# TARGET DUMMIES #
+##################
+
+"dummy" => {
+    long => "Target Dummy",
+    mobStart => [ 31146, 30527, 31144 ],
+    mobContinue => [ 31146, 30527, 31144 ],
+    mobEnd => [],
+    timeout => 30,
+},
 
 );
 
@@ -654,6 +838,15 @@ while( my ($kprint, $vprint) = each %fingerprints ) {
     
     foreach (@{$vprint->{mobEnd}}) {
         $fend{$_} = $kprint;
+    }
+}
+
+# Invert the %zones hash.
+my %bzones;
+
+while( my ($kzone, $vzone) = each %zones ) {
+    foreach my $boss (@{$vzone->{bosses}}) {
+        $bzones{$boss} = $kzone;
     }
 }
 
@@ -806,6 +999,16 @@ sub _bend {
 sub name {
     my $boss = pop;
     return $boss && $fingerprints{$boss} && $fingerprints{$boss}{long};
+}
+
+sub zone {
+    my $boss = pop;
+    
+    if( $boss && $bzones{$boss} ) {
+        return ( $bzones{$boss}, $zones{$bzones{$boss}}{long} );
+    } else {
+        return ();
+    }
 }
 
 sub finish {
