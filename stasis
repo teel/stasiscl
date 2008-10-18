@@ -757,9 +757,8 @@ if( $action eq "print" ) {
     status "Wrote: $opt_dir/wws-history/data.xml";
     
     # Copy JS and CSS
-    my $prog = $0;
-    $prog =~ s/\/[^\/]*$//;
-    my $extra_path = File::Spec->catdir( File::Spec->rel2abs($prog), "extras" );
+    my ($prog_vol, $prog_dir) = File::Spec->splitpath( File::Spec->rel2abs($0) );
+    my $extra_path = File::Spec->catpath( $prog_vol, File::Spec->catdir( $prog_dir, "extras" ), "" );
     
     if( -d $extra_path && -f "$extra_path/sws.js" && -f "$extra_path/sws2.css" ) {
         status "Copying extras from: $extra_path";
