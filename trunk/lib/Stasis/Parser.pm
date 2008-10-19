@@ -1086,7 +1086,8 @@ sub parse2 {
         $result->{action} eq "SPELL_AURA_APPLIED" ||
         $result->{action} eq "SPELL_AURA_REMOVED" ||
         $result->{action} eq "SPELL_AURA_APPLIED_DOSE" ||
-        $result->{action} eq "SPELL_AURA_REMOVED_DOSE"
+        $result->{action} eq "SPELL_AURA_REMOVED_DOSE" ||
+        $result->{action} eq "SPELL_AURA_REFRESH"
     ) {
         @{$result->{extra}}{ (@fspell, @faura) } = @col;
     } elsif(
