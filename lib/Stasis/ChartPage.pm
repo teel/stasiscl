@@ -28,6 +28,7 @@ use warnings;
 use POSIX;
 use Stasis::PageMaker;
 use Stasis::ActorGroup;
+use Stasis::Extension qw(span_sum);
 
 sub new {
     my $class = shift;
@@ -212,12 +213,12 @@ sub page {
     
     foreach my $actor (@damagesort) {
         my $ptime = $self->{ext}{Presence}->presence($actor);
-        my $dpsTime = $self->{ext}{Activity}->activity( actor => [ $actor, @{ $self->{raid}{$actor}{pets} } ] );
+        my $dpsTime = span_sum( $self->{ext}{Activity}->sum( actor => [ $actor, @{ $self->{raid}{$actor}{pets} } ] )->{spans} );
         
         $PAGE .= $pm->tableRow( 
             header => \@damageHeader,
             data => {
-                "Player" => $pm->actorLink( $actor, $self->{ext}{Index}->actorname($actor), $self->{raid}{$actor}{class} ),
+                "Player" => $pm->actorLink( $actor ),
                 "R-Presence" => sprintf( "%02d:%02d", $ptime/60, $ptime%60 ),
                 "R-%" => $raiderDamage{$actor} && $raidDamage && sprintf( "%d%%", ceil($raiderDamage{$actor} / $raidDamage * 100) ),
                 "R-Dam. Out" => $raiderDamage{$actor},
@@ -264,7 +265,7 @@ sub page {
         $PAGE .= $pm->tableRow( 
             header => \@damageInHeader,
             data => {
-                "Player" => $pm->actorLink( $actor, $self->{ext}{Index}->actorname($actor), $self->{raid}{$actor}{class} ),
+                "Player" => $pm->actorLink( $actor ),
                 "R-Presence" => sprintf( "%02d:%02d", $ptime/60, $ptime%60 ),
                 "R-%" => $raiderIncoming{$actor} && $raidInDamage && sprintf( "%d%%", ceil($raiderIncoming{$actor} / $raidInDamage * 100) ),
                 "R-Dam. In" => $raiderIncoming{$actor},
@@ -309,7 +310,7 @@ sub page {
         $PAGE .= $pm->tableRow( 
             header => \@healingHeader,
             data => {
-                "Player" => $pm->actorLink( $actor, $self->{ext}{Index}->actorname($actor), $self->{raid}{$actor}{class} ),
+                "Player" => $pm->actorLink( $actor ),
                 "R-Presence" => sprintf( "%02d:%02d", $ptime/60, $ptime%60 ),
                 "R-Eff. Heal" => $raiderHealing{$actor},
                 "R-%" => $raiderHealing{$actor} && $raidHealing && sprintf( "%d%%", ceil($raiderHealing{$actor} / $raidHealing * 100) ),
@@ -522,7 +523,7 @@ sub page {
 
         foreach my $actor (@damagesort) {
             my $ptime = $self->{ext}{Presence}->presence($actor);
-            my $dpsTime = $self->{ext}{Activity}->activity( actor => [ $actor, @{ $self->{raid}{$actor}{pets} } ] );
+            my $dpsTime = span_sum( $self->{ext}{Activity}->sum( actor => [ $actor, @{ $self->{raid}{$actor}{pets} } ] )->{spans} );
             
             # Count decurses.
             my $decurse = 0;

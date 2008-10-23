@@ -30,7 +30,7 @@ use HTML::Entities;
 use Stasis::Parser;
 use Stasis::PageMaker;
 use Stasis::ActorGroup;
-use Stasis::Extension qw(ext_sum);
+use Stasis::Extension qw(span_sum);
 
 sub new {
     my $class = shift;
@@ -74,18 +74,108 @@ sub page {
         push @playpet, @{$self->{raid}{$_}{pets}} if( exists $self->{raid}{$_} && exists $self->{raid}{$_}{pets} );
     }
     
+    ################
+    # INFO WE NEED #
+    ################
+    
+    my $keyActor = sub { $self->{grouper}->captain_for($_[0]) };
+    
+    my $dpsTime = span_sum( $self->{ext}{Activity}->sum( actor => \@playpet )->{spans} );
+    
+    my $deOut = $self->{ext}{Damage}->sum( 
+        actor => \@playpet, 
+        expand => [ "actor", "spell", "target" ],
+        keyActor => $keyActor,
+    );
+
+    my $deIn = $self->{ext}{Damage}->sum( 
+        target => \@PLAYER, 
+        expand => [ "actor", "spell" ],
+        keyActor => $keyActor,
+    );
+    
+    my $heOut = $self->{ext}{Healing}->sum( 
+        actor => \@playpet, 
+        expand => [ "actor", "spell", "target" ],
+        keyActor => $keyActor,
+    );
+    
+    my $heIn = $self->{ext}{Healing}->sum( 
+        target => \@PLAYER, 
+        expand => [ "actor", "spell" ],
+        keyActor => $keyActor,
+    );
+    
+    my $castsOut = $self->{ext}{Cast}->sum( 
+        actor => \@PLAYER, 
+        expand => [ "spell", "target" ], 
+        keyActor => $keyActor,
+    );
+
+    my $powerIn = $self->{ext}{Power}->sum( 
+        target => \@PLAYER, 
+        expand => [ "spell", "actor" ], 
+        keyActor => $keyActor,
+    );
+    
+    my $powerOut = $self->{ext}{Power}->sum( 
+        actor => \@PLAYER, 
+        -target => \@PLAYER,
+        expand => [ "spell", "target" ], 
+        keyActor => $keyActor,
+    );
+
+    my $eaIn = $self->{ext}{ExtraAttack}->sum( 
+        target => \@PLAYER, 
+        expand => [ "spell", "actor" ], 
+        keyActor => $keyActor,
+    );
+    
+    my $interruptOut = $self->{ext}{Interrupt}->sum( 
+        actor => \@PLAYER, 
+        expand => [ "extraspell", "target" ], 
+        keyActor => $keyActor,
+    );
+    
+    my $dispelOut = $self->{ext}{Dispel}->sum( 
+        actor => \@PLAYER, 
+        expand => [ "extraspell", "target" ], 
+        keyActor => $keyActor,
+    );
+    
+    my $interruptIn = $self->{ext}{Interrupt}->sum( 
+        target => \@PLAYER, 
+        expand => [ "extraspell", "actor" ], 
+        keyActor => $keyActor,
+    );
+    
+    my $dispelIn = $self->{ext}{Dispel}->sum( 
+        target => \@PLAYER, 
+        expand => [ "extraspell", "actor" ], 
+        keyActor => $keyActor,
+    );
+    
+    my ($auraIn, $auraOut);
+    if( ! $do_group ) {
+        $auraIn = $self->{ext}{Aura}->sum( 
+            target => [ $MOB ], 
+            expand => [ "spell", "actor" ], 
+            keyActor => $keyActor,
+        );
+
+        $auraOut = $self->{ext}{Aura}->sum( 
+            actor => [ $MOB ], 
+            -target => [ $MOB ],
+            expand => [ "spell", "target" ], 
+            keyActor => $keyActor,
+        );
+    }
+    
     ###########################
     # DAMAGE AND HEALING SUMS #
     ###########################
     
-    my $deOut = $self->{ext}{Damage}->sum( actor => \@playpet, keyActor => sub { $self->{grouper}->captain_for($_[0]) }, expand => [ "actor", "spell", "target" ] );
-    my $heOut = $self->{ext}{Healing}->sum( actor => \@playpet, keyActor => sub { $self->{grouper}->captain_for($_[0]) }, expand => [ "actor", "spell", "target" ] );
-    my $deIn = $self->{ext}{Damage}->sum( target => \@PLAYER, keyActor => sub { $self->{grouper}->captain_for($_[0]) }, expand => [ "actor", "spell" ] );
-    my $heIn = $self->{ext}{Healing}->sum( target => \@PLAYER, keyActor => sub { $self->{grouper}->captain_for($_[0]) }, expand => [ "actor", "spell" ] );
-    
-    my $dpsTime = $self->{ext}{Activity}->activity( actor => \@playpet );
-    
-    # Total damage, and damage from/to enemies (not enemies of the raid, this means enemies of the actor)
+    # Total damage, and damage from/to mobs
     my $dmg_from_all = 0;
     my $dmg_from_mobs = 0;
     
@@ -115,7 +205,7 @@ sub page {
     my $displayName = sprintf "%s%s", HTML::Entities::encode_entities($self->{ext}{Index}->actorname($MOB)), @PLAYER > 1 ? " (group)" : "";
     $displayName ||= "Actor";
     $PAGE .= $pm->pageHeader($self->{name}, $displayName, $raidStart);
-    $PAGE .= sprintf "<h3 class=\"color%s\">%s</h3>", $self->{raid}{$MOB}{class} || "Mob", $displayName;
+    $PAGE .= sprintf "<h3 class=\"color%s\">%s%s</h3>", $self->{raid}{$MOB}{class} || "Mob", $pm->actorLink($MOB, @PLAYER == 1 ? 1 : 0 ), @PLAYER > 1 ? " (group)" : "";
     
     my @summaryRows;
     
@@ -133,13 +223,27 @@ sub page {
     # Presence
     push @summaryRows, "Presence" => sprintf( "%02d:%02d", $ptime/60, $ptime%60 );
     
-    # Pet info
+    # Owner info
     if( $self->{raid}{$MOB} && $self->{raid}{$MOB}{class} && $self->{raid}{$MOB}{class} eq "Pet" ) {
         foreach my $raider (keys %{$self->{raid}}) {
             if( grep $_ eq $MOB, @{$self->{raid}{$raider}{pets}}) {
                 push @summaryRows, "Owner" => $pm->actorLink($raider);
                 last;
             }
+        }
+    }
+    
+    # Pet info
+    {
+        my %pets;
+        foreach my $p (@PLAYER) {
+            if( exists $self->{raid}{$p} && exists $self->{raid}{$p}{pets} ) {
+                $pets{ $keyActor->($_) } = 1 foreach ( grep { $self->{ext}{Presence}->presence($_) } @{$self->{raid}{$p}{pets}} );
+            }
+        }
+        
+        if( %pets ) {
+            push @summaryRows, "Pets" => join "<br />", map { $pm->actorLink($_) } sort { $self->{ext}{Index}->actorname($a) cmp $self->{ext}{Index}->actorname($b) } keys %pets;
         }
     }
     
@@ -192,8 +296,13 @@ sub page {
         $PAGE .= "<br />";
     }
     
-    my @tabs = ( "Damage", "Healing", "Casts and Gains", "Dispels and Interrupts" );
-    push @tabs, "Deaths" if $self->_keyExists( $self->{ext}{Death}{actors}, @PLAYER );
+    my @tabs;
+    push @tabs, "Damage" if %$deOut || %$deIn;
+    push @tabs, "Healing" if %$heOut || %$heIn;
+    push @tabs, "Auras" if ($auraIn && %$auraIn) || ($auraOut && %$auraOut);
+    push @tabs, "Casts and Power" if %$castsOut || %$powerIn || %$eaIn || %$powerOut;
+    push @tabs, "Dispels and Interrupts" if %$interruptIn || %$interruptOut || %$dispelIn || %$dispelOut;
+    push @tabs, "Deaths" if (!$do_group || !$self->{collapse} ) && $self->_keyExists( $self->{ext}{Death}{actors}, @PLAYER );
     
     $PAGE .= $pm->tabBar(@tabs);
     
@@ -201,677 +310,463 @@ sub page {
     # DAMAGE #
     ##########
     
-    $PAGE .= $pm->tabStart("Damage");
-    $PAGE .= $pm->tableStart;
-    
-    {
-        my @header = (
-            "Ability",
-            "R-Total",
-            "R-Hits",
-            "R-Crits",
-            "R-Ticks",
-            "R-Avg Hit",
-            "R-Avg Crit",
-            "R-Avg Tick",
-            "R-CriCruGla %",
-            "R-Avoidance",
-        );
+    if( %$deOut || %$deIn ) {
+        $PAGE .= $pm->tabStart("Damage");
+        $PAGE .= $pm->tableStart;
         
-        # Group by ability.
-        my @rows = $self->_abilityRows( $deOut, @playpet );
+        ########################
+        # DAMAGE OUT ABILITIES #
+        ########################
         
-        # Sort @rows.
-        @rows = sort { ($b->{row}{total}||0) <=> ($a->{row}{total}||0) } @rows;
+        $PAGE .= $pm->tableRows(
+            title => "Damage Out by Ability",
+            header => [ "Ability", "R-Total", "R-%", "", "", "R-Hits", "R-Crits", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Avoid", ],
+            data => $self->_abilityRows($deOut),
+            sort => sub ($$) { ($_[1]->{total}||0) <=> ($_[0]->{total}||0) },
+            master => sub {
+                my ($spellactor, $spellname, $spellid) = $self->_decodespell($_[0], $pm, "Damage", @PLAYER);
+                return $self->_rowDamage( $_[1], $dmg_to_all, "Ability", $spellname );
+            },
+            slave => sub {
+                return $self->_rowDamage( $_[1], $_[3]->{total}, "Ability", $pm->actorLink( $_[0] ) );
+            }
+        ) if %$deOut;
+
+        ######################
+        # DAMAGE OUT TARGETS #
+        ######################
         
-        # Sort slaves.
-        foreach my $row (@rows) {
-            $row->{slaves} = [ sort { ($b->{row}{total}||0) <=> ($a->{row}{total}||0) } @{$row->{slaves}} ]; 
-        }
+        $PAGE .= $pm->tableRows(
+            title => "Damage Out by Target",
+            header => [ "Target", "R-Total", "R-%", "R-DPS", "R-Time", "R-Hits", "R-Crits", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Avoid", ],
+            data => $self->_targetRows($deOut),
+            sort => sub ($$) { ($_[1]->{total}||0) <=> ($_[0]->{total}||0) },
+            master => sub {
+                my $dpsTime = span_sum(
+                    $self->{ext}{Activity}->sum( 
+                        actor => \@playpet, 
+                        target => [ $self->{grouper}->expand($_[0]) ],
+                    )->{spans}
+                );
+                return $self->_rowDamage( $_[1], $dmg_to_all, "Target", $pm->actorLink( $_[0] ), $dpsTime );
+            },
+            slave => sub {
+                my ($spellactor, $spellname, $spellid) = $self->_decodespell($_[0], $pm, "Damage", @PLAYER);
+                return $self->_rowDamage( $_[1], $_[3]->{total}, "Target", $spellname );
+            }
+        ) if %$deOut;
+
+        #####################
+        # DAMAGE IN SOURCES #
+        #####################
+
+        $PAGE .= $pm->tableRows(
+            title => "Damage In by Source",
+            header => [ "Source", "R-Total", "R-%", "R-DPS", "R-Time", "R-Hits", "R-Crits", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Avoid", ],
+            data => $deIn,
+            sort => sub ($$) { ($_[1]->{total}||0) <=> ($_[0]->{total}||0) },
+            master => sub {
+                my $dpsTime = span_sum(
+                    $self->{ext}{Activity}->sum( 
+                        actor => [ $self->{grouper}->expand($_[0]) ],
+                        target => \@PLAYER, 
+                    )->{spans}
+                );
+
+                return $self->_rowDamage( $_[1], $dmg_from_all, "Source", $pm->actorLink( $_[0] ), $dpsTime );
+            },
+            slave => sub {
+                return $self->_rowDamage( $_[1], $_[3]->{total}, "Source", $pm->spellLink( $_[0], "Damage" ) );
+            }
+        ) if %$deIn;
         
-        # Print @rows.
-        if( @rows ) {
-            $PAGE .= $pm->tableHeader("Damage Out by Ability", @header);
-            $PAGE .= $pm->tableRows(
-                header => \@header,
-                rows => \@rows,
-                master => sub {
-                    my ($spellactor, $spellname, $spellid) = $self->_decodespell($_[0]->{key}, $pm, @PLAYER);
-                    return $self->_rowDamage( $_[0]->{row}, $spellname );
-                },
-                slave => sub {
-                    my ($spellactor, $spellname, $spellid) = $self->_decodespell($_[1]->{key}, $pm, @PLAYER);
-                    return $self->_rowDamage( $_[0]->{row}, $pm->actorLink( $_[0]->{key} ) );
-                }
-            );
-        }
+        $PAGE .= $pm->tableEnd;
+        $PAGE .= $pm->tabEnd;
     }
-    
-    ######################
-    # DAMAGE OUT TARGETS #
-    ######################
-    
-    {
-        my @header = (
-            "Target",
-            "R-Total",
-            "R-Hits",
-            "R-Crits",
-            "R-Ticks",
-            "R-DPS",
-            "R-Time",
-            "",
-            "R-CriCruGla %",
-            "R-Avoidance",
-        );
-        
-        # Group by target.
-        my @rows = $self->_targetRowsOut( $deOut, @playpet );
-        
-        # Sort @rows.
-        @rows = sort { ($b->{row}{total}||0) <=> ($a->{row}{total}||0) } @rows;
-        
-        # Sort slaves.
-        foreach my $row (@rows) {
-            $row->{slaves} = [ sort { ($b->{row}{total}||0) <=> ($a->{row}{total}||0) } @{$row->{slaves}} ]; 
-        }
-        
-        # Print @rows.
-        if( @rows ) {
-            $PAGE .= $pm->tableHeader("Damage Out by Target", @header);
-            $PAGE .= $pm->tableRows(
-                header => \@header,
-                rows => \@rows,
-                master => sub {
-                    my $group = $self->{grouper}->group( $_[0]->{key} );
-                    my $dpsTime = $self->{ext}{Activity}->activity( actor => \@playpet, target => [ $group ? @{$group->{members}} : ($_[0]->{key}) ] );
-                    
-                    return $self->_rowDamage( $_[0]->{row}, $pm->actorLink( $_[0]->{key} ), "Target", $dpsTime );
-                },
-                slave => sub {
-                    my ($spellactor, $spellname, $spellid) = $self->_decodespell($_[0]->{key}, $pm, @PLAYER);
-                    return $self->_rowDamage( $_[0]->{row}, $spellname, "Target" );
-                }
-            );
-        }
-    }
-    
-    #####################
-    # DAMAGE IN SOURCES #
-    #####################
-    
-    {
-        my @header = (
-            "Source",
-            "R-Total",
-            "R-Hits",
-            "R-Crits",
-            "R-Ticks",
-            "R-DPS",
-            "R-Time",
-            "",
-            "R-CriCruGla %",
-            "R-Avoidance",
-        );
-        
-        # Group by source.
-        my @rows = $self->_targetRowsIn( $deIn );
-        
-        # Sort @rows.
-        @rows = sort { ($b->{row}{total}||0) <=> ($a->{row}{total}||0) } @rows;
-        
-        # Sort slaves.
-        foreach my $row (@rows) {
-            $row->{slaves} = [ sort { ($b->{row}{total}||0) <=> ($a->{row}{total}||0) } @{$row->{slaves}} ]; 
-        }
-        
-        # Print @rows.
-        if( @rows ) {
-            $PAGE .= $pm->tableHeader("Damage In by Source", @header);
-            $PAGE .= $pm->tableRows(
-                header => \@header,
-                rows => \@rows,
-                master => sub {
-                    my $group = $self->{grouper}->group( $_[0]->{key} );
-                    my $dpsTime = $self->{ext}{Activity}->activity( target => \@PLAYER, actor => [ $group ? @{$group->{members}} : ($_[0]->{key}) ] );
-                    
-                    return $self->_rowDamage( $_[0]->{row}, $pm->actorLink( $_[0]->{key} ), "Source", $dpsTime );
-                },
-                slave => sub {
-                    my ($spellactor, $spellname, $spellid) = $self->_decodespell($_[0]->{key}, $pm, @PLAYER);
-                    return $self->_rowDamage( $_[0]->{row}, $spellname, "Source" );
-                }
-            );
-        }
-    }
-    
-    $PAGE .= $pm->tableEnd;
-    $PAGE .= $pm->tabEnd;    
-    
-    $PAGE .= $pm->tabStart("Healing");
-    $PAGE .= $pm->tableStart;
     
     ###########
     # HEALING #
     ###########
     
-    {
-        my @header = (
-            "Ability",
-            "R-Eff. Heal",
-            "R-Hits",
-            "R-Crits",
-            "R-Ticks",
-            "R-Avg Hit",
-            "R-Avg Crit",
-            "R-Avg Tick",
-            "R-Crit %",
-            "R-Overheal %",
-        );
+    my ($eff_on_others, $eff_on_me);
+    if( %$heIn || %$heOut ) {
+        $PAGE .= $pm->tabStart("Healing");
+        $PAGE .= $pm->tableStart;
         
-        # Group by ability.
-        my @rows = $self->_abilityRows( $heOut, @playpet );
+        #########################
+        # HEALING OUT ABILITIES #
+        #########################
         
-        # Sort @rows.
-        @rows = sort { ($b->{row}{effective}||0) <=> ($a->{row}{effective}||0) } @rows;
-        
-        # Sort slaves.
-        foreach my $row (@rows) {
-            $row->{slaves} = [ sort { ($b->{row}{effective}||0) <=> ($a->{row}{effective}||0) } @{$row->{slaves}} ]; 
-        }
-        
-        # Print @rows.
-        if( @rows ) {
-            $PAGE .= $pm->tableHeader("Healing Out by Ability", @header);
-            $PAGE .= $pm->tableRows(
-                header => \@header,
-                rows => \@rows,
-                master => sub {
-                    my ($spellactor, $spellname, $spellid) = $self->_decodespell($_[0]->{key}, $pm, @PLAYER);
-                    return $self->_rowHealing( $_[0]->{row}, $spellname );
-                },
-                slave => sub {
-                    my ($spellactor, $spellname, $spellid) = $self->_decodespell($_[1]->{key}, $pm, @PLAYER);
-                    return $self->_rowHealing( $_[0]->{row}, $pm->actorLink( $_[0]->{key} ) );
-                }
-            );
-        }
-    }
-    
-    #######################
-    # HEALING OUT TARGETS #
-    #######################
-    
-    {
-        my @header = (
-            "Target",
-            "R-Eff. Heal",
-            "R-Count",
-            "R-Eff. Out %",
-            "R-Overheal %",
-        );
-        
-        # Group by target.
-        my @rows = $self->_targetRowsOut( $heOut, @playpet );
-        
-        # Sum up all effective healing.
-        my $eff_on_others;
-        
-        # Sort @rows.
-        @rows = sort { ($b->{row}{effective}||0) <=> ($a->{row}{effective}||0) } @rows;
-        
-        # Sort slaves.
-        foreach my $row (@rows) {
-            $row->{slaves} = [ sort { ($b->{row}{effective}||0) <=> ($a->{row}{effective}||0) } @{$row->{slaves}} ]; 
-            $eff_on_others += $row->{row}{effective}||0;
-        }
-        
-        # Print @rows.
-        if( @rows ) {
-            $PAGE .= $pm->tableHeader("Healing Out by Target", @header);
-            $PAGE .= $pm->tableRows(
-                header => \@header,
-                rows => \@rows,
-                master => sub {
-                    return {
-                        "Target" => $pm->actorLink( $_[0]->{key} ),
-                        "R-Eff. Heal" => $_[0]->{row}{effective}||0,
-                        "R-Count" => $_[0]->{row}{count}||0,
-                        "R-Overheal %" => $_[0]->{row}{total} && sprintf( "%0.1f%%", ( $_[0]->{row}{total} - ($_[0]->{row}{effective}||0) ) / $_[0]->{row}{total} * 100 ),
-                        "R-Eff. Out %" => $eff_on_others && sprintf( "%0.1f%%", ($_[0]->{row}{effective}||0) / $eff_on_others * 100 ),
-                    };
-                },
-                slave => sub {
-                    my ($spellactor, $spellname, $spellid) = $self->_decodespell($_[0]->{key}, $pm, @PLAYER);
-                    
-                    return {
-                        "Target" => $spellname,
-                        "R-Eff. Heal" => $_[0]->{row}{effective}||0,
-                        "R-Count" => $_[0]->{row}{count}||0,
-                        "R-Overheal %" => $_[0]->{row}{total} && sprintf( "%0.1f%%", ( $_[0]->{row}{total} - ($_[0]->{row}{effective}||0) ) / $_[0]->{row}{total} * 100 ),
-                        "R-Eff. Out %" => $_[1]->{row}{total} && sprintf( "%0.1f%%", ($_[0]->{row}{effective}||0) / $_[1]->{row}{total} * 100 ),
-                    };
-                }
-            );
-        }
-    }
-    
-    ######################
-    # HEALING IN SOURCES #
-    ######################
-    
-    {
-        my @header = (
-            "Source",
-            "R-Eff. Heal",
-            "R-Count",
-            "R-Eff. In %",
-            "R-Overheal %",
-        );
-        
-        # Group by source.
-        my @rows = $self->_targetRowsIn( $heIn );
-        
-        # Sum up all effective healing.
-        my $eff_on_me;
-        
-        # Sort @rows.
-        @rows = sort { ($b->{row}{effective}||0) <=> ($a->{row}{effective}||0) } @rows;
-        
-        # Sort slaves.
-        foreach my $row (@rows) {
-            $row->{slaves} = [ sort { ($b->{row}{effective}||0) <=> ($a->{row}{effective}||0) } @{$row->{slaves}} ];
-            $eff_on_me += $row->{row}{effective}||0;
-        }
-        
-        # Print @rows.
-        if( @rows ) {
-            $PAGE .= $pm->tableHeader("Healing In by Source", @header);
-            $PAGE .= $pm->tableRows(
-                header => \@header,
-                rows => \@rows,
-                master => sub {
-                    return {
-                        "Source" => $pm->actorLink( $_[0]->{key} ),
-                        "R-Eff. Heal" => $_[0]->{row}{effective},
-                        "R-Count" => $_[0]->{row}{count},
-                        "R-Overheal %" => $_[0]->{row}{total} && sprintf( "%0.1f%%", ( $_[0]->{row}{total} - ($_[0]->{row}{effective}||0) ) / $_[0]->{row}{total} * 100 ),
-                        "R-Eff. In %" => $eff_on_me && sprintf( "%0.1f%%", ($_[0]->{row}{effective}||0) / $eff_on_me * 100 ),
-                    };
-                },
-                slave => sub {
-                    return {
-                        "Source" => $pm->spellLink( $_[0]->{key} ),
-                        "R-Eff. Heal" => $_[0]->{row}{effective},
-                        "R-Count" => $_[0]->{row}{count},
-                        "R-Overheal %" => $_[0]->{row}{total} && sprintf( "%0.1f%%", ( $_[0]->{row}{total} - ($_[0]->{row}{effective}||0) ) / $_[0]->{row}{total} * 100 ),
-                        "R-Eff. In %" => $_[1]->{row}{total} && sprintf( "%0.1f%%", ($_[0]->{row}{effective}||0) / $_[1]->{row}{total} * 100 ),
-                    };
-                }
-            );
-        }
-    }
-    
-    $PAGE .= $pm->tableEnd;
-    $PAGE .= $pm->tabEnd;
-    
-    $PAGE .= $pm->tabStart("Casts and Gains");
-    $PAGE .= $pm->tableStart;
-    
-    #########
-    # CASTS #
-    #########
-    
-    if( $self->_keyExists( $self->{ext}{Cast}{actors}, @PLAYER ) ) {
-        my @header = (
-            "Name",
-            "R-Targets",
-            "R-Casts",
-            "",
-            "",
-            "",
-        );
-        
-        # Group by ability.
-        my @rows = $self->_castRowsOut( $self->{ext}{Cast}, @PLAYER );
-        
-        $PAGE .= $pm->tableHeader("Casts", @header);
         $PAGE .= $pm->tableRows(
-            header => \@header,
-            rows => \@rows,
+            title => "Healing Out by Ability",
+            header => [ "Ability", "R-Eff. Heal", "R-%", "R-Hits", "R-Crits", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Overheal", ],
+            data => $self->_abilityRows($heOut),
+            sort => sub ($$) { ($_[1]->{effective}||0) <=> ($_[0]->{effective}||0) },
+            preprocess => sub { $eff_on_others += ($_[1]->{effective}||0) if( @_ == 2 ) },
+            master => sub {
+                my ($spellactor, $spellname, $spellid) = $self->_decodespell($_[0], $pm, "Healing", @PLAYER);
+                return $self->_rowHealing( $_[1], $eff_on_others, "Ability", $spellname );
+            },
+            slave => sub {
+                return $self->_rowHealing( $_[1], $_[3]->{effective}, "Ability", $pm->actorLink( $_[0] ) );
+            }
+        ) if %$heOut;
+
+        #######################
+        # HEALING OUT TARGETS #
+        #######################
+        
+        $PAGE .= $pm->tableRows(
+            title => "Healing Out by Target",
+            header => [ "Target", "R-Eff. Heal", "R-%", "R-Hits", "R-Crits", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Overheal", ],
+            data => $self->_targetRows($heOut),
+            sort => sub ($$) { ($_[1]->{effective}||0) <=> ($_[0]->{effective}||0) },
+            master => sub {
+                return $self->_rowHealing( $_[1], $eff_on_others, "Target", $pm->actorLink($_[0]) );
+            },
+            slave => sub {
+                my ($spellactor, $spellname, $spellid) = $self->_decodespell($_[0], $pm, "Healing", @PLAYER);
+                return $self->_rowHealing( $_[1], $_[3]->{effective}, "Target", $spellname );
+            }
+        ) if %$heOut;
+
+        ######################
+        # HEALING IN SOURCES #
+        ######################
+
+        $PAGE .= $pm->tableRows(
+            title => "Healing In by Source",
+            header => [ "Source", "R-Eff. Heal", "R-%", "R-Hits", "R-Crits", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Overheal", ],
+            data => $heIn,
+            sort => sub ($$) { ($_[1]->{effective}||0) <=> ($_[0]->{effective}||0) },
+            preprocess => sub { $eff_on_me += ($_[1]->{effective}||0) if( @_ == 2 ) },
+            master => sub {
+                return $self->_rowHealing( $_[1], $eff_on_me, "Source", $pm->actorLink($_[0]) );
+            },
+            slave => sub {
+                return $self->_rowHealing( $_[1], $_[3]->{effective}, "Source", $pm->spellLink($_[0], "Healing") );
+            }
+        ) if %$heIn;
+
+        $PAGE .= $pm->tableEnd;
+        $PAGE .= $pm->tabEnd;
+    }
+    
+    ###################
+    # CASTS AND POWER #
+    ###################
+    
+    if( %$castsOut || %$powerIn || %$eaIn || %$powerOut ) {
+        $PAGE .= $pm->tabStart("Casts and Power");
+        $PAGE .= $pm->tableStart;
+
+        #########
+        # CASTS #
+        #########
+
+        $PAGE .= $pm->tableRows(
+            title => "Casts",
+            header => [ "Name", "R-Targets", "R-Casts", "", "", "", ],
+            data => $castsOut,
+            sort => sub ($$) { $_[1]->{count} <=> $_[0]->{count} },
             master => sub {
                 return {
-                    "Name" => $pm->spellLink( $_[0]->{key} ),
-                    "R-Targets" => scalar @{$_[0]->{slaves}},
-                    "R-Casts" => $_[0]->{row}{count},
+                    "Name" => $pm->spellLink( $_[0], "Casts and Power" ),
+                    "R-Targets" => scalar keys %{$castsOut->{$_[0]}},
+                    "R-Casts" => $_[1]->{count},
                 };
             },
             slave => sub {
                 return {
-                    "Name" => $pm->actorLink( $_[0]->{key} ),
+                    "Name" => $pm->actorLink( $_[0] ),
                     "R-Targets" => "",
-                    "R-Casts" => $_[0]->{row}{count},
+                    "R-Casts" => $_[1]->{count},
                 };
-            }
-        );
-    }
-    
-    #########
-    # POWER #
-    #########
-    
-    if( $self->_keyExists( $self->{ext}{Power}{actors}, @PLAYER ) ) {
-        my @header = (
-            "Name",
-            "R-Sources",
-            "R-Gained",
-            "R-Ticks",
-            "R-Avg",
-            "R-Per 5",
-        );
-        
-        my @rows = $self->_castRowsOut( $self->{ext}{Power}, @PLAYER );
-        
-        $PAGE .= $pm->tableHeader("Power Gains", @header);
+            },
+        ) if %$castsOut;
+
+        ###########################
+        # POWER and EXTRA ATTACKS #
+        ###########################
+
         $PAGE .= $pm->tableRows(
-            header => \@header,
-            rows => \@rows,
+            title => "Power Gains",
+            header => [ "Name", "R-Sources", "R-Gained", "R-Ticks", "R-Avg", "R-Per 5", ],
+            data => $powerIn,
+            sort => sub ($$) { $_[1]->{amount} <=> $_[0]->{amount} },
             master => sub {
                 return {
-                    "Name" => $pm->spellLink( $_[0]->{key}, $self->{ext}{Index}->spellname($_[0]->{key}) . " (" . Stasis::Parser->_powerName( $_[0]->{row}{type} ) . ")" ),
-                    "R-Sources" => scalar @{$_[0]->{slaves}},
-                    "R-Gained" => $_[0]->{row}{amount},
-                    "R-Ticks" => $_[0]->{row}{count},
-                    "R-Avg" => $_[0]->{row}{count} && sprintf( "%d", $_[0]->{row}{amount} / $_[0]->{row}{count} ),
-                    "R-Per 5" => $ptime && sprintf( "%0.1f", $_[0]->{row}{amount} / $ptime * 5 ),
+                    "Name" => $pm->spellLink( $_[0], "Casts and Power" ) . " (" . Stasis::Parser->_powerName( $_[1]->{type} ) . ")",
+                    "R-Sources" => scalar keys %{$powerIn->{$_[0]}},
+                    "R-Gained" => $_[1]->{amount},
+                    "R-Ticks" => $_[1]->{count},
+                    "R-Avg" => $_[1]->{count} && sprintf( "%d", $_[1]->{amount} / $_[1]->{count} ),
+                    "R-Per 5" => $ptime && sprintf( "%0.1f", $_[1]->{amount} / $ptime * 5 ),
                 };
             },
             slave => sub {
                 return {
-                    "Name" => $pm->actorLink( $_[0]->{key} ),
-                    "R-Gained" => $_[0]->{row}{amount},
-                    "R-Ticks" => $_[0]->{row}{count},
-                    "R-Avg" => $_[0]->{row}{count} && sprintf( "%d", $_[0]->{row}{amount} / $_[0]->{row}{count} ),
-                    "R-Per 5" => $ptime && sprintf( "%0.1f", $_[0]->{row}{amount} / $ptime * 5 ),
+                    "Name" => $pm->actorLink( $_[0] ),
+                    "R-Gained" => $_[1]->{amount},
+                    "R-Ticks" => $_[1]->{count},
+                    "R-Avg" => $_[1]->{count} && sprintf( "%d", $_[1]->{amount} / $_[1]->{count} ),
+                    "R-Per 5" => $ptime && sprintf( "%0.1f", $_[1]->{amount} / $ptime * 5 ),
                 };
-            }
-        );
-    }
-    
-    #################
-    # EXTRA ATTACKS #
-    #################
-    
-    if( $self->_keyExists( $self->{ext}{ExtraAttack}{actors}, @PLAYER ) ) {
-        my @header = (
-            "Name",
-            "R-Sources",
-            "R-Gained",
-            "R-Ticks",
-            "R-Avg",
-            "R-Per 5",
-        );
-        
-        my @rows = $self->_castRowsOut( $self->{ext}{ExtraAttack}, @PLAYER );
-        
-        $PAGE .= $pm->tableHeader("Power Gains", @header) unless $self->_keyExists( $self->{ext}{Power}{actors}, @PLAYER );
+            },
+        ) if %$powerIn;
+
         $PAGE .= $pm->tableRows(
-            header => \@header,
-            rows => \@rows,
+            title => %$powerIn ? "" : "Power Gains",
+            header => [ "Name", "R-Sources", "R-Gained", "R-Ticks", "R-Avg", "R-Per 5", ],
+            data => $eaIn,
+            sort => sub ($$) { $_[1]->{amount} <=> $_[0]->{amount} },
             master => sub {
                 return {
-                    "Name" => $pm->spellLink( $_[0]->{key}, $self->{ext}{Index}->spellname($_[0]->{key}) . " (extra attacks)" ),
-                    "R-Sources" => scalar @{$_[0]->{slaves}},
-                    "R-Gained" => $_[0]->{row}{amount},
-                    "R-Ticks" => $_[0]->{row}{count},
-                    "R-Avg" => $_[0]->{row}{count} && sprintf( "%d", $_[0]->{row}{amount} / $_[0]->{row}{count} ),
-                    "R-Per 5" => $ptime && sprintf( "%0.1f", $_[0]->{row}{amount} / $ptime * 5 ),
+                    "Name" => $pm->spellLink( $_[0], "Casts and Power" ) . " (extra attacks)",
+                    "R-Sources" => scalar keys %{$eaIn->{$_[0]}},
+                    "R-Gained" => $_[1]->{amount},
+                    "R-Ticks" => $_[1]->{count},
+                    "R-Avg" => $_[1]->{count} && sprintf( "%d", $_[1]->{amount} / $_[1]->{count} ),
+                    "R-Per 5" => $ptime && sprintf( "%0.1f", $_[1]->{amount} / $ptime * 5 ),
                 };
             },
             slave => sub {
                 return {
-                    "Name" => $pm->actorLink( $_[0]->{key} ),
-                    "R-Gained" => $_[0]->{row}{amount},
-                    "R-Ticks" => $_[0]->{row}{count},
-                    "R-Avg" => $_[0]->{row}{count} && sprintf( "%d", $_[0]->{row}{amount} / $_[0]->{row}{count} ),
-                    "R-Per 5" => $ptime && sprintf( "%0.1f", $_[0]->{row}{amount} / $ptime * 5 ),
+                    "Name" => $pm->actorLink( $_[0] ),
+                    "R-Gained" => $_[1]->{amount},
+                    "R-Ticks" => $_[1]->{count},
+                    "R-Avg" => $_[1]->{count} && sprintf( "%d", $_[1]->{amount} / $_[1]->{count} ),
+                    "R-Per 5" => $ptime && sprintf( "%0.1f", $_[1]->{amount} / $ptime * 5 ),
                 };
-            }
-        );
+            },
+        ) if %$eaIn;
+        
+        #############
+        # POWER OUT #
+        #############
+        
+        $PAGE .= $pm->tableRows(
+            title => "Power Given to Others",
+            header => [ "Name", "R-Targets", "R-Given", "R-Ticks", "R-Avg", "R-Per 5", ],
+            data => $powerOut,
+            sort => sub ($$) { $_[1]->{amount} <=> $_[0]->{amount} },
+            master => sub {
+                return {
+                    "Name" => $pm->spellLink( $_[0], "Casts and Power" ) . " (" . Stasis::Parser->_powerName( $_[1]->{type} ) . ")",
+                    "R-Targets" => scalar keys %{$powerOut->{$_[0]}},
+                    "R-Given" => $_[1]->{amount},
+                    "R-Ticks" => $_[1]->{count},
+                    "R-Avg" => $_[1]->{count} && sprintf( "%d", $_[1]->{amount} / $_[1]->{count} ),
+                    "R-Per 5" => $ptime && sprintf( "%0.1f", $_[1]->{amount} / $ptime * 5 ),
+                };
+            },
+            slave => sub {
+                my $slave_ptime = $self->{ext}{Presence}->presence( $self->{grouper}->expand($_[0]) );
+                return {
+                    "Name" => $pm->actorLink( $_[0] ),
+                    "R-Given" => $_[1]->{amount},
+                    "R-Ticks" => $_[1]->{count},
+                    "R-Avg" => $_[1]->{count} && sprintf( "%d", $_[1]->{amount} / $_[1]->{count} ),
+                    "R-Per 5" => $ptime && sprintf( "%0.1f", $_[1]->{amount} / $slave_ptime * 5 ),
+                };
+            },
+        ) if %$powerOut;
+                
+        $PAGE .= $pm->tableEnd;
+        $PAGE .= $pm->tabEnd;
     }
     
     #########
     # AURAS #
     #########
-    
-    if( !$do_group ) {
-        my @header = (
-            "Name",
-            "Type",
-            "R-Uptime",
-            "R-%",
-            "R-Gained",
-            "R-Faded",
-        );
-        
-        # Get aura rows.
-        my @rows;
-        my $auraCollapse = $self->{ext}{Aura}->aura( 
-            p => $self->{ext}{Presence}{actors},
-            keyActor => sub { $self->{grouper}->captain_for($_[0]) }, 
-            target => [$MOB], 
-            expand => ["spell"]
-        );
-        
-        my $auraExpand = $self->{ext}{Aura}->aura( 
-            p => $self->{ext}{Presence}{actors}, 
-            keyActor => sub { $self->{grouper}->captain_for($_[0]) }, 
-            target => [$MOB], 
-            expand => ["spell", "actor"]
-        );
-        
-        while( my ($kspell, $vspell) = each(%$auraExpand) ) {
-            my $row = {
-                key => $kspell,
-                row => $auraCollapse->{$kspell},
-                slaves => [],
-            };
-            
-            push @rows, $row;
-            while( my ($ktarget, $vtarget) = each(%$vspell) ) {
-                # Add the slave.
-                push @{$row->{slaves}}, {
-                    key => $ktarget,
-                    row => $vtarget,
-                };
-            }
+
+    if( ($auraIn && %$auraIn) || ($auraOut && %$auraOut) ) {
+        $PAGE .= $pm->tabStart("Auras");
+        $PAGE .= $pm->tableStart;
+
+        if( !$do_group ) {
+            $PAGE .= $pm->tableRows(
+                title => "Auras Gained",
+                header => [ "Name", "Type", "R-Uptime", "R-%", "R-Gained", "R-Faded", ],
+                data => $auraIn,
+                preprocess => sub { $_[1]->{time} = span_sum( $_[1]->{spans}, $pstart, $pend ) },
+                sort => sub ($$) { $_[0]->{type} cmp $_[1]->{type} || $_[1]->{time} <=> $_[0]->{time} },
+                master => sub {
+                    return {
+                        "Name" => $pm->spellLink( $_[0], "Auras" ),
+                        "Type" => (($_[1]->{type} && lc $_[1]->{type}) || "unknown"),
+                        "R-Gained" => $_[1]->{gains},
+                        "R-Faded" => $_[1]->{fades},
+                        "R-%" => $ptime && sprintf( "%0.1f%%", $_[1]->{time} / $ptime * 100 ),
+                        "R-Uptime" => $_[1]->{time} && sprintf( "%02d:%02d", $_[1]->{time}/60, $_[1]->{time}%60 ),
+                    };
+                },
+                slave => sub {
+                    return {
+                        "Name" => $pm->actorLink( $_[0] ),
+                        "Type" => (($_[1]->{type} && lc $_[1]->{type}) || "unknown"),
+                        "R-Gained" => $_[1]->{gains},
+                        "R-Faded" => $_[1]->{fades},
+                        "R-%" => $ptime && sprintf( "%0.1f%%", $_[1]->{time} / $ptime * 100 ),
+                        "R-Uptime" => $_[1]->{time} && sprintf( "%02d:%02d", $_[1]->{time}/60, $_[1]->{time}%60 ),
+                    };
+                }
+            ) if %$auraIn;
+
+            $PAGE .= $pm->tableRows(
+                title => "Auras Applied to Others",
+                header => [ "Name", "Type", "R-Uptime", "R-%", "R-Gained", "R-Faded", ],
+                data => $auraOut,
+                preprocess => sub {
+                    if( @_ == 4 ) {
+                        # Slave row
+                        $_[1]->{time} = span_sum( $_[1]->{spans}, $self->{ext}{Presence}->presence( $self->{grouper}->expand($_[0]) ) );
+                    } else {
+                        # Master row.
+                        $_[1]->{time} = span_sum( $_[1]->{spans}, $pstart, $pend );
+                    }
+                },
+                sort => sub ($$) { $_[0]->{type} cmp $_[1]->{type} || $_[1]->{time} <=> $_[0]->{time} },
+                master => sub {
+                    return {
+                        "Name" => $pm->spellLink( $_[0], "Auras" ),
+                        "Type" => (($_[1]->{type} && lc $_[1]->{type}) || "unknown"),
+                        "R-Gained" => $_[1]->{gains},
+                        "R-Faded" => $_[1]->{fades},
+                        "R-%" => $ptime && sprintf( "%0.1f%%", $_[1]->{time} / $ptime * 100 ),
+                        "R-Uptime" => $_[1]->{time} && sprintf( "%02d:%02d", $_[1]->{time}/60, $_[1]->{time}%60 ),
+                    };
+                },
+                slave => sub {
+                    my $slave_ptime = $self->{ext}{Presence}->presence( $self->{grouper}->expand($_[0]) );
+
+                    return {
+                        "Name" => $pm->actorLink( $_[0] ),
+                        "Type" => (($_[1]->{type} && lc $_[1]->{type}) || "unknown"),
+                        "R-Gained" => $_[1]->{gains},
+                        "R-Faded" => $_[1]->{fades},
+                        "R-%" => $slave_ptime && sprintf( "%0.1f%%", $_[1]->{time} / $slave_ptime * 100 ),
+                        "R-Uptime" => $_[1]->{time} && sprintf( "%02d:%02d", $_[1]->{time}/60, $_[1]->{time}%60 ),
+                    };
+                }
+            ) if %$auraOut;
         }
 
-        # Sort master rows.
-        @rows = sort { $a->{row}{type} cmp $b->{row}{type} || $b->{row}{time} <=> $a->{row}{time} } @rows;
-        
-        foreach my $row (@rows) {
-            # Sort slaves.
-            $row->{slaves} = [ sort { $a->{row}{type} cmp $b->{row}{type} || $b->{row}{time} <=> $a->{row}{time} } @{$row->{slaves}} ];
-        }
-        
-        if( @rows ) {
-            $PAGE .= $pm->tableHeader("Buffs and Debuffs", @header);
-            $PAGE .= $pm->tableRows(
-                header => \@header,
-                rows => \@rows,
-                master => sub {
-                    return {
-                        "Name" => $pm->spellLink( $_[0]->{key} ),
-                        "Type" => (($_[0]->{row}{type} && lc $_[0]->{row}{type}) || "unknown"),
-                        "R-Gained" => $_[0]->{row}{gains},
-                        "R-Faded" => $_[0]->{row}{fades},
-                        "R-%" => $ptime && sprintf( "%0.1f%%", $_[0]->{row}{time} / $ptime * 100 ),
-                        "R-Uptime" => $_[0]->{row}{time} && sprintf( "%02d:%02d", $_[0]->{row}{time}/60, $_[0]->{row}{time}%60 ),
-                    };
-                },
-                slave => sub {
-                    return {
-                        "Name" => $pm->actorLink( $_[0]->{key} ),
-                        "Type" => (($_[0]->{row}{type} && lc $_[0]->{row}{type}) || "unknown"),
-                        "R-Gained" => $_[0]->{row}{gains},
-                        "R-Faded" => $_[0]->{row}{fades},
-                        "R-%" => $ptime && sprintf( "%0.1f%%", $_[0]->{row}{time} / $ptime * 100 ),
-                        "R-Uptime" => $_[0]->{row}{time} && sprintf( "%02d:%02d", $_[0]->{row}{time}/60, $_[0]->{row}{time}%60 ),
-                    };
-                }
-            );
-        }
+        $PAGE .= $pm->tableEnd;
+        $PAGE .= $pm->tabEnd;
     }
     
-    $PAGE .= $pm->tableEnd;
-    $PAGE .= $pm->tabEnd;
+    ##########################
+    # DISPELS AND INTERRUPTS #
+    ##########################
     
-    $PAGE .= $pm->tabStart("Dispels and Interrupts");
-    $PAGE .= $pm->tableStart;
-    
-    ###############
-    # DISPELS OUT #
-    ###############
-    
-    {
-        my @header = (
-            "Name",
-            "R-Casts",
-            "R-Resists",
-        );
+    if( %$interruptIn || %$interruptOut || %$dispelIn || %$dispelOut ) {
+        $PAGE .= $pm->tabStart("Dispels and Interrupts");
+        $PAGE .= $pm->tableStart;
+
+        ###############
+        # DISPELS OUT #
+        ###############
+
+        $PAGE .= $pm->tableRows(
+            title => "Auras Dispelled on Others",
+            header => [ "Name", "R-Targets", "R-Casts", "R-Resists", ],
+            data => $dispelOut,
+            sort => sub ($$) { $_[1]->{count} <=> $_[0]->{count} },
+            master => sub {
+                return {
+                    "Name" => $pm->spellLink( $_[0], "Dispels and Interrupts" ),
+                    "R-Targets" => scalar keys %{$dispelOut->{$_[0]}},
+                    "R-Casts" => $_[1]->{count},
+                    "R-Resists" => $_[1]->{resist},
+                };
+            },
+            slave => sub {
+                return {
+                    "Name" => $pm->actorLink( $_[0] ),
+                    "R-Casts" => $_[1]->{count},
+                    "R-Resists" => $_[1]->{resist},
+                };
+            },
+        ) if %$dispelOut;
         
-        my @rows = $self->_dispelRowsOut( $self->{ext}{Dispel}, @PLAYER );
+        ##############
+        # DISPELS IN #
+        ##############
+
+        $PAGE .= $pm->tableRows(
+            title => "Auras Dispelled by Others",
+            header => [ "Name", "R-Sources", "R-Casts", "R-Resists", ],
+            data => $dispelIn,
+            sort => sub ($$) { $_[1]->{count} <=> $_[0]->{count} },
+            master => sub {
+                return {
+                    "Name" => $pm->spellLink( $_[0], "Dispels and Interrupts" ),
+                    "R-Sources" => scalar keys %{$dispelIn->{$_[0]}},
+                    "R-Casts" => $_[1]->{count},
+                    "R-Resists" => $_[1]->{resist},
+                };
+            },
+            slave => sub {
+                return {
+                    "Name" => $pm->actorLink( $_[0] ),
+                    "R-Casts" => $_[1]->{count},
+                    "R-Resists" => $_[1]->{resist},
+                };
+            },
+        ) if %$dispelIn;
         
-        if( @rows ) {
-            $PAGE .= $pm->tableHeader("Dispels Out", @header);
-            $PAGE .= $pm->tableRows(
-                header => \@header,
-                rows => \@rows,
-                master => sub {
-                    return {
-                        "Name" => $pm->actorLink( $_[0]->{key} ),
-                        "R-Casts" => $_[0]->{row}{count},
-                        "R-Resists" => $_[0]->{row}{resist},
-                    };
-                },
-                slave => sub {
-                    return {
-                        "Name" => $pm->spellLink( $_[0]->{key} ),
-                        "R-Casts" => $_[0]->{row}{count},
-                        "R-Resists" => $_[0]->{row}{resist},
-                    };
-                }
-            );
-        }
+        ##################
+        # INTERRUPTS OUT #
+        ##################
+
+        $PAGE .= $pm->tableRows(
+            title => "Casts Interrupted on Others",
+            header => [ "Name", "R-Targets", "R-Casts", "", ],
+            data => $interruptOut,
+            sort => sub ($$) { $_[1]->{count} <=> $_[0]->{count} },
+            master => sub {
+                return {
+                    "Name" => $pm->spellLink( $_[0], "Dispels and Interrupts" ),
+                    "R-Targets" => scalar keys %{$interruptOut->{$_[0]}},
+                    "R-Casts" => $_[1]->{count},
+                };
+            },
+            slave => sub {
+                return {
+                    "Name" => $pm->actorLink( $_[0] ),
+                    "R-Casts" => $_[1]->{count},
+                };
+            },
+        ) if %$interruptOut;
+        
+        #################
+        # INTERRUPTS IN #
+        #################
+
+        $PAGE .= $pm->tableRows(
+            title => "Casts Interrupted by Others",
+            header => [ "Name", "R-Sources", "R-Casts", "", ],
+            data => $interruptIn,
+            sort => sub ($$) { $_[1]->{count} <=> $_[0]->{count} },
+            master => sub {
+                return {
+                    "Name" => $pm->spellLink( $_[0], "Dispels and Interrupts" ),
+                    "R-Sources" => scalar keys %{$interruptIn->{$_[0]}},
+                    "R-Casts" => $_[1]->{count},
+                };
+            },
+            slave => sub {
+                return {
+                    "Name" => $pm->actorLink( $_[0] ),
+                    "R-Casts" => $_[1]->{count},
+                };
+            },
+        ) if %$interruptIn;
+
+        $PAGE .= $pm->tableEnd;
+        $PAGE .= $pm->tabEnd;
     }
-    
-    ##############
-    # DISPELS IN #
-    ##############
-    
-    {
-        my @header = (
-            "Name",
-            "R-Casts",
-            "R-Resists",
-        );
-        
-        my @rows = $self->_dispelRowsIn( $self->{ext}{Dispel}, @PLAYER );
-        
-        if( @rows ) {
-            $PAGE .= $pm->tableHeader("Dispels In", @header);
-            $PAGE .= $pm->tableRows(
-                header => \@header,
-                rows => \@rows,
-                master => sub {
-                    return {
-                        "Name" => $pm->actorLink( $_[0]->{key} ),
-                        "R-Casts" => $_[0]->{row}{count},
-                        "R-Resists" => $_[0]->{row}{resist},
-                    };
-                },
-                slave => sub {
-                    return {
-                        "Name" => $pm->spellLink( $_[0]->{key} ),
-                        "R-Casts" => $_[0]->{row}{count},
-                        "R-Resists" => $_[0]->{row}{resist},
-                    };
-                }
-            );
-        }
-    }
-    
-    ##################
-    # INTERRUPTS OUT #
-    ##################
-    
-    {
-        my @header = (
-            "Name",
-            "R-Interrupts",
-            "",
-        );
-        
-        my @rows = $self->_dispelRowsOut( $self->{ext}{Interrupt}, @PLAYER );
-        
-        if( @rows ) {
-            $PAGE .= $pm->tableHeader("Interrupts Out", @header);
-            $PAGE .= $pm->tableRows(
-                header => \@header,
-                rows => \@rows,
-                master => sub {
-                    return {
-                        "Name" => $pm->actorLink( $_[0]->{key} ),
-                        "R-Interrupts" => $_[0]->{row}{count},
-                    };
-                },
-                slave => sub {
-                    return {
-                        "Name" => $pm->spellLink( $_[0]->{key} ),
-                        "R-Interrupts" => $_[0]->{row}{count},
-                    };
-                }
-            );
-        }
-    }
-    
-    #################
-    # INTERRUPTS IN #
-    #################
-    
-    {
-        my @header = (
-            "Name",
-            "R-Interrupts",
-            "",
-        );
-        
-        my @rows = $self->_dispelRowsIn( $self->{ext}{Interrupt}, @PLAYER );
-        
-        if( @rows ) {
-            $PAGE .= $pm->tableHeader("Interrupts In", @header);
-            $PAGE .= $pm->tableRows(
-                header => \@header,
-                rows => \@rows,
-                master => sub {
-                    return {
-                        "Name" => $pm->actorLink( $_[0]->{key} ),
-                        "R-Interrupts" => $_[0]->{row}{count},
-                    };
-                },
-                slave => sub {
-                    return {
-                        "Name" => $pm->spellLink( $_[0]->{key} ),
-                        "R-Interrupts" => $_[0]->{row}{count},
-                    };
-                }
-            );
-        }
-    }
-    
-    $PAGE .= $pm->tableEnd;
-    $PAGE .= $pm->tabEnd;
     
     ##########
     # DEATHS #
@@ -879,10 +774,10 @@ sub page {
 
     if( (!$do_group || !$self->{collapse} ) && $self->_keyExists( $self->{ext}{Death}{actors}, @PLAYER ) ) {
         my @header = (
-                "Death Time",
-                "R-Health",
-                "Event",
-            );
+            "Death Time",
+            "R-Health",
+            "Event",
+        );
 
         # Loop through all deaths.
         my $n = 0;
@@ -936,7 +831,7 @@ sub page {
         }
     }
     
-    $PAGE .= $pm->jsTab("damage");
+    $PAGE .= $pm->jsTab( $eff_on_others && $eff_on_others > 2 * ($dmg_to_all||0) ? "Healing" : $tabs[0]) if @tabs;
     $PAGE .= $pm->tabBarEnd;
     
     ##########
@@ -950,6 +845,7 @@ sub _decodespell {
     my $self = shift;
     my $encoded_spellid = shift;
     my $pm = shift;
+    my $tab = shift;
     my @PLAYER = @_;
     
     my $spellactor;
@@ -959,16 +855,16 @@ sub _decodespell {
     if( $encoded_spellid =~ /^([A-Za-z0-9]+): (.+)$/ ) {
         if( ! grep $_ eq $1, @PLAYER ) {
             $spellactor = $1;
-            $spellname = sprintf( "%s: %s", $pm->actorLink( $1 ), $pm->spellLink( $2 ) );
+            $spellname = sprintf( "%s: %s", $pm->actorLink( $1 ), $pm->spellLink( $2, $tab ) );
             $spellid = $2;
         } else {
             $spellactor = $1;
-            $spellname = $pm->spellLink( $2 );
+            $spellname = $pm->spellLink( $2, $tab );
             $spellid = $2;
         }
     } else {
         $spellactor = $PLAYER[0];
-        $spellname = $pm->spellLink( $encoded_spellid );
+        $spellname = $pm->spellLink( $encoded_spellid, $tab );
         $spellid = $encoded_spellid;
     }
     
@@ -978,238 +874,95 @@ sub _decodespell {
 sub _tidypct {
     my $n = pop;
     
-    if( floor($n) == $n ) {
-        return sprintf "%d", $n;
+    if( $n ) {
+        if( floor($n) == $n ) {
+            return sprintf "%d", $n;
+        } else {
+            return sprintf "%0.1f", $n;
+        }
     } else {
-        return sprintf "%0.1f", $n;
+        return 0;
     }
-}
-
-sub _targetRowsIn {
-    my $self = shift;
-    my $de = shift;
-
-    # Group by ability.
-    my @rows;
-
-    while( my ($kactor, $vactor) = each(%$de) ) {
-        my $ractor = {
-            key => $kactor,
-            row => {},
-            slaves => [],
-        };
-        
-        push @rows, $ractor;
-        
-        while( my ($kspell, $vspell) = each(%$vactor) ) {
-            # Add to the master.
-            ext_sum( $ractor->{row}, $vspell );
-            
-            # Add a slave.
-            push @{$ractor->{slaves}}, {
-                key => $kspell,
-                row => $vspell,
-            };
-        }
-    }
-    
-    return @rows;
-}
-
-sub _targetRowsOut {
-    my $self = shift;
-    my $de = shift;
-
-    # Group by ability.
-    my @rows;
-
-    while( my ($kactor, $vactor) = each(%$de) ) {
-        while( my ($kspell, $vspell) = each(%$vactor) ) {
-            # Encoded spell name.
-            my $espell = "$kactor: $kspell";
-            
-            while( my ($ktarget, $vtarget) = each(%$vspell) ) {
-                # Add the row.
-                $self->_rowadd( \@rows, $ktarget, $espell, $vtarget );
-            }
-        }
-    }
-
-    return @rows;
 }
 
 sub _abilityRows {
     my $self = shift;
-    my $de = shift;
-
-    # Group by ability.
-    my @rows;
-
-    while( my ($kactor, $vactor) = each(%$de) ) {
+    my $eOut = shift;
+    
+    # We want to make this a two-dimensional spell + target hash
+    my %ret;
+    
+    while( my ($kactor, $vactor) = each(%$eOut) ) {
         while( my ($kspell, $vspell) = each(%$vactor) ) {
             # Encoded spell name.
             my $espell = "$kactor: $kspell";
-            my $rspell = {
-                key => $espell,
-                row => {},
-                slaves => [],
-            };
             
-            push @rows, $rspell;
-
             while( my ($ktarget, $vtarget) = each(%$vspell) ) {
-                # Add to the master.
-                ext_sum( $rspell->{row}, $vtarget );
-                
-                # Add a slave.
-                push @{$rspell->{slaves}}, {
-                    key => $ktarget,
-                    row => $vtarget,
-                };
+                # Add a reference to this leaf.
+                $ret{ $espell }{ $ktarget } = $vtarget;
             }
         }
     }
-
-    return @rows;
+    
+    return \%ret;
 }
 
-sub _castRowsIn {
+sub _targetRows {
     my $self = shift;
-    my $ext = shift;
+    my $eOut = shift;
 
-    my @rows;
-    
-    while( my ($kactor, $vactor) = each(%{ $ext->{actors} } ) ) {
-        # Actor keys.
-        my $gactor = $self->{grouper}->group($kactor);
-        my $kactor_use = $gactor && $_[0] ne $kactor ? $self->{grouper}->captain($gactor) : $kactor;
-        
+    # We want to make this a two-dimensional target + spell hash
+    my %ret;
+
+    while( my ($kactor, $vactor) = each(%$eOut) ) {
         while( my ($kspell, $vspell) = each(%$vactor) ) {
+            # Encoded spell name.
+            my $espell = "$kactor: $kspell";
+            
             while( my ($ktarget, $vtarget) = each(%$vspell) ) {
-                next unless grep $_ eq $ktarget, @_;
-
-                # Add the row.
-                $self->_rowadd( \@rows, $kspell, $kactor_use, $vtarget );
+                # Add a reference to this leaf.
+                $ret{ $ktarget }{ $espell } = $vtarget;
             }
         }
     }
-    
-    # Sort @rows.
-    @rows = sort { $b->{row}{count} <=> $a->{row}{count} } @rows;
-    
-    # Sort slaves.
-    foreach my $row (@rows) {
-        $row->{slaves} = [ sort { $b->{row}{count} <=> $a->{row}{count} } @{$row->{slaves}} ]; 
-    }
-    
-    return @rows;
+
+    return \%ret;
 }
 
-sub _castRowsOut {
-    my $self = shift;
-    my $ext = shift;
+sub _cricruglaText {
+    my $sdata = pop;
     
-    my @rows;
+    my $swings = ($sdata->{count}||0) - ($sdata->{tickCount}||0);
+    return unless $swings;
     
-    foreach my $kactor (@_) {
-        while( my ($kspell, $vspell) = each(%{ $ext->{actors}{$kactor} } ) ) {
-            while( my ($ktarget, $vtarget) = each(%$vspell) ) {
-                # $vtarget is a spell hash.
-                my $gtarget = $self->{grouper}->group($ktarget);
-                my $ktarget_use = $gtarget ? $self->{grouper}->captain($gtarget) : $ktarget;
-
-                # Add the row.
-                $self->_rowadd( \@rows, $kspell, $ktarget_use, $vtarget );
-            }
-        }
+    my $pct = _tidypct(($sdata->{critCount}||0) / $swings * 100 );
+    $pct &&= "$pct%";
+    
+    my @text;
+    my @atype = qw(crushing glancing);
+    foreach my $type (@atype) {
+        push @text, _tidypct( $sdata->{$type} / $swings * 100 ) . "% $type" if $sdata->{$type};
     }
     
-    # Sort @rows.
-    @rows = sort { $b->{row}{count} <=> $a->{row}{count} } @rows;
-    
-    # Sort slaves.
-    foreach my $row (@rows) {
-        $row->{slaves} = [ sort { $b->{row}{count} <=> $a->{row}{count} } @{$row->{slaves}} ]; 
+    if( @text ) {
+        $pct ||= "0%";
     }
     
-    return @rows;
-}
-
-sub _dispelRowsIn {
-    my $self = shift;
-    my $ext = shift;
-
-    my @rows;
-    
-    while( my ($kactor, $vactor) = each(%{ $ext->{actors} } ) ) {
-        # Actor keys.
-        my $gactor = $self->{grouper}->group($kactor);
-        my $kactor_use = $gactor && $_[0] ne $kactor ? $self->{grouper}->captain($gactor) : $kactor;
-        
-        while( my ($kspell, $vspell) = each(%$vactor) ) {
-            while( my ($ktarget, $vtarget) = each(%$vspell) ) {
-                # Skip targets other than us.
-                next unless grep $_ eq $ktarget, @_;
-                
-                while( my ($kextraspell, $vextraspell) = each (%$vtarget) ) {
-                    # Add the row.
-                    $self->_rowadd( \@rows, $kactor_use, $kextraspell, $vextraspell );
-                }
-            }
-        }
-    }
-    
-    # Sort @rows.
-    @rows = sort { $b->{row}{count} <=> $a->{row}{count} } @rows;
-    
-    # Sort slaves.
-    foreach my $row (@rows) {
-        $row->{slaves} = [ sort { $b->{row}{count} <=> $a->{row}{count} } @{$row->{slaves}} ]; 
-    }
-    
-    return @rows;
-}
-
-sub _dispelRowsOut {
-    my $self = shift;
-    my $ext = shift;
-
-    my @rows;
-    
-    foreach my $kactor (@_) {
-        while( my ($kspell, $vspell) = each(%{ $ext->{actors}{$kactor} } ) ) {
-            while( my ($ktarget, $vtarget) = each(%$vspell) ) {
-                # $vtarget is a spell hash.
-                my $gtarget = $self->{grouper}->group($ktarget);
-                my $ktarget_use = $gtarget ? $self->{grouper}->captain($gtarget) : $ktarget;
-
-                while( my ($kextraspell, $vextraspell) = each (%$vtarget) ) {
-                    # Add the row.
-                    $self->_rowadd( \@rows, $ktarget_use, $kextraspell, $vextraspell );
-                }
-            }
-        }
-    }
-    
-    # Sort @rows.
-    @rows = sort { $b->{row}{count} <=> $a->{row}{count} } @rows;
-    
-    # Sort slaves.
-    foreach my $row (@rows) {
-        $row->{slaves} = [ sort { $b->{row}{count} <=> $a->{row}{count} } @{$row->{slaves}} ]; 
-    }
-    
-    return @rows;
+    return ($pct, @text ? join( ";", @text ) : undef );
 }
 
 sub _avoidanceText {
     my $sdata = pop;
     
     my $swings = ($sdata->{count}||0) - ($sdata->{tickCount}||0);
-    my $pct = _tidypct( 100 - ( ($sdata->{hitCount}||0) + ($sdata->{critCount}||0) ) / $swings * 100 ) . "%";
+    return unless $swings;
+    
+    my $pct = _tidypct( 100 - ( ($sdata->{hitCount}||0) + ($sdata->{critCount}||0) ) / $swings * 100 );
+    $pct &&= "$pct%";
     
     my @text;
     my @atype = qw(miss dodge parry block absorb resist immune);
+    
     foreach my $type (@atype) {
         push @text, _tidypct( $sdata->{$type . "Count"} / $swings * 100 ) . "% total $type" if $sdata->{$type . "Count"};
     }
@@ -1223,15 +976,15 @@ sub _avoidanceText {
         push @text, _tidypct( $sdata->{$type . "Count"} / $sdata->{count} * 100 ) . "% partial ${_} (avg " . int($sdata->{$type . "Total"}/$sdata->{$type . "Count"}) . ")" if $sdata->{$type . "Count"};
     }
     
-    return ($pct, @text ? join( ";", @text ) : "None" );
+    if( @text ) {
+        $pct ||= "0%";
+    }
+    
+    return ($pct, @text ? join( ";", @text ) : undef );
 }
 
 sub _rowDamage {
-    my $self = shift;
-    my $sdata = shift;
-    my $title = shift;
-    my $header = shift;
-    my $time = shift;
+    my ($self, $sdata, $mnum, $header, $title, $time) = @_;
     
     # We're printing a row based on $sdata.
     my $swings = ($sdata->{count}||0) - ($sdata->{tickCount}||0);
@@ -1239,89 +992,38 @@ sub _rowDamage {
     return {
         ($header || "Ability") => $title,
         "R-Total" => $sdata->{total},
+        "R-%" => $sdata->{total} && $mnum && _tidypct( $sdata->{total} / $mnum * 100 ),
         "R-DPS" => $sdata->{total} && $time && sprintf( "%d", $sdata->{total}/$time ),
         "R-Time" => $time && sprintf( "%02d:%02d", $time/60, $time%60 ),
         "R-Hits" => $sdata->{hitCount} && sprintf( "%d", $sdata->{hitCount} ),
-        "R-Avg Hit" => $sdata->{hitCount} && $sdata->{hitTotal} && $self->{pm}->tip( int($sdata->{hitTotal} / $sdata->{hitCount}), sprintf( "Range: %d&ndash;%d", $sdata->{hitMin}, $sdata->{hitMax} ) ),
+        "R-AvHit" => $sdata->{hitCount} && $sdata->{hitTotal} && $self->{pm}->tip( int($sdata->{hitTotal} / $sdata->{hitCount}), sprintf( "Range: %d&ndash;%d", $sdata->{hitMin}, $sdata->{hitMax} ) ),
         "R-Ticks" => $sdata->{tickCount} && sprintf( "%d", $sdata->{tickCount} ),
-        "R-Avg Tick" => $sdata->{tickCount} && $sdata->{tickTotal} && $self->{pm}->tip( int($sdata->{tickTotal} / $sdata->{tickCount}), sprintf( "Range: %d&ndash;%d", $sdata->{tickMin}, $sdata->{tickMax} ) ),
+        "R-AvTick" => $sdata->{tickCount} && $sdata->{tickTotal} && $self->{pm}->tip( int($sdata->{tickTotal} / $sdata->{tickCount}), sprintf( "Range: %d&ndash;%d", $sdata->{tickMin}, $sdata->{tickMax} ) ),
         "R-Crits" => $sdata->{critCount} && sprintf( "%d", $sdata->{critCount} ),
-        "R-Avg Crit" => $sdata->{critCount} && $sdata->{critTotal} && $self->{pm}->tip( int($sdata->{critTotal} / $sdata->{critCount}), sprintf( "Range: %d&ndash;%d", $sdata->{critMin}, $sdata->{critMax} ) ),
-        "R-CriCruGla %" => $swings && sprintf( "%s/%s/%s", _tidypct( ($sdata->{critCount}||0) / $swings * 100 ), _tidypct( ($sdata->{crushing}||0) / $swings * 100 ), _tidypct( ($sdata->{glancing}||0) / $swings * 100 ) ),
-        "R-Avoidance" => $swings && $self->{pm}->tip( _avoidanceText($sdata) ),
+        "R-AvCrit" => $sdata->{critCount} && $sdata->{critTotal} && $self->{pm}->tip( int($sdata->{critTotal} / $sdata->{critCount}), sprintf( "Range: %d&ndash;%d", $sdata->{critMin}, $sdata->{critMax} ) ),
+        "R-% Crit" => $self->{pm}->tip( _cricruglaText($sdata) ),
+        "R-Avoid" => $self->{pm}->tip( _avoidanceText($sdata) ),
     };
 }
 
 sub _rowHealing {
-    my $self = shift;
-    my $sdata = shift;
-    my $title = shift;
-    my $header = shift;
+    my ($self, $sdata, $mnum, $header, $title) = @_;
     
     # We're printing a row based on $sdata.
     return {
         ($header || "Ability") => $title,
         "R-Eff. Heal" => $sdata->{effective}||0,
-        "R-Overheal %" => $sdata->{total} && sprintf( "%0.1f%%", ($sdata->{total} - ($sdata->{effective}||0) ) / $sdata->{total} * 100 ),
+        "R-%" => $sdata->{effective} && $mnum && _tidypct( $sdata->{effective} / $mnum * 100 ),
+        "R-Overheal" => $sdata->{total} && sprintf( "%0.1f%%", ($sdata->{total} - ($sdata->{effective}||0) ) / $sdata->{total} * 100 ),
+        "R-Count" => $_[1]->{count}||0,
         "R-Hits" => $sdata->{hitCount} && sprintf( "%d", $sdata->{hitCount} ),
-        "R-Avg Hit" => $sdata->{hitCount} && $sdata->{hitTotal} && $self->{pm}->tip( int($sdata->{hitTotal} / $sdata->{hitCount}), sprintf( "Range: %d&ndash;%d", $sdata->{hitMin}, $sdata->{hitMax} ) ),
+        "R-AvHit" => $sdata->{hitCount} && $sdata->{hitTotal} && $self->{pm}->tip( int($sdata->{hitTotal} / $sdata->{hitCount}), sprintf( "Range: %d&ndash;%d", $sdata->{hitMin}, $sdata->{hitMax} ) ),
         "R-Ticks" => $sdata->{tickCount} && sprintf( "%d", $sdata->{tickCount} ),
-        "R-Avg Tick" => $sdata->{tickCount} && $sdata->{tickTotal} && $self->{pm}->tip( int($sdata->{tickTotal} / $sdata->{tickCount}), sprintf( "Range: %d&ndash;%d", $sdata->{tickMin}, $sdata->{tickMax} ) ),
+        "R-AvTick" => $sdata->{tickCount} && $sdata->{tickTotal} && $self->{pm}->tip( int($sdata->{tickTotal} / $sdata->{tickCount}), sprintf( "Range: %d&ndash;%d", $sdata->{tickMin}, $sdata->{tickMax} ) ),
         "R-Crits" => $sdata->{critCount} && sprintf( "%d", $sdata->{critCount} ),
-        "R-Avg Crit" => $sdata->{critCount} && $sdata->{critTotal} && $self->{pm}->tip( int($sdata->{critTotal} / $sdata->{critCount}), sprintf( "Range: %d&ndash;%d", $sdata->{critMin}, $sdata->{critMax} ) ),
-        "R-Crit %" => $sdata->{count} && $sdata->{critCount} && ($sdata->{count} - ($sdata->{tickCount}||0) > 0) && sprintf( "%0.1f%%", ($sdata->{critCount}||0) / ($sdata->{count} - ($sdata->{tickCount}||0)) * 100 ),
+        "R-AvCrit" => $sdata->{critCount} && $sdata->{critTotal} && $self->{pm}->tip( int($sdata->{critTotal} / $sdata->{critCount}), sprintf( "Range: %d&ndash;%d", $sdata->{critMin}, $sdata->{critMax} ) ),
+        "R-% Crit" => $sdata->{count} && $sdata->{critCount} && ($sdata->{count} - ($sdata->{tickCount}||0)) && sprintf( "%0.1f%%", ($sdata->{critCount}||0) / ($sdata->{count} - ($sdata->{tickCount}||0)) * 100 ),
     };
-}
-
-sub _rowadd {
-    my ($self, $rows, $mkey, $skey, $vtarget) = @_;
-    
-    # Figure out which row to add this to, or create a new one if appropriate.
-    my $row;
-    
-    foreach (@$rows) {
-        if( $_->{key} eq $mkey ) {
-            $row = $_;
-            last;
-        }
-    }
-    
-    if( $row ) {
-        # Add to an existing row.
-        $row->{row} = ext_sum( {}, $row->{row}, $vtarget );
-        
-        # Either add to an existing slave, or create a new one.
-        my $slave;
-        foreach (@{$row->{slaves}}) {
-            if( $_->{key} eq $skey ) {
-                $slave = $_;
-                last;
-            }
-        }
-        
-        if( $slave ) {
-            # Add to an existing slave.
-            $slave->{row} = ext_sum( {}, $slave->{row}, $vtarget );
-        } else {
-            # Create a new slave.
-            push @{$row->{slaves}}, {
-                key => $skey,
-                row => $vtarget,
-            }
-        }
-    } else {
-        # Create a new row.
-        push @$rows, {
-            key => $mkey,
-            row => $vtarget,
-            slaves => [
-                {
-                    key => $skey,
-                    row => $vtarget,
-                }
-            ]
-        }
-    }
 }
 
 sub _keyExists {

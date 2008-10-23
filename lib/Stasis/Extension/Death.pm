@@ -100,4 +100,8 @@ sub process_common {
     shift @{ $self->{dtrack}{ $entry->{target} } } if @{ $self->{dtrack}{ $entry->{target} } } > $self->{_autopsylen};
 }
 
+sub sum {
+    die "unsupported";
+}
+
 1;

@@ -38,6 +38,10 @@ sub actions {
     map { $_ => \&process } qw(SPELL_INTERRUPT);
 }
 
+sub fields {
+    qw(actor spell target extraspell)
+}
+
 sub process {
     my ($self, $entry) = @_;
     

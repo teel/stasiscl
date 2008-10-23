@@ -27,6 +27,7 @@ use strict;
 use warnings;
 use POSIX;
 use HTML::Entities qw();
+use Stasis::Extension qw(ext_sum);
 use Carp;
 
 sub new {
@@ -50,7 +51,12 @@ sub tabBar {
     $BAR .= "<div class=\"tabBar\">";
     
     foreach my $tab (@_) {
-        $BAR .= sprintf "<a href=\"javascript:toggleTab('%s');\" id=\"tablink_%s\" class=\"tabLink\">%s</a>", $self->tameText($tab), $self->tameText($tab), $tab;
+        $BAR .= sprintf 
+            "<a href=\"#%s\" onclick=\"toggleTab('%s');\" id=\"tablink_%s\" class=\"tabLink\">%s</a>",
+            $self->tameText($tab),
+            $self->tameText($tab), 
+            $self->tameText($tab), 
+            $tab;
     }
     
     $BAR .= "</div>";
@@ -103,11 +109,11 @@ sub tableHeader {
     foreach my $col (@_) {
         my $style_text = "";
         if( $col =~ /^R-/ ) {
-            $style_text = "text-align: right; ";
+            $style_text .= "text-align: right;";
         }
         
         if( $col =~ /-W$/ ) {
-            $style_text = "white-space: normal; width: 300px;";
+            $style_text .= "white-space: normal; width: 300px;";
         }
         
         if( $style_text ) {
@@ -183,34 +189,59 @@ sub tableRow {
 }
 
 sub tableRows {
-    my $self = shift;
-    my %params = @_;
+    my ($self, %params) = @_;
     
-    $params{header} ||= [];
-    $params{rows} ||= [];
-    $params{master} ||= undef;
-    $params{slave} ||= undef;
+    # We'll return this.
+    my $result;
     
-    my $result = "";
-    foreach my $row (@{$params{rows}}) {
-        # Print row.
-        $result .= $self->tableRow( 
-            header => $params{header},
-            data => $params{master} ? $params{master}->($row) : {
-                $params{header}->[0] => $row->{key},
-            },
-            type => "master",
-        );
+    $params{title} ||= "";
+    $params{slave} ||= $params{master};
+    $params{master} ||= $params{slave};
+    
+    # Abort if we have no headers or data.
+    return unless $params{master} && $params{data};
+    
+    # First make master rows. We have to do this first so they can be sorted.
+    my %master;
+    while( my ($kmaster, $vmaster) = each(%{$params{data}}) ) {
+        if( scalar values %$vmaster > 1 ) {
+            $master{$kmaster} = ext_sum( {}, values %$vmaster );
+        } else {
+            $master{$kmaster} = (values %$vmaster)[0];
+        }
         
-        # Slave rows
-        foreach my $slave (@{ $row->{slaves} }) {
+        if( $params{preprocess} ) {
+            $params{preprocess}->( $kmaster, $master{$kmaster} );
+            $params{preprocess}->( $_, $vmaster->{$_}, $kmaster, $master{$kmaster} ) foreach (keys %$vmaster);
+        }
+    }
+    
+    if( %master ) {
+        # Print table header.
+        $result .= $self->tableHeader( $params{title}, @{$params{header}} ) if $params{title};
+        
+        # Print rows.
+        foreach my $kmaster ( $params{sort} ? sort { $params{sort}->( $master{$a}, $master{$b} ) } keys %master : keys %master ) {
+            # Print master row.
             $result .= $self->tableRow( 
                 header => $params{header},
-                data => $params{slave} ? $params{slave}->($slave, $row) : {
-                    $params{header}->[0] => $slave->{key},
+                data => $params{master} ? $params{master}->($kmaster, $master{$kmaster}) : {
+                    $params{header}->[0] => $kmaster,
                 },
-                type => "slave",
+                type => "master",
             );
+
+            # Print slave rows.
+            my $vmaster = $params{data}{$kmaster};
+            foreach my $kslave ( $params{sort} ? sort { $params{sort}->( $vmaster->{$a}, $vmaster->{$b} ) } keys %$vmaster : keys %$vmaster ) {
+                $result .= $self->tableRow( 
+                    header => $params{header},
+                    data => $params{slave} ? $params{slave}->($kslave, $vmaster->{$kslave}, $kmaster, $master{$kmaster}) : {
+                        $params{header}->[0] => $kslave,
+                    },
+                    type => "slave",
+                );
+            }
         }
     }
     
@@ -260,7 +291,7 @@ END
     if( $origtitle ) {
         $PAGE .= '<b><a href="index.html#damage_out">Damage Out</a> &ndash; <a href="index.html#damage_in">Damage In</a> &ndash; <a href="index.html#healing">Healing</a> &ndash; <a href="index.html#raid__amp__mobs">Raid &amp; Mobs</a> &ndash; <a href="index.html#deaths">Deaths</a></b>';
     } else {
-        $PAGE .= '<b><a href="javascript:toggleTab(\'damage_out\');">Damage Out</a> &ndash; <a href="javascript:toggleTab(\'damage_in\');">Damage In</a> &ndash; <a href="javascript:toggleTab(\'healing\');">Healing</a> &ndash; <a href="javascript:toggleTab(\'raid__amp__mobs\');">Raid &amp; Mobs</a> &ndash; <a href="javascript:toggleTab(\'deaths\');">Deaths</a></b>';
+        $PAGE .= '<b><a href="#damage_out" onclick="toggleTab(\'damage_out\');">Damage Out</a> &ndash; <a href="#damage_in" onclick="toggleTab(\'damage_in\');">Damage In</a> &ndash; <a href="#healing" onclick="toggleTab(\'healing\');">Healing</a> &ndash; <a href="#raid__amp__mobs" onclick="toggleTab(\'raid__amp__mobs\');">Raid &amp; Mobs</a> &ndash; <a href="#deaths" onclick="toggleTab(\'deaths\');">Deaths</a></b>';
     }
     
     return "$PAGE</div>";
@@ -335,11 +366,14 @@ sub actorLink {
     my $self = shift;
     my $id = shift || 0;
     my $single = shift;
+    my $tab = shift;
     
     $single = 0 if $self->{collapse};
     my $name = $self->{ext}{Index}->actorname($id);
     my $color = $self->{raid}{$id} && $self->{raid}{$id}{class};
     
+    #$tab = $tab ? "#" . $self->tameText($tab) : "";
+    $tab = "";
     $name ||= "";
     $color ||= "Mob";
     $color =~ s/\s//g;
@@ -347,9 +381,20 @@ sub actorLink {
     if( $id || (defined $id && $id eq "0") ) {
         my $group = $self->{grouper}->group($id);
         if( $group && !$single ) {
-            return sprintf "<a href=\"group_%s.html\" class=\"actor color%s\">%s</a>", $self->tameText($self->{grouper}->captain($group)), $color, HTML::Entities::encode_entities($name);
+            return sprintf 
+                "<a href=\"group_%s.html%s\" class=\"actor color%s\">%s</a>", 
+                $self->tameText($self->{grouper}->captain($group)), 
+                $tab,
+                $color, 
+                HTML::Entities::encode_entities($name);
         } else {
-            return sprintf "<a href=\"actor_%s.html\" class=\"actor color%s\">%s%s</a>", $self->tameText($id), $color, HTML::Entities::encode_entities($name), ( $group && $single ? " #" . $self->{grouper}->number($id) : "" );
+            return sprintf 
+                "<a href=\"actor_%s.html%s\" class=\"actor color%s\">%s%s</a>", 
+                $self->tameText($id), 
+                $tab,
+                $color, 
+                HTML::Entities::encode_entities($name), 
+                ( $group && $single ? " #" . $self->{grouper}->number($id) : "" );
         }
     } else {
         return HTML::Entities::encode_entities($name);
@@ -359,13 +404,25 @@ sub actorLink {
 sub spellLink {
     my $self = shift;
     my $id = shift;
-    my $name = shift || $self->{ext}{Index}->spellname($id);
+    my $tab = shift;
+    
+    my ($name, $rank) = $self->{ext}{Index}->spellname($id);
+    $tab = $tab ? "#" . $self->tameText($tab) : "";
 
     if( $id && $id =~ /^[0-9]+$/ ) {
-        return sprintf "<a href=\"spell_%s.html\" rel=\"spell=%s\" class=\"spell\">%s</a>", $id, $id, HTML::Entities::encode_entities($name);
-        #return sprintf "<a href=\"http://www.wowhead.com/?spell=%s\" target=\"swswh_%s\" class=\"spell\">%s</a>", $id, $id, HTML::Entities::encode_entities($name);
+        return sprintf 
+            "<a href=\"spell_%s.html%s\" rel=\"spell=%s\" class=\"spell\">%s</a>%s", 
+            $id, 
+            $tab,
+            $id, 
+            HTML::Entities::encode_entities($name),
+            $rank ? " ($rank)" : "";
     } elsif( $id ) {
-        return sprintf "<a href=\"spell_%s.html\" class=\"spell\">%s</a>", $id, HTML::Entities::encode_entities($name);
+        return sprintf 
+            "<a href=\"spell_%s.html%s\" class=\"spell\">%s</a>", 
+            $id, 
+            $tab,
+            HTML::Entities::encode_entities($name);
     } else {
         return HTML::Entities::encode_entities($name);
     }
@@ -375,9 +432,13 @@ sub tip {
     my ($self, $short, $long) = @_;
     
     my $id = ++ $self->{tid};
-    $long =~ s/"/&quot;/g;
     
-    return sprintf '<span id="tip%d" class="tip" title="%s">%s</span>', $id, $long, $short;
+    if( $long ) {
+        $long =~ s/"/&quot;/g;
+        return sprintf '<span id="tip%d" class="tip" title="%s">%s</span>', $id, $long, $short;
+    } else {
+        return $short || "";
+    }
 }
 
 sub _commify {

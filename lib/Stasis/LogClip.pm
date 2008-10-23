@@ -63,7 +63,7 @@ sub add {
         Stasis::Parser->toString( 
             $line, 
             sub { $self->{pm}->actorLink( $_[0], 1 ) }, 
-            sub { $self->{pm}->spellLink($_[0], $self->{ext}{Index}->spellname($_[0])) } 
+            sub { $self->{pm}->spellLink( $_[0] ) } 
         ),
         \%params,
     ];

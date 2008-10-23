@@ -38,6 +38,10 @@ sub actions {
     map { $_ => \&process } qw(SPELL_AURA_DISPELLED SPELL_AURA_STOLEN SPELL_STOLEN SPELL_DISPEL_FAILED SPELL_DISPEL);
 }
 
+sub fields {
+    qw(actor spell target extraspell)
+}
+
 sub process {
     my ($self, $entry) = @_;
     
