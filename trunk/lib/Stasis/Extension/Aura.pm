@@ -33,6 +33,7 @@ our @ISA = "Stasis::Extension";
 sub start {
     my $self = shift;
     $self->{actors} = {};
+    $self->{targets} = {};
 }
 
 sub actions {
@@ -46,12 +47,16 @@ sub actions {
     UNIT_DIED => \&process_death,
 }
 
+sub fields {
+    qw(actor spell target);
+}
+
 sub process_death {
     my ($self, $entry) = @_;
     
     # Forcibly fade all auras when a unit dies.
-    if( exists $self->{actors}{ $entry->{target} } ) {
-        foreach my $vaura (values %{ $self->{actors}{ $entry->{target} } } ) {
+    if( exists $self->{targets}{ $entry->{target} } ) {
+        foreach my $vaura (values %{ $self->{targets}{ $entry->{target} } } ) {
             foreach my $vactor (values %$vaura) {
                 if( @{ $vactor->{spans} } ) {
                     my ($start, $end) = unpack "dd", $vactor->{spans}[-1];
@@ -70,7 +75,7 @@ sub process_applied {
 
     # Create a blank entry if none exists.
     # Stored "backwards", the person the aura is applied to (the target) is first.
-    my $sdata = $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} || 0 } ||= {
+    my $sdata = $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} || 0 } ||= {
         gains => 0,
         fades => 0,
         type => undef,
@@ -103,7 +108,7 @@ sub process_removed {
     my ($self, $entry) = @_;
     
     # Create a blank entry if none exists.
-    my $sdata = $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} || 0 } ||= {
+    my $sdata = $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} || 0 } ||= {
         gains => 0,
         fades => 0,
         type => undef,
@@ -128,9 +133,9 @@ sub process_removed {
             # only have been created if no auras were on the target, so odds are this remove event corresponds to that
             # aura.
             
-            if( exists $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{0} && @{$self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{0}{spans}} == 1 ) {
-                my ($envstart, $envend) = unpack "dd", $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{0}{spans}[0];
-                delete $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{0} if $envstart == 0 && $envend == 0;
+            if( exists $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{0} && @{$self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{0}{spans}} == 1 ) {
+                my ($envstart, $envend) = unpack "dd", $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{0}{spans}[0];
+                delete $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{0} if $envstart == 0 && $envend == 0;
             }
             
             push @{$sdata->{spans}}, pack "dd", 0, $entry->{t};
@@ -151,11 +156,11 @@ sub process_refresh {
     # this aura has not been seen on this target before.
     
     # As such, first check for pre-existing auras.
-    return if exists $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} };
+    return if exists $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} };
     
     # OK, none exist. Create a new entry for the environment.
     # Stored "backwards", the person the aura is applied to (the target) is first.
-    my $sdata = $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{ 0 } = {
+    my $sdata = $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{ 0 } = {
         gains => 0,
         fades => 0,
         type => $entry->{extra}{auratype},
@@ -165,85 +170,18 @@ sub process_refresh {
     };
 }
 
-# Returns type, gains, fades, and total uptime for a set of auras
-# "aura" on actors "actor".
-sub aura {
+sub finish {
     my $self = shift;
-    my %params = @_;
     
-    $params{actor} ||= [];
-    $params{spell} ||= [];
-    $params{target} ||= [];
-    $params{expand} ||= [];
-    
-    # Code reference to get a key for grouping actors.
-    my $keyActor = $params{keyActor} || sub { return $_[0] };
-    
-    # Presence information
-    $params{p} ||= {};
-    
-    # Filter the expand list.
-    my @expand = map { $_ eq "actor" || $_ eq "spell" || $_ eq "target" ? $_ : () } @{$params{expand}};
-    
-    # We'll eventually return this.
-    my %ret;
-    
-    # This holds references to the informational arrays.
-    my @refs;
-    
-    # Examine what we were told to.
-    foreach my $ktarget (scalar @{$params{target}} ? @{$params{target}} : keys %{$self->{actors}}) {
-        my $vtarget = $self->{actors}{$ktarget} or next;
-        my ($start, $end) = unpack "dd", $params{p}{$ktarget};
-        my $ktarget_use;
-        
-        foreach my $kspell (scalar @{$params{spell}} ? @{$params{spell}} : keys %$vtarget) {
-            my $vspell = $vtarget->{$kspell} or next;
-            
-            foreach my $kactor (scalar @{$params{actor}} ? @{$params{actor}} : keys %$vspell) {
-                my $vactor = $vspell->{$kactor} or next;
-                my $kactor_use;
-            
-                # Get a reference to the hash we want to add to.
-                my $ref = \%ret;
-                foreach (@expand) {
-                    my $key;
-                    if( $_ eq "spell" ) {
-                        $key = $kspell;
-                    } elsif( $_ eq "target" ) {
-                        $key = $keyActor->($ktarget);
-                    } else {
-                        # actor
-                        $key = $keyActor->($kactor);
-                    }
-                    
-                    $ref = $ref->{$key} ||= {};
-                }
-                
-                # Add the info.
-                push @refs, $ref if ! %$ref;
-            
-                $ref->{type} ||= $vactor->{type};
-                $ref->{gains} += $vactor->{gains};
-                $ref->{fades} += $vactor->{fades};
-                $ref->{spans} ||= [];
-                
-                push @{$ref->{spans}}, map { ($a, $b) = unpack "dd", $_; pack "dd", $a||$start, $b||$end } @{$vactor->{spans}};
+    # Flip rows to get us an actors hash.
+    while( my ($ktarget, $vtarget) = each(%{$self->{targets}}) ) {
+        while( my ($kspell, $vspell) = each(%$vtarget) ) {
+            while( my ($kactor, $vactor) = each(%$vspell) ) {
+                # Add a reference to this leaf.
+                $self->{actors}{ $kactor }{ $kspell }{ $ktarget } = $vactor;
             }
         }
     }
-    
-    # Resolve the spans into uptimes.
-    foreach my $ref (@refs) {
-        $ref->{time} = $self->_uptime( delete $ref->{spans} );
-    }
-    
-    return \%ret;
-}
-
-sub _uptime {
-    # This is pretty much the same function.
-    goto &Stasis::Extension::Activity::_activity;
 }
 
 1;

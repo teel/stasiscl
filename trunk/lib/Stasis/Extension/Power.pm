@@ -31,11 +31,15 @@ our @ISA = "Stasis::Extension";
 
 sub start {
     my $self = shift;
-    $self->{actors} = {};
+    $self->{targets} = {};
 }
 
 sub actions {
     map { $_ => \&process } qw(SPELL_LEECH SPELL_PERIODIC_LEECH SPELL_DRAIN SPELL_PERIODIC_DRAIN SPELL_ENERGIZE SPELL_PERIODIC_ENERGIZE);
+}
+
+sub fields {
+    qw(actor spell target)
 }
 
 sub process {
@@ -49,9 +53,9 @@ sub process {
       ) 
     {
         # For leech and drain effects, store the amount of power gained.
-        $self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{type} = $entry->{extra}{powertype};
-        $self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{amount} += $entry->{extra}{amount};
-        $self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{count} += 1;
+        $self->{targets}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{type} = $entry->{extra}{powertype};
+        $self->{targets}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{amount} += $entry->{extra}{amount};
+        $self->{targets}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{count} += 1;
     }
     
     elsif( 
@@ -61,9 +65,9 @@ sub process {
     {
         # "Energize" effects are done backwards because for each actor, we want to store what power
         # they gained, and not what power they gave to other people.
-        $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} }{type} = $entry->{extra}{powertype};
-        $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} }{amount} += $entry->{extra}{amount};
-        $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} }{count} += 1;
+        $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} }{type} = $entry->{extra}{powertype};
+        $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} }{amount} += $entry->{extra}{amount};
+        $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} }{count} += 1;
     }
 }
 

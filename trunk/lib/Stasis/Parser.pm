@@ -1146,7 +1146,9 @@ sub _parseMods {
 sub _powerName {
     my ($self, $code) = @_;
     
-    if( $code == 0 ) {
+    if( !defined $code ) {
+        return "unknown";
+    } elsif( $code == 0 ) {
         return "mana";
     } elsif( $code == 1 ) {
         return "rage";
@@ -1477,7 +1479,7 @@ sub _pullStamp {
     }
 }
 
-my $csv_regex = qr/"?,(?=".*?"(?:,|$)|[^",]+(?:,|$))"?/;
+my $csv_regex = qr{"?,(?=".*?"(?:,|$)|[^",]+(?:,|$))"?};
 sub _split {
     my ($self, $line) = @_;
 

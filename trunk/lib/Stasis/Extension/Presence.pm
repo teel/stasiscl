@@ -66,11 +66,16 @@ sub finish {
     delete $self->{end};
 }
 
+sub sum {
+    die "unsupported";
+}
+
 # Returns (start, end, total) for the raid or for an actor
 sub presence {
     my $self = shift;
 
-    if( @_ ) {
+    if( @_ && ( @_ > 1 || $_[0] ) ) {
+        # Actor set other than the environment
         my $start = undef;
         my $end = undef;
 

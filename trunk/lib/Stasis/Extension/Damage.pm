@@ -26,7 +26,7 @@ package Stasis::Extension::Damage;
 use strict;
 use warnings;
 use Carp;
-use Stasis::Extension qw(ext_sum);
+use Stasis::Extension;
 
 our @ISA = "Stasis::Extension";
 
@@ -69,7 +69,7 @@ sub process {
     $self->{targets}{ $entry->{target} }{ $spell }{ $actor } ||= $ddata;
     
     # Check if this was a hit or a miss.
-    if( $entry->{extra}{amount} ) {
+    if( $entry->{extra}{amount} && !$entry->{extra}{misstype} ) {
         # HIT
         # Classify the damage WWS-style as a "hit", "crit", or "tick".
         my $type;
@@ -125,66 +125,6 @@ sub process {
         $ddata->{count} += 1;
         $ddata->{ lc( $entry->{extra}{misstype} ) . "Count" }++;
     }
-}
-
-sub sum {
-    my $self = shift;
-    my %params = @_;
-    
-    $params{actor} ||= [];
-    $params{spell} ||= [];
-    $params{target} ||= [];
-    $params{expand} ||= [];
-    
-    # Code reference to get a key for grouping actors.
-    my $keyActor = $params{keyActor} || sub { return $_[0] };
-    
-    # Filter the expand list.
-    my @expand = map { $_ eq "actor" || $_ eq "spell" || $_ eq "target" ? $_ : () } @{$params{expand}};
-    
-    # Measure the size of our inputs.
-    my ( $asz, $ssz, $tsz ) = ( scalar( @{$params{actor}} ), scalar( @{$params{spell}} ), scalar( @{$params{target}} ) );
-    
-    # We'll eventually return this.
-    my %ret;
-    
-    # We can start with actors or targets. Start with the one we need less from.
-    my $start = $tsz && (!$asz || $tsz < $asz) ? $self->{targets} : $self->{actors};
-    my $list1 = $tsz && (!$asz || $tsz < $asz) ? $params{target} : $params{actor};
-    my $list2 = $tsz && (!$asz || $tsz < $asz) ? $params{actor} : $params{target};
-
-    foreach my $k1 (scalar @$list1 ? @$list1 : keys %$start) {
-        my $v1 = $start->{$k1} or next;
-
-        foreach my $kspell ($ssz ? @{$params{spell}} : keys %$v1) {
-            my $vspell = $v1->{$kspell} or next;
-            
-            foreach my $k2 (scalar @$list2 ? @$list2 : keys %$vspell) {
-                my $v2 = $vspell->{$k2} or next;
-                
-                my $ref = \%ret;
-                foreach (@expand) {
-                    my $key;
-                    if( $_ eq "spell" ) {
-                        $key = $kspell;
-                    } elsif( $_ eq "target" ) {
-                        $key = $start == $self->{targets} ? $k1 : $k2;
-                        $key = $keyActor->($key);
-                    } else {
-                        # actor
-                        $key = $start == $self->{actors} ? $k1 : $k2;
-                        $key = $keyActor->($key);
-                    }
-                    
-                    $ref = $ref->{$key} ||= {};
-                }
-                
-                ext_sum( $ref, $v2 );
-            }
-        }
-    }
-    
-    return \%ret;
 }
 
 1;

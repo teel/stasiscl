@@ -160,4 +160,10 @@ sub captain_for {
     return $self->{lookup}{$actor} ? $self->{lookup}{$actor}{members}[0] : $actor;
 }
 
+# Get the list of mobs that correspond to this one.
+sub expand {
+    my ($self, $actor) = @_;
+    return $self->{lookup}{$actor} ? (@{$self->{lookup}{$actor}{members}}) : ($actor);
+}
+
 1;

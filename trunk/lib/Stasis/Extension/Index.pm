@@ -68,18 +68,21 @@ sub process {
 }
 
 sub spellname {
-    my ($self, $spell) = @_;
+    my ($self, $spell, $no_rank) = @_;
     if( $spell ) {
-        
         if( $self->{spells}{$spell} ) {
             my $sd = Stasis::SpellUtil->spell($spell);
-            my $r = $sd && $sd->{rank};
+            my $r = !$no_rank && $sd && $sd->{rank};
             
             if( $r && $r =~ /^[0-9]+$/ ) {
                 $r = "r$r";
             }
             
-            return $self->{spells}{$spell} . ($r ? " ($r)" : "");
+            if( wantarray ) {
+                return ($self->{spells}{$spell}, $r);
+            } else {
+                return $self->{spells}{$spell} . ($r ? " ($r)" : "");
+            }
         } else {
             return $spell;
         }
@@ -90,6 +93,25 @@ sub spellname {
 
 sub actorname {
     return $_[1] ? $_[0]->{actors}{ $_[1] } || $_[1] : "Environment";
+}
+
+sub spellid {
+    my ($self, $wantname) = @_;
+    
+    $wantname = $self->{spells}{$wantname} if $wantname && $wantname =~ /^[0-9]+$/;
+    
+    if( wantarray ) {
+        my @ret;
+        while( my ( $id, $name ) = each (%{$self->{spells}}) ) {
+            push @ret, $id if $name eq $wantname;
+        }
+        
+        return @ret;
+    } else {
+        while( my ( $id, $name ) = each (%{$self->{spells}}) ) {
+            return $id if $name eq $wantname;
+        }
+    }
 }
 
 1;

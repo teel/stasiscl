@@ -424,10 +424,13 @@ if( $action eq "print" ) {
     }
     
     while( defined( $_ = $opt_file ? <$fh> : $db->line() ) ) {
-        my $entry = $opt_file ? $parser->parse($_) : $_;
-        if( $entry->{action} ) {
-            if( my $text = $parser->toString( $entry ) ) {
-                $entry->{t} =~ /^(\d+)(\.(\d+)|)$/;
+        # Because File::Tail screws up Unicode
+        utf8::decode($_) if $opt_tail;
+        
+        my $pline = $opt_file ? $parser->parse( $_ ) : $_;
+        if( $pline->{action} ) {
+            if( my $text = $parser->toString( $pline ) ) {
+                $pline->{t} =~ /^(\d+)(\.(\d+)|)$/;
                 my @t = localtime $1;
                 printf "%d/%d %02d:%02d:%02d\.%03d  %s\n", $t[4]+1, $t[3], $t[2], $t[1], $t[0], $2?$3:0, $text;
             }
@@ -606,6 +609,9 @@ if( $action eq "print" ) {
     my $first = 0;
     
     while( defined( $_ = $opt_file ? <$fh> : $db->line() ) ) {
+        # Because File::Tail screws up Unicode
+        utf8::decode($_) if $opt_tail;
+        
         # Get the line.
         my $pline = $opt_file ? $parser->parse($_) : $_;
         $first ||= $pline->{t};

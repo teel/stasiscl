@@ -31,11 +31,15 @@ our @ISA = "Stasis::Extension";
 
 sub start {
     my $self = shift;
-    $self->{actors} = {};
+    $self->{targets} = {};
 }
 
 sub actions {
     map { $_ => \&process } qw(SPELL_EXTRA_ATTACKS);
+}
+
+sub fields {
+    qw(actor spell target)
 }
 
 sub process {
@@ -44,8 +48,8 @@ sub process {
     if( $entry->{action} eq "SPELL_EXTRA_ATTACKS" ) {
         # Store this in the same format as power gains (Power.pm)
         # Except there will be no "type" key
-        $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} }{amount} += $entry->{extra}{amount};
-        $self->{actors}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} }{count} += 1;
+        $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} }{amount} += $entry->{extra}{amount};
+        $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} }{count} += 1;
     }
 }
 

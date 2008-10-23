@@ -114,9 +114,4 @@ sub process_damage {
     $self->{ohtrack}{ $entry->{target} } -= $entry->{extra}{amount};
 }
 
-sub sum {
-    # This is pretty much the same function.
-    goto &Stasis::Extension::Damage::sum;
-}
-
 1;

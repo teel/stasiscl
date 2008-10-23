@@ -25,7 +25,7 @@ package Stasis::Extension::Activity;
 
 use strict;
 use warnings;
-use Stasis::Extension;
+use Stasis::Extension qw(span_sum);
 
 our @ISA = "Stasis::Extension";
 
@@ -40,6 +40,10 @@ sub start {
 
 sub actions {
     map { $_ => \&process } qw(ENVIRONMENTAL_DAMAGE SWING_DAMAGE SWING_MISSED RANGE_DAMAGE RANGE_MISSED SPELL_DAMAGE DAMAGE_SPLIT SPELL_MISSED SPELL_PERIODIC_DAMAGE SPELL_PERIODIC_MISSED DAMAGE_SHIELD DAMAGE_SHIELD_MISSED);
+}
+
+sub fields {
+    qw(actor target);
 }
 
 sub process {
@@ -77,14 +81,14 @@ sub process {
         $aend = $entry->{t};
     } elsif( $aend + $self->{_dpstimeout} < $entry->{t} ) {
         # The last span ended, add it.
-        $self->{actors}{ $actor }{ $target } ||= [];
+        $self->{actors}{ $actor }{ $target }{spans} ||= [];
         
         my $span = pack "dd", (
             $astart,
             $aend + $self->{_dpstimeout},
         );
         
-        push @{$self->{actors}{ $actor }{ $target }}, $span;
+        push @{$self->{actors}{ $actor }{ $target }{spans}}, $span;
         
         # Reset the start and end times to the current time.
         $astart = $entry->{t};
@@ -104,7 +108,7 @@ sub finish {
     # We need to close up all the un-closed dps spans.
     while( my ($kactor, $vactor) = each( %{ $self->{span_scratch} } ) ) {
         while( my ($ktarget, $vtarget) = each( %$vactor ) ) {
-            $self->{actors}{ $kactor }{ $ktarget } ||= [];
+            $self->{actors}{ $kactor }{ $ktarget }{spans} ||= [];
             
             my ($vstart, $vend) = unpack "dd", $vtarget;
             my $span = pack "dd", (
@@ -112,7 +116,7 @@ sub finish {
                 $vend + $self->{_dpstimeout},
             );
             
-            push @{$self->{actors}{ $kactor }{ $ktarget }}, $span;
+            push @{$self->{actors}{ $kactor }{ $ktarget }{spans}}, $span;
         }
     }
     
@@ -120,7 +124,7 @@ sub finish {
     while( my ($kactor, $vactor) = each (%{ $self->{actors} }) ) {
         my ( $t_last, $ref_last );
         while( my ($ktarget, $vtarget) = each (%$vactor) ) {
-            foreach my $span (@$vtarget) {
+            foreach my $span (@{$vtarget->{spans}}) {
                 my ($start, $end) = unpack "dd", $span;
                 if( !$t_last || $end > $t_last ) {
                     $t_last = $end;
@@ -136,73 +140,6 @@ sub finish {
     }
     
     delete $self->{span_scratch};
-}
-
-# Returns total for a set of actors "actor" onto targets "target".
-# If blank will use all.
-sub activity {
-    my $self = shift;
-    my %params = @_;
-    
-    $params{actor} ||= [];
-    $params{target} ||= [];
-    
-    # Store relevant activity spans.
-    my @span;
-    
-    foreach my $kactor (scalar @{$params{actor}} ? @{$params{actor}} : keys %{$self->{actors}}) {
-        my $vactor = $self->{actors}{$kactor} or next;
-        
-        foreach my $ktarget (scalar @{$params{target}} ? @{$params{target}} : keys %$vactor) {
-            my $vtarget = $vactor->{$ktarget} or next;
-            
-            # Include the spans listed in $vtarget (an array of start/ends)
-            push @span, @$vtarget;
-        }
-    }
-    
-    $self->_activity(\@span);
-}
-
-sub _activity {
-    my ($self, $spans) = @_;
-    
-    # Sort spans by start time.
-    my @span = sort { scalar( unpack "dd", $a ) <=> scalar( unpack "dd", $b) } @$spans;
-    
-    # Store the final list in here.
-    my @final = ();
-    
-    foreach my $span (@span) {
-        # We are assured that $span starts at the same time as, or after, everything in @final.
-        # If it overlaps the last span in @final then merge it in.
-        my ($sstart, $send) = unpack "dd", $span;
-        
-        if( @final ) {
-            
-            my ($lstart, $lend) = unpack "dd", $final[$#final];
-            
-            if( $sstart <= $lend ) {
-                # There is an overlap. Possibly extend $last.
-                $final[$#final] = pack "dd", $lstart, $send if $send > $lend;
-            } else {
-                # No overlap.
-                push @final, $span;
-            }
-        } else {
-            # @final has nothing in it yet.
-            push @final, $span;
-        }
-    }
-    
-    # Total up @final.
-    my $sum = 0;
-    foreach (@final) {
-        my ($fstart, $fend) = unpack "dd", $_;
-        $sum += $fend - $fstart;
-    }
-    
-    return $sum;
 }
 
 1;
