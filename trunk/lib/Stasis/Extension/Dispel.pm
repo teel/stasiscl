@@ -38,8 +38,12 @@ sub actions {
     map { $_ => \&process } qw(SPELL_AURA_DISPELLED SPELL_AURA_STOLEN SPELL_STOLEN SPELL_DISPEL_FAILED SPELL_DISPEL);
 }
 
-sub fields {
+sub key {
     qw(actor spell target extraspell)
+}
+
+sub value {
+    qw(count resist);
 }
 
 sub process {

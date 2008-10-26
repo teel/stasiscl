@@ -168,7 +168,7 @@ sub tableRow {
         }
         
         if( $col eq " " && $params{data}{$col} ) {
-            $params{data}{$col} = sprintf "<div class=\"chartbar\" style=\"width:%dpx\">&nbsp;</span>", $params{data}{$col};
+            $params{data}{$col} = sprintf "<div class=\"chartbar\" style=\"width:%dpx\">&nbsp;</div>", $params{data}{$col};
         }
         
         if( !$firstflag && $params{type} eq "master" ) {

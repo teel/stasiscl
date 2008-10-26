@@ -46,4 +46,8 @@ sub process {
     }
 }
 
+sub value {
+    qw(count);
+}
+
 1;

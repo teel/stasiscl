@@ -38,8 +38,12 @@ sub actions {
     map { $_ => \&process } qw(SPELL_EXTRA_ATTACKS);
 }
 
-sub fields {
+sub key {
     qw(actor spell target)
+}
+
+sub value {
+    qw(amount count);
 }
 
 sub process {

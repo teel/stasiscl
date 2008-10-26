@@ -38,8 +38,12 @@ sub actions {
     map { $_ => \&process } qw(SPELL_LEECH SPELL_PERIODIC_LEECH SPELL_DRAIN SPELL_PERIODIC_DRAIN SPELL_ENERGIZE SPELL_PERIODIC_ENERGIZE);
 }
 
-sub fields {
+sub key {
     qw(actor spell target)
+}
+
+sub value {
+    qw(count type amount);
 }
 
 sub process {
@@ -53,7 +57,7 @@ sub process {
       ) 
     {
         # For leech and drain effects, store the amount of power gained.
-        $self->{targets}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{type} = $entry->{extra}{powertype};
+        $self->{targets}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{type} = $entry->{extra}{type};
         $self->{targets}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{amount} += $entry->{extra}{amount};
         $self->{targets}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{count} += 1;
     }
@@ -65,7 +69,7 @@ sub process {
     {
         # "Energize" effects are done backwards because for each actor, we want to store what power
         # they gained, and not what power they gave to other people.
-        $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} }{type} = $entry->{extra}{powertype};
+        $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} }{type} = $entry->{extra}{type};
         $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} }{amount} += $entry->{extra}{amount};
         $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} }{count} += 1;
     }

@@ -45,6 +45,10 @@ sub actions {
     map( { $_ => \&process_damage } qw(ENVIRONMENTAL_DAMAGE SWING_DAMAGE RANGE_DAMAGE SPELL_DAMAGE DAMAGE_SPLIT SPELL_PERIODIC_DAMAGE DAMAGE_SHIELD) )
 }
 
+sub value {
+    qw(count total effective hitCount hitTotal hitEffective hitMin hitMax critCount critTotal critEffective critMin critMax tickCount tickTotal tickEffective tickMin tickMax);
+}
+
 sub process_healing {
     my ($self, $entry) = @_;
     
