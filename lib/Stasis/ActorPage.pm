@@ -592,21 +592,35 @@ sub page {
                 preprocess => sub { $_[1]->{time} = span_sum( $_[1]->{spans}, $pstart, $pend ) },
                 sort => sub ($$) { $_[0]->{type} cmp $_[1]->{type} || $_[1]->{time} <=> $_[0]->{time} },
                 master => sub {
+                    my ($gains, $fades);
+                    foreach( @{$_[1]->{spans}} ) {
+                        my ($start, $end) = unpack "dd", $_;
+                        $gains++ if $start;
+                        $fades++ if $end;
+                    }
+                    
                     return {
                         "Name" => $pm->spellLink( $_[0], "Auras" ),
                         "Type" => (($_[1]->{type} && lc $_[1]->{type}) || "unknown"),
-                        "R-Gained" => $_[1]->{gains},
-                        "R-Faded" => $_[1]->{fades},
+                        "R-Gained" => $gains,
+                        "R-Faded" => $fades,
                         "R-%" => $ptime && sprintf( "%0.1f%%", $_[1]->{time} / $ptime * 100 ),
                         "R-Uptime" => $_[1]->{time} && sprintf( "%02d:%02d", $_[1]->{time}/60, $_[1]->{time}%60 ),
                     };
                 },
                 slave => sub {
+                    my ($gains, $fades);
+                    foreach( @{$_[1]->{spans}} ) {
+                        my ($start, $end) = unpack "dd", $_;
+                        $gains++ if $start;
+                        $fades++ if $end;
+                    }
+                    
                     return {
                         "Name" => $pm->actorLink( $_[0] ),
                         "Type" => (($_[1]->{type} && lc $_[1]->{type}) || "unknown"),
-                        "R-Gained" => $_[1]->{gains},
-                        "R-Faded" => $_[1]->{fades},
+                        "R-Gained" => $gains,
+                        "R-Faded" => $fades,
                         "R-%" => $ptime && sprintf( "%0.1f%%", $_[1]->{time} / $ptime * 100 ),
                         "R-Uptime" => $_[1]->{time} && sprintf( "%02d:%02d", $_[1]->{time}/60, $_[1]->{time}%60 ),
                     };
@@ -628,23 +642,36 @@ sub page {
                 },
                 sort => sub ($$) { $_[0]->{type} cmp $_[1]->{type} || $_[1]->{time} <=> $_[0]->{time} },
                 master => sub {
+                    my ($gains, $fades);
+                    foreach( @{$_[1]->{spans}} ) {
+                        my ($start, $end) = unpack "dd", $_;
+                        $gains++ if $start;
+                        $fades++ if $end;
+                    }
+                    
                     return {
                         "Name" => $pm->spellLink( $_[0], "Auras" ),
                         "Type" => (($_[1]->{type} && lc $_[1]->{type}) || "unknown"),
-                        "R-Gained" => $_[1]->{gains},
-                        "R-Faded" => $_[1]->{fades},
+                        "R-Gained" => $gains,
+                        "R-Faded" => $fades,
                         "R-%" => $ptime && sprintf( "%0.1f%%", $_[1]->{time} / $ptime * 100 ),
                         "R-Uptime" => $_[1]->{time} && sprintf( "%02d:%02d", $_[1]->{time}/60, $_[1]->{time}%60 ),
                     };
                 },
                 slave => sub {
                     my $slave_ptime = $self->{ext}{Presence}->presence( $self->{grouper}->expand($_[0]) );
+                    my ($gains, $fades);
+                    foreach( @{$_[1]->{spans}} ) {
+                        my ($start, $end) = unpack "dd", $_;
+                        $gains++ if $start;
+                        $fades++ if $end;
+                    }
 
                     return {
                         "Name" => $pm->actorLink( $_[0] ),
                         "Type" => (($_[1]->{type} && lc $_[1]->{type}) || "unknown"),
-                        "R-Gained" => $_[1]->{gains},
-                        "R-Faded" => $_[1]->{fades},
+                        "R-Gained" => $gains,
+                        "R-Faded" => $fades,
                         "R-%" => $slave_ptime && sprintf( "%0.1f%%", $_[1]->{time} / $slave_ptime * 100 ),
                         "R-Uptime" => $_[1]->{time} && sprintf( "%02d:%02d", $_[1]->{time}/60, $_[1]->{time}%60 ),
                     };

@@ -26,6 +26,7 @@ package Stasis::Extension;
 use strict;
 use warnings;
 use Carp;
+use Stasis::EventListener;
 use Exporter "import";
 
 our @EXPORT_OK = qw(ext_sum span_sum);
@@ -70,20 +71,23 @@ sub finish {
 }
 
 # This should be the order of keys in the {actors} hash.
-sub fields {
+sub key {
     qw(actor spell target);
 }
+
+# This should be the names of possible values (like count, effective, hitMin, spans, etc).
+sub value {}
 
 sub sum {
     my $self = shift;
     my %params = @_;
     
     # Get our field list.
-    my @fields = ($self->fields);
+    my @keys = ($self->key);
     
     # Get list of things to expand in the returned hash.
     $params{expand} ||= [];
-    my @expand = grep { my $f = $_; grep { $f eq $_ } (@fields) } @{$params{expand}};
+    my @expand = grep { my $f = $_; grep { $f eq $_ } (@keys) } @{$params{expand}};
     
     # Code reference to get a key for grouping actors.
     my $keyActor = $params{keyActor};
@@ -99,10 +103,10 @@ sub sum {
         my $tsz = $params{target} ? scalar @{$params{target}} : 0;
         
         if( $tsz && (!$asz || $tsz < $asz) ) {
-            # Assign {targets} to $data, and then switch targets and actors in the fields array.
-            # This works because when both {actors} and {targets} are present, @fields is meant to correspond to {actors}.
+            # Assign {targets} to $data, and then switch targets and actors in the keys array.
+            # This works because when both {actors} and {targets} are present, @keys is meant to correspond to {actors}.
             $data = $self->{targets};
-            @fields = map { if( $_ eq "target" ) { "actor" } elsif( $_ eq "actor" ) { "target" } else { $_ } } @fields;
+            @keys = map { if( $_ eq "target" ) { "actor" } elsif( $_ eq "actor" ) { "target" } else { $_ } } @keys;
         } else {
             $data = $self->{actors};
         }
@@ -110,42 +114,42 @@ sub sum {
         # Only one exists.
         if( exists $self->{targets} ) {
             $data = $self->{targets};
-            @fields = map { if( $_ eq "target" ) { "actor" } elsif( $_ eq "actor" ) { "target" } else { $_ } } @fields;
+            @keys = map { if( $_ eq "target" ) { "actor" } elsif( $_ eq "actor" ) { "target" } else { $_ } } @keys;
         } else {
             $data = $self->{actors};
         }
     }
     
-    # Get our search list. Importantly, this is done after @fields reassignment in the previous block.
-    my @fields_search = map { $params{$_} || [] } (@fields);
-    my @fields_skip = map { $params{"-$_"} } (@fields);
+    # Get our search list. Importantly, this is done after @keys reassignment in the previous block.
+    my @keys_search = map { $params{$_} || [] } (@keys);
+    my @keys_skip = map { $params{"-$_"} } (@keys);
     
     # Map numbers to each field.
-    my %fields_map;
-    $fields_map{$fields[$_]} = $_ for (0..$#fields);
+    my %keys_map;
+    $keys_map{$keys[$_]} = $_ for (0..$#keys);
     
     # We'll eventually return this.
     my %ret;
     
     # This function walks through the {actors} or {targets} hash.
     my $walk; $walk = sub {
-        my ($hash, $f, @keys) = @_;
-        $f ||= 0;
+        my ($hash, $k, @keys_seen) = @_;
+        $k ||= 0;
 
         # $hash is the current level of the hash we're at (it might be a leaf)
-        # $f is how deep we are, it starts at zero
-        # @keys are what keys we've seen so far (in order to get to $hash)... its size should be @fields - $f
+        # $k is how deep we are, it starts at zero
+        # @keys_seen are what keys we've seen so far (in order to get to $hash)... its size should be @keys - $k
 
-        if( @keys < @fields ) {
-            # We still have fields to go through.
-            foreach my $k (scalar @{$fields_search[$f]} ? @{$fields_search[$f]} : keys %$hash ) {
-                $walk->( $hash->{$k}, $f+1, @keys, $k ) if exists $hash->{$k} && ( !$fields_skip[$f] || ! grep { $k eq $_ } @{$fields_skip[$f]} );
+        if( @keys_seen < @keys ) {
+            # We still have keys to go through.
+            foreach my $khash (scalar @{$keys_search[$k]} ? @{$keys_search[$k]} : keys %$hash ) {
+                $walk->( $hash->{$khash}, $k+1, @keys_seen, $khash ) if exists $hash->{$khash} && ( !$keys_skip[$k] || ! grep { $khash eq $_ } @{$keys_skip[$k]} );
             }
         } else {
             # $hash should be a leaf.
             my $ref = \%ret;
             foreach my $e (@expand) {
-                $ref = $ref->{ $keyActor && ($e eq "actor" || $e eq "target") ? $keyActor->($keys[$fields_map{$e}]) : $keys[$fields_map{$e}] } ||= {};
+                $ref = $ref->{ $keyActor && ($e eq "actor" || $e eq "target") ? $keyActor->($keys_seen[$keys_map{$e}]) : $keys_seen[$keys_map{$e}] } ||= {};
             }
 
             ext_sum( $ref, $hash );
@@ -170,11 +174,14 @@ sub ext_sum {
             if( $sd1->{$key} ) {
                 if( ref $val && ref $val eq 'ARRAY' ) {
                     push @{$sd1->{$key}}, @$val;
-                } elsif( $key =~ /[Mm](in|ax)$/ ) {
-                    # Minimum or maximum
-                    if( lc $1 eq "in" && $val && $val < $sd1->{$key} ) {
+                } elsif( $key =~ /Min$/ || $key eq "start" ) {
+                    # Minimum
+                    if( $val && $val < $sd1->{$key} ) {
                         $sd1->{$key} = $val;
-                    } elsif( lc $1 eq "ax" && $val && $val > $sd1->{$key} ) {
+                    }
+                } elsif( $key =~ /Max$/ || $key eq "end" ) {
+                    # Maximum
+                    if( $val && $val > $sd1->{$key} ) {
                         $sd1->{$key} = $val;
                     }
                 } elsif( $key ne "type" ) {

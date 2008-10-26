@@ -47,8 +47,12 @@ sub actions {
     UNIT_DIED => \&process_death,
 }
 
-sub fields {
+sub key {
     qw(actor spell target);
+}
+
+sub value {
+    qw(type spans);
 }
 
 sub process_death {
@@ -179,6 +183,10 @@ sub finish {
             while( my ($kactor, $vactor) = each(%$vspell) ) {
                 # Add a reference to this leaf.
                 $self->{actors}{ $kactor }{ $kspell }{ $ktarget } = $vactor;
+                
+                # Also delete gains and fades.
+                delete $vactor->{gains};
+                delete $vactor->{fades};
             }
         }
     }

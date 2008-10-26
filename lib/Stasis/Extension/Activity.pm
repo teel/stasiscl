@@ -42,8 +42,12 @@ sub actions {
     map { $_ => \&process } qw(ENVIRONMENTAL_DAMAGE SWING_DAMAGE SWING_MISSED RANGE_DAMAGE RANGE_MISSED SPELL_DAMAGE DAMAGE_SPLIT SPELL_MISSED SPELL_PERIODIC_DAMAGE SPELL_PERIODIC_MISSED DAMAGE_SHIELD DAMAGE_SHIELD_MISSED);
 }
 
-sub fields {
+sub key {
     qw(actor target);
+}
+
+sub value {
+    qw(spans);
 }
 
 sub process {

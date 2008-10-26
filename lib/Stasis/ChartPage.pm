@@ -83,11 +83,8 @@ sub page {
     
     my @raiders = map { $self->{raid}{$_}{class} ? ( $_ ) : () } keys %{$self->{raid}};
     
-    # All damage done by raiders and their pets
-    my $deOutAll = $self->{ext}{Damage}->sum( actor => \@raiders, expand => [ "actor" ], fields => [ "total" ] );
-    
-    # Friendly fire by raiders and their pets
-    my $deOutFriendly = $self->{ext}{Damage}->sum( actor => \@raiders, target => \@raiders, expand => [ "actor" ], fields => [ "total" ] );
+    # Damage to mobs by raiders and their pets
+    my $deOut = $self->{ext}{Damage}->sum( actor => \@raiders, -target => \@raiders, expand => [ "actor" ], fields => [ "total" ] );
     
     while( my ($kactor, $ractor) = each %{$self->{raid}} ) {
         # Only show raiders
@@ -97,8 +94,7 @@ sub page {
         $raiderDamage{$raider} ||= 0;
         $raiderIncoming{$raider} ||= 0;
         
-        $raiderDamage{$raider} += $deOutAll->{$kactor}{total} || 0 if $deOutAll->{$kactor};
-        $raiderDamage{$raider} -= $deOutFriendly->{$kactor}{total} || 0 if $deOutFriendly->{$kactor};
+        $raiderDamage{$raider} += $deOut->{$kactor}{total} || 0 if $deOut->{$kactor};
     }
     
     foreach (values %raiderDamage) {

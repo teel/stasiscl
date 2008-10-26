@@ -38,8 +38,12 @@ sub actions {
     map { $_ => \&process } qw(SPELL_INTERRUPT);
 }
 
-sub fields {
+sub key {
     qw(actor spell target extraspell)
+}
+
+sub value {
+    qw(count);
 }
 
 sub process {

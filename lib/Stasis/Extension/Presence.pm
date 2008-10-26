@@ -42,6 +42,14 @@ sub actions {
     map { $_ => \&process } keys %Stasis::Parser::action_map;
 }
 
+sub key {
+    qw(actor);
+}
+
+sub value {
+    qw(start end);
+}
+
 sub process {
     my $guid;
     if( $guid = $_[1]->{actor} ) {
@@ -59,7 +67,10 @@ sub finish {
     my ($self) = @_;
     
     foreach (keys %{$self->{start}}) {
-        $self->{actors}{$_} = pack "dd", $self->{start}{$_}, $self->{end}{$_};
+        $self->{actors}{$_} = {
+            start => $self->{start}{$_},
+            end => $self->{end}{$_},
+        };
     }
     
     delete $self->{start};
@@ -81,7 +92,7 @@ sub presence {
 
         foreach (@_) {
             if( $_ && $self->{actors}{$_} ) {
-                my ($istart, $iend) = unpack "dd", $self->{actors}{$_};
+                my ($istart, $iend) = ( $self->{actors}{$_}{start}, $self->{actors}{$_}{end} );
                 if( !defined $start || $start > $istart ) {
                     $start = $istart;
                 }
@@ -98,15 +109,18 @@ sub presence {
         if( !$self->{total} ) {
             my ($start, $end);
             foreach my $h (values %{ $self->{actors} }) {
-                my ($istart, $iend) = unpack "dd", $h;
+                my ($istart, $iend) = ( $h->{start}, $h->{end} );
                 $start = $istart if( !$start || $start > $istart );
                 $end = $iend if( !$end || $end < $iend );
             }
             
-            $self->{total} = pack "dd", $start, $end;
+            $self->{total} = {
+                start => $start,
+                end => $end,
+            }
         }
         
-        my ($tstart, $tend) = unpack "dd", $self->{total};
+        my ($tstart, $tend) = ( $self->{total}{start}, $self->{total}{end} );
         return ( $tstart, $tend, $tend - $tstart );
     }
 }
