@@ -56,6 +56,7 @@ my %zones = (
 	    "illhoof",
 	    "netherspite",
 	    "prince",
+	    "tenris",
 	],
 },
 
@@ -291,6 +292,14 @@ my %fingerprints = (
     mobStart => [ 15690, "Prince Malchezaar" ],
     mobContinue => [ 15690, "Prince Malchezaar" ],
     mobEnd => [ 15690, "Prince Malchezaar" ],
+    timeout => 30,
+},
+
+"tenris" => {
+    long => "Tenris Mirkblood",
+    mobStart => [ 28194 ],
+    mobContinue => [ 28194 ],
+    mobEnd => [ 28194 ],
     timeout => 30,
 },
 
