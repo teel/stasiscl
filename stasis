@@ -106,9 +106,6 @@ B<-collapse>  For boss attempts and kills, collapse all mobs that have the
            same NPC ID and all pets with the same name and owner. This
            is always done for trash parses to save space, but by
            default is not done for boss parses.
-           
-B<-meta>      Include "meta buffs" in the aura display, such as Mangle,
-           Faerie Fire, and +25% Armor.
 
 =head1 BUGS
 
@@ -159,7 +156,6 @@ my $opt_combine;
 my $opt_server;
 my $opt_collapse;
 my $opt_tail;
-my $opt_meta;
 
 ## SUBS ##
 
@@ -232,7 +228,7 @@ sub writedir($$$$$$$) {
     $grouper->run( $raid, $exts );
 
     # Write the actor files.
-    my $ap = Stasis::ActorPage->new( meta => $opt_meta, server => $opt_server, dirname => $dname_suffix, name => $long, short => $short, raid => $raid, ext => $exts, collapse => $collapse );
+    my $ap = Stasis::ActorPage->new( server => $opt_server, dirname => $dname_suffix, name => $long, short => $short, raid => $raid, ext => $exts, collapse => $collapse );
     foreach my $actor (keys %{$exts->{Presence}{actors}}) {
         # Respect $collapse.
         next if $collapse && $grouper->group($actor);
@@ -356,7 +352,6 @@ my $rc = GetOptions(
     "server=s"      => \$opt_server,
     "collapse"      => \$opt_collapse,
     "tail"          => \$opt_tail,
-    "meta"          => \$opt_meta,
 );
 
 # Clean up opt_dir

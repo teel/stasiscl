@@ -28,31 +28,16 @@ use warnings;
 use POSIX;
 use HTML::Entities;
 use Stasis::Parser;
+use Stasis::Page;
+use Stasis::PageMaker;
+
+our @ISA = "Stasis::Page";
 
 # Escape for single quotes
 sub _sqesc($) {
     my ($str) = @_;
     $str =~ s/(['\\])/\\$1/g;
     return $str;
-}
-
-sub new {
-    my $class = shift;
-    my %params = @_;
-    
-    $params{ext} ||= {};
-    $params{raid} ||= {};
-    
-    if( !$params{grouper} ) {
-        $params{grouper} = Stasis::ActorGroup->new;
-        $params{grouper}->run( $params{raid}, $params{ext} );
-    }
-    
-    $params{pm} ||= Stasis::PageMaker->new( raid => $params{raid}, ext => $params{ext}, grouper => $params{grouper}, collapse => $params{collapse} );
-    
-    $params{lines} = [];
-    
-    bless \%params, $class;
 }
 
 sub add {

@@ -28,28 +28,12 @@ use warnings;
 use POSIX;
 use HTML::Entities;
 use Stasis::Parser;
+use Stasis::Page;
 use Stasis::PageMaker;
 use Stasis::ActorGroup;
 use Stasis::Extension qw(span_sum);
 
-sub new {
-    my $class = shift;
-    my %params = @_;
-    
-    $params{ext} ||= {};
-    $params{raid} ||= {};
-    
-    if( !$params{grouper} ) {
-        $params{grouper} = Stasis::ActorGroup->new;
-        $params{grouper}->run( $params{raid}, $params{ext} );
-    }
-    
-    $params{pm} ||= Stasis::PageMaker->new( raid => $params{raid}, ext => $params{ext}, grouper => $params{grouper}, collapse => $params{collapse} );
-    $params{name} ||= "Untitled";
-    $params{server} ||= "";
-    
-    bless \%params, $class;
-}
+our @ISA = "Stasis::Page";
 
 sub page {
     my ($self, $MOB, $do_group) = @_;
@@ -70,8 +54,10 @@ sub page {
     
     # Player and pets
     my @playpet = ( @PLAYER );
-    foreach (@PLAYER) {
-        push @playpet, @{$self->{raid}{$_}{pets}} if( exists $self->{raid}{$_} && exists $self->{raid}{$_}{pets} );
+    foreach my $player (@PLAYER) {
+        # Add pets that have presence in this set of extensions.
+        push @playpet, grep { $self->{ext}{Presence}->presence($_) } @{$self->{raid}{$player}{pets}} 
+            if( exists $self->{raid}{$player} && exists $self->{raid}{$player}{pets} );
     }
     
     ################
@@ -80,7 +66,19 @@ sub page {
     
     my $keyActor = sub { $self->{grouper}->captain_for($_[0]) };
     
-    my $dpsTime = span_sum( $self->{ext}{Activity}->sum( actor => \@playpet )->{spans} );
+    my $actOut = $self->{ext}{Activity}->sum(
+        actor => \@playpet,
+        expand => [ "target" ],
+        keyActor => $keyActor,
+    );
+    
+    my $actIn = $self->{ext}{Activity}->sum(
+        target => \@playpet,
+        expand => [ "actor" ],
+        keyActor => $keyActor,
+    );
+    
+    my $dpsTime = span_sum( [ map { $_->{spans} ? @{$_->{spans}} : () } values %$actOut ], $pstart, $pend );
     
     my $deOut = $self->{ext}{Damage}->sum( 
         actor => \@playpet, 
@@ -342,12 +340,7 @@ sub page {
             data => $self->_targetRows($deOut),
             sort => sub ($$) { ($_[1]->{total}||0) <=> ($_[0]->{total}||0) },
             master => sub {
-                my $dpsTime = span_sum(
-                    $self->{ext}{Activity}->sum( 
-                        actor => \@playpet, 
-                        target => [ $self->{grouper}->expand($_[0]) ],
-                    )->{spans}
-                );
+                my $dpsTime = $actOut->{$_[0]} && $actOut->{$_[0]}{spans} && span_sum($actOut->{$_[0]}{spans});
                 return $self->_rowDamage( $_[1], $dmg_to_all, "Target", $pm->actorLink( $_[0] ), $dpsTime );
             },
             slave => sub {
@@ -366,13 +359,7 @@ sub page {
             data => $deIn,
             sort => sub ($$) { ($_[1]->{total}||0) <=> ($_[0]->{total}||0) },
             master => sub {
-                my $dpsTime = span_sum(
-                    $self->{ext}{Activity}->sum( 
-                        actor => [ $self->{grouper}->expand($_[0]) ],
-                        target => \@PLAYER, 
-                    )->{spans}
-                );
-
+                my $dpsTime = $actIn->{$_[0]} && $actIn->{$_[0]}{spans} && span_sum($actIn->{$_[0]}{spans});
                 return $self->_rowDamage( $_[1], $dmg_from_all, "Source", $pm->actorLink( $_[0] ), $dpsTime );
             },
             slave => sub {
@@ -898,20 +885,6 @@ sub _decodespell {
     return ($spellactor, $spellname, $spellid);
 }
 
-sub _tidypct {
-    my $n = pop;
-    
-    if( $n ) {
-        if( floor($n) == $n ) {
-            return sprintf "%d", $n;
-        } else {
-            return sprintf "%0.1f", $n;
-        }
-    } else {
-        return 0;
-    }
-}
-
 sub _abilityRows {
     my $self = shift;
     my $eOut = shift;
@@ -954,103 +927,6 @@ sub _targetRows {
     }
 
     return \%ret;
-}
-
-sub _cricruglaText {
-    my $sdata = pop;
-    
-    my $swings = ($sdata->{count}||0) - ($sdata->{tickCount}||0);
-    return unless $swings;
-    
-    my $pct = _tidypct(($sdata->{critCount}||0) / $swings * 100 );
-    $pct &&= "$pct%";
-    
-    my @text;
-    my @atype = qw(crushing glancing);
-    foreach my $type (@atype) {
-        push @text, _tidypct( $sdata->{$type} / $swings * 100 ) . "% $type" if $sdata->{$type};
-    }
-    
-    if( @text ) {
-        $pct ||= "0%";
-    }
-    
-    return ($pct, @text ? join( ";", @text ) : undef );
-}
-
-sub _avoidanceText {
-    my $sdata = pop;
-    
-    my $swings = ($sdata->{count}||0) - ($sdata->{tickCount}||0);
-    return unless $swings;
-    
-    my $pct = _tidypct( 100 - ( ($sdata->{hitCount}||0) + ($sdata->{critCount}||0) ) / $swings * 100 );
-    $pct &&= "$pct%";
-    
-    my @text;
-    my @atype = qw(miss dodge parry block absorb resist immune);
-    
-    foreach my $type (@atype) {
-        push @text, _tidypct( $sdata->{$type . "Count"} / $swings * 100 ) . "% total $type" if $sdata->{$type . "Count"};
-    }
-    
-    my $f = 1;
-    my @ptype = qw(block resist absorb);
-    foreach (@ptype) {
-        my $type = $_;
-        $type =~ s/^(\w)/"partial" . uc $1/e;
-        push @text, "" if $sdata->{$type . "Count"} && @text && $f++ == 1;
-        push @text, _tidypct( $sdata->{$type . "Count"} / $sdata->{count} * 100 ) . "% partial ${_} (avg " . int($sdata->{$type . "Total"}/$sdata->{$type . "Count"}) . ")" if $sdata->{$type . "Count"};
-    }
-    
-    if( @text ) {
-        $pct ||= "0%";
-    }
-    
-    return ($pct, @text ? join( ";", @text ) : undef );
-}
-
-sub _rowDamage {
-    my ($self, $sdata, $mnum, $header, $title, $time) = @_;
-    
-    # We're printing a row based on $sdata.
-    my $swings = ($sdata->{count}||0) - ($sdata->{tickCount}||0);
-    
-    return {
-        ($header || "Ability") => $title,
-        "R-Total" => $sdata->{total},
-        "R-%" => $sdata->{total} && $mnum && _tidypct( $sdata->{total} / $mnum * 100 ),
-        "R-DPS" => $sdata->{total} && $time && sprintf( "%d", $sdata->{total}/$time ),
-        "R-Time" => $time && sprintf( "%02d:%02d", $time/60, $time%60 ),
-        "R-Hits" => $sdata->{hitCount} && sprintf( "%d", $sdata->{hitCount} ),
-        "R-AvHit" => $sdata->{hitCount} && $sdata->{hitTotal} && $self->{pm}->tip( int($sdata->{hitTotal} / $sdata->{hitCount}), sprintf( "Range: %d&ndash;%d", $sdata->{hitMin}, $sdata->{hitMax} ) ),
-        "R-Ticks" => $sdata->{tickCount} && sprintf( "%d", $sdata->{tickCount} ),
-        "R-AvTick" => $sdata->{tickCount} && $sdata->{tickTotal} && $self->{pm}->tip( int($sdata->{tickTotal} / $sdata->{tickCount}), sprintf( "Range: %d&ndash;%d", $sdata->{tickMin}, $sdata->{tickMax} ) ),
-        "R-Crits" => $sdata->{critCount} && sprintf( "%d", $sdata->{critCount} ),
-        "R-AvCrit" => $sdata->{critCount} && $sdata->{critTotal} && $self->{pm}->tip( int($sdata->{critTotal} / $sdata->{critCount}), sprintf( "Range: %d&ndash;%d", $sdata->{critMin}, $sdata->{critMax} ) ),
-        "R-% Crit" => $self->{pm}->tip( _cricruglaText($sdata) ),
-        "R-Avoid" => $self->{pm}->tip( _avoidanceText($sdata) ),
-    };
-}
-
-sub _rowHealing {
-    my ($self, $sdata, $mnum, $header, $title) = @_;
-    
-    # We're printing a row based on $sdata.
-    return {
-        ($header || "Ability") => $title,
-        "R-Eff. Heal" => $sdata->{effective}||0,
-        "R-%" => $sdata->{effective} && $mnum && _tidypct( $sdata->{effective} / $mnum * 100 ),
-        "R-Overheal" => $sdata->{total} && sprintf( "%0.1f%%", ($sdata->{total} - ($sdata->{effective}||0) ) / $sdata->{total} * 100 ),
-        "R-Count" => $_[1]->{count}||0,
-        "R-Hits" => $sdata->{hitCount} && sprintf( "%d", $sdata->{hitCount} ),
-        "R-AvHit" => $sdata->{hitCount} && $sdata->{hitTotal} && $self->{pm}->tip( int($sdata->{hitTotal} / $sdata->{hitCount}), sprintf( "Range: %d&ndash;%d", $sdata->{hitMin}, $sdata->{hitMax} ) ),
-        "R-Ticks" => $sdata->{tickCount} && sprintf( "%d", $sdata->{tickCount} ),
-        "R-AvTick" => $sdata->{tickCount} && $sdata->{tickTotal} && $self->{pm}->tip( int($sdata->{tickTotal} / $sdata->{tickCount}), sprintf( "Range: %d&ndash;%d", $sdata->{tickMin}, $sdata->{tickMax} ) ),
-        "R-Crits" => $sdata->{critCount} && sprintf( "%d", $sdata->{critCount} ),
-        "R-AvCrit" => $sdata->{critCount} && $sdata->{critTotal} && $self->{pm}->tip( int($sdata->{critTotal} / $sdata->{critCount}), sprintf( "Range: %d&ndash;%d", $sdata->{critMin}, $sdata->{critMax} ) ),
-        "R-% Crit" => $sdata->{count} && $sdata->{critCount} && ($sdata->{count} - ($sdata->{tickCount}||0)) && sprintf( "%0.1f%%", ($sdata->{critCount}||0) / ($sdata->{count} - ($sdata->{tickCount}||0)) * 100 ),
-    };
 }
 
 sub _keyExists {

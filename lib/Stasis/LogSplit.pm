@@ -201,8 +201,8 @@ my %fingerprints = (
 "attumen" => {
     long => "Attumen the Huntsman",
     mobStart => [ 16151, "Midnight" ],
-    mobContinue => [ 15550, 16151, "Attumen the Huntsman", "Midnight" ],
-    mobEnd => [ 15550, "Attumen the Huntsman" ],
+    mobContinue => [ 15550, 16151, 16152, "Attumen the Huntsman", "Midnight" ],
+    mobEnd => [ 16152, "Attumen the Huntsman" ],
     timeout => 30,
 },
 
