@@ -27,28 +27,12 @@ use strict;
 use warnings;
 use POSIX;
 use HTML::Entities;
+use Stasis::Page;
 use Stasis::PageMaker;
-use Stasis::ActorPage;
 use Stasis::ActorGroup;
 use Stasis::Extension qw(span_sum);
 
-sub new {
-    my $class = shift;
-    my %params = @_;
-    
-    $params{ext} ||= {};
-    $params{raid} ||= {};
-    
-    if( !$params{grouper} ) {
-        $params{grouper} = Stasis::ActorGroup->new;
-        $params{grouper}->run( $params{raid}, $params{ext} );
-    }
-    
-    $params{pm} ||= Stasis::PageMaker->new( raid => $params{raid}, ext => $params{ext}, grouper => $params{grouper}, collapse => $params{collapse} );
-    $params{name} ||= "Untitled";
-    
-    bless \%params, $class;
-}
+our @ISA = "Stasis::Page";
 
 sub page {
     my $self = shift;
@@ -163,7 +147,7 @@ sub page {
             data => ( $_ ? $self->_flipRows($deOut) : $deOut ),
             sort => sub ($$) { ($_[1]->{total}||0) <=> ($_[0]->{total}||0) },
             master => sub {
-                return Stasis::ActorPage::_rowDamage( $self, $_[1], undef, ( $_ ? "Target" : "Source" ), $pm->actorLink( $_[0] ) );
+                return $self->_rowDamage( $_[1], undef, ( $_ ? "Target" : "Source" ), $pm->actorLink( $_[0] ) );
             },
         ) foreach (0..1);
         
@@ -185,7 +169,7 @@ sub page {
             data => ( $_ ? $self->_flipRows($heOut) : $heOut ),
             sort => sub ($$) { ($_[1]->{effective}||0) <=> ($_[0]->{effective}||0) },
             master => sub {
-                return Stasis::ActorPage::_rowHealing( $self, $_[1], undef, ( $_ ? "Target" : "Source" ), $pm->actorLink( $_[0] ) );
+                return $self->_rowHealing( $_[1], undef, ( $_ ? "Target" : "Source" ), $pm->actorLink( $_[0] ) );
             },
         ) foreach (0..1);
         

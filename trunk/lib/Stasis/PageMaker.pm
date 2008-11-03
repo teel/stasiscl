@@ -37,7 +37,7 @@ sub new {
     # Section ID
     $params{id} = 0;
     
-    # Tip ID
+    # Tooltip ID
     $params{tid} = 0;
     
     bless \%params, $class;
@@ -250,13 +250,11 @@ sub tableRows {
 
 sub pageHeader {
     my $self = shift;
-    my $boss = shift;
-    my $origtitle = shift;
-    my $start = shift;
+    my $boss = shift || "Page";
+    my $origtitle = shift || "";
+    my $start = shift || 0;
     
     # Default vars
-    $boss ||= "Page";
-    $origtitle ||= "";
     my $title = $origtitle ? "$boss : $origtitle" : $boss;
     
     # Reset table row ID

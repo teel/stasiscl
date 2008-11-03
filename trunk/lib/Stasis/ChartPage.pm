@@ -26,28 +26,12 @@ package Stasis::ChartPage;
 use strict;
 use warnings;
 use POSIX;
+use Stasis::Page;
 use Stasis::PageMaker;
 use Stasis::ActorGroup;
 use Stasis::Extension qw(span_sum);
 
-sub new {
-    my $class = shift;
-    my %params = @_;
-    
-    $params{ext} ||= {};
-    $params{raid} ||= {};
-    
-    if( !$params{grouper} ) {
-        $params{grouper} = Stasis::ActorGroup->new;
-        $params{grouper}->run( $params{raid}, $params{ext} );
-    }
-    
-    $params{pm} ||= Stasis::PageMaker->new( raid => $params{raid}, ext => $params{ext}, grouper => $params{grouper}, collapse => $params{collapse} );
-    $params{name} ||= "Untitled";
-    $params{short} ||= $params{name};
-    
-    bless \%params, $class;
-}
+our @ISA = "Stasis::Page";
 
 sub page {
     my $self = shift;
@@ -77,11 +61,26 @@ sub page {
     
     # Calculate raid DPS
     # Also get a list of total damage by raid member (on the side)
+    my %raiderSpans;
     my %raiderDamage;
     my %raiderIncoming;
     my $raidDamage = 0;
     
     my @raiders = map { $self->{raid}{$_}{class} ? ( $_ ) : () } keys %{$self->{raid}};
+    
+    ####################
+    # ACTIVITY and DPS #
+    ####################
+    
+    # DPS activity per raider
+    my $actOut = $self->{ext}{Activity}->sum(
+        actor => \@raiders,
+        expand => [ "actor" ],
+    );
+    
+    ######################
+    # DAMAGE AND HEALING #
+    ######################
     
     # Damage to mobs by raiders and their pets
     my $deOut = $self->{ext}{Damage}->sum( actor => \@raiders, -target => \@raiders, expand => [ "actor" ], fields => [ "total" ] );
@@ -95,6 +94,7 @@ sub page {
         $raiderIncoming{$raider} ||= 0;
         
         $raiderDamage{$raider} += $deOut->{$kactor}{total} || 0 if $deOut->{$kactor};
+        push @{$raiderSpans{$raider}}, @{$actOut->{$kactor}{spans}} if $actOut->{$kactor} && $actOut->{$kactor}{spans};
     }
     
     foreach (values %raiderDamage) {
@@ -147,7 +147,10 @@ sub page {
         $raidHealingTotal += $heOutFriendly->{$kactor}{total} || 0;
     }
     
-    # Raid DPS
+    ############
+    # RAID DPS #
+    ############
+    
     my $raidDPS = $raidPresence && ($raidDamage / $raidPresence);
     
     ####################
@@ -209,7 +212,7 @@ sub page {
     
     foreach my $actor (@damagesort) {
         my $ptime = $self->{ext}{Presence}->presence($actor);
-        my $dpsTime = span_sum( $self->{ext}{Activity}->sum( actor => [ $actor, @{ $self->{raid}{$actor}{pets} } ] )->{spans} );
+        my $dpsTime = exists $raiderSpans{$actor} && span_sum( $raiderSpans{$actor} );
         
         $PAGE .= $pm->tableRow( 
             header => \@damageHeader,
@@ -519,7 +522,7 @@ sub page {
 
         foreach my $actor (@damagesort) {
             my $ptime = $self->{ext}{Presence}->presence($actor);
-            my $dpsTime = span_sum( $self->{ext}{Activity}->sum( actor => [ $actor, @{ $self->{raid}{$actor}{pets} } ] )->{spans} );
+            my $dpsTime = exists $raiderSpans{$actor} && span_sum( $raiderSpans{$actor} );
             
             # Count decurses.
             my $decurse = 0;

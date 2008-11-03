@@ -50,6 +50,8 @@ sub run {
     # Hash reference to %ext
     my $ext = shift;
     
+    return $self unless $raid && $ext;
+    
     # Return value, will be an array of hashes like this:
     
     # {
@@ -130,7 +132,7 @@ sub run {
         }
     }
     
-    return \@groups;
+    return $self;
 }
 
 sub group {
