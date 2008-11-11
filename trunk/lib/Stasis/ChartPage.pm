@@ -83,7 +83,14 @@ sub page {
     ######################
     
     # Damage to mobs by raiders and their pets
-    my $deOut = $self->{ext}{Damage}->sum( actor => \@raiders, -target => \@raiders, expand => [ "actor" ], fields => [ "total" ] );
+    my $deOut = $self->{ext}{Damage}->sum( 
+        actor => \@raiders, 
+        -target => \@raiders, 
+        expand => [ "actor" ], 
+        fields => [ qw(hitTotal critTotal tickTotal) ]
+    );
+    
+    $_->{total} = $self->_addHCT( $_, "Total" ) foreach ( values %$deOut );
     
     while( my ($kactor, $ractor) = each %{$self->{raid}} ) {
         # Only show raiders
@@ -103,7 +110,14 @@ sub page {
     
     # Calculate incoming damage
     my $raidInDamage = 0;
-    my $deInAll = $self->{ext}{Damage}->sum( target => \@raiders, expand => [ "target" ], fields => [ "total" ] );
+    my $deInAll = $self->{ext}{Damage}->sum( 
+        target => \@raiders, 
+        expand => [ "target" ], 
+        fields => [ qw(hitTotal critTotal tickTotal) ]
+    );
+    
+    $_->{total} = $self->_addHCT( $_, "Total" ) foreach ( values %$deInAll );
+    
     while( my ($kactor, $ractor) = each %{$self->{raid}} ) {
         # Only show raiders
         next if !$ractor->{class} || $ractor->{class} eq "Pet" || !$self->{ext}{Presence}->presence($kactor);
@@ -130,7 +144,15 @@ sub page {
     my $raidHealingTotal = 0;
     
     # Friendly healing by raiders and their pets
-    my $heOutFriendly = $self->{ext}{Healing}->sum( actor => \@raiders, target => \@raiders, expand => [ "actor" ], fields => [ "effective", "total" ] );
+    my $heOutFriendly = $self->{ext}{Healing}->sum( 
+        actor => \@raiders, 
+        target => \@raiders, 
+        expand => [ "actor" ], 
+        fields => [ qw(hitEffective critEffective tickEffective hitTotal critTotal tickTotal) ]
+    );
+    
+    $_->{total} = $self->_addHCT( $_, "Total" ) foreach ( values %$heOutFriendly );
+    $_->{effective} = $self->_addHCT( $_, "Effective" ) foreach ( values %$heOutFriendly );
     
     while( my ($kactor, $ractor) = each (%{$self->{raid}}) ) {
         # Only show raiders

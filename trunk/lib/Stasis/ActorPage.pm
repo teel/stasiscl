@@ -169,9 +169,9 @@ sub page {
         );
     }
     
-    ###########################
-    # DAMAGE AND HEALING SUMS #
-    ###########################
+    ###############
+    # DAMAGE SUMS #
+    ###############
     
     # Total damage, and damage from/to mobs
     my $dmg_from_all = 0;
@@ -183,6 +183,8 @@ sub page {
     while( my ($kactor, $vactor) = each(%$deOut) ) {
         while( my ($kspell, $vspell) = each(%$vactor) ) {
             while( my ($ktarget, $vtarget) = each(%$vspell) ) {
+                $vtarget->{total} = $self->_addHCT( $vtarget, "Total" );
+                
                 $dmg_to_all += $vtarget->{total} || 0;
                 $dmg_to_mobs += $vtarget->{total} || 0 if !$self->{raid}{$ktarget} || !$self->{raid}{$ktarget}{class};
             }
@@ -190,7 +192,9 @@ sub page {
     }
     
     while( my ($kactor, $vactor) = each(%$deIn) ) {
-        while( my ($kspell, $vspell) = each(%$vactor) ) {
+        while( my ($kspell, $vspell) = each(%$vactor) ) {            
+            $vspell->{total} = $self->_addHCT( $vspell, "Total" );
+            
             $dmg_from_all += $vspell->{total} || 0;
             $dmg_from_mobs += $vspell->{total} || 0 if !$self->{raid}{$kactor} || !$self->{raid}{$kactor}{class};
         }
@@ -389,7 +393,15 @@ sub page {
             header => [ "Ability", "R-Eff. Heal", "R-%", "R-Hits", "R-Crits", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Overheal", ],
             data => $self->_abilityRows($heOut),
             sort => sub ($$) { ($_[1]->{effective}||0) <=> ($_[0]->{effective}||0) },
-            preprocess => sub { $eff_on_others += ($_[1]->{effective}||0) if( @_ == 2 ) },
+            preprocess => sub { 
+                # Add to eff_on_others if this is a slave row
+                $eff_on_others += ($_[1]->{effective}||0) if( @_ == 2 );
+                
+                # Sum on all rows
+                $_[1]->{count} = $self->_addHCT( $_[1], "Count" );
+                $_[1]->{total} = $self->_addHCT( $_[1], "Total" );
+                $_[1]->{effective} = $self->_addHCT( $_[1], "Effective" );
+            },
             master => sub {
                 my ($spellactor, $spellname, $spellid) = $self->_decodespell($_[0], $pm, "Healing", @PLAYER);
                 return $self->_rowHealing( $_[1], $eff_on_others, "Ability", $spellname );
@@ -408,6 +420,12 @@ sub page {
             header => [ "Target", "R-Eff. Heal", "R-%", "R-Hits", "R-Crits", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Overheal", ],
             data => $self->_targetRows($heOut),
             sort => sub ($$) { ($_[1]->{effective}||0) <=> ($_[0]->{effective}||0) },
+            preprocess => sub { 
+                # Sum on all rows
+                $_[1]->{count} = $self->_addHCT( $_[1], "Count" );
+                $_[1]->{total} = $self->_addHCT( $_[1], "Total" );
+                $_[1]->{effective} = $self->_addHCT( $_[1], "Effective" );
+            },
             master => sub {
                 return $self->_rowHealing( $_[1], $eff_on_others, "Target", $pm->actorLink($_[0]) );
             },

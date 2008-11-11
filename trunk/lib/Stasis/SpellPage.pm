@@ -144,6 +144,9 @@ sub page {
         $PAGE .= $pm->tableRows(
             title => "Damage" . ( $_ ? " In by Target" : " Out by Source" ),
             header => [ ( $_ ? "Target" : "Source" ), "R-Total", "R-Hits", "R-Crits", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Avoid", ],
+            preprocess => sub {
+                $_[1]->{total} = $self->_addHCT( $_[1], "Total" );
+            },
             data => ( $_ ? $self->_flipRows($deOut) : $deOut ),
             sort => sub ($$) { ($_[1]->{total}||0) <=> ($_[0]->{total}||0) },
             master => sub {
@@ -166,6 +169,11 @@ sub page {
         $PAGE .= $pm->tableRows(
             title => "Healing" . ( $_ ? " In by Target" : " Out by Source" ),
             header => [ ( $_ ? "Target" : "Source" ), "R-Eff. Heal", "R-Hits", "R-Crits", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Overheal", ],
+            preprocess => sub {
+                $_[1]->{count} = $self->_addHCT( $_[1], "Count" );
+                $_[1]->{total} = $self->_addHCT( $_[1], "Total" );
+                $_[1]->{effective} = $self->_addHCT( $_[1], "Effective" );
+            },
             data => ( $_ ? $self->_flipRows($heOut) : $heOut ),
             sort => sub ($$) { ($_[1]->{effective}||0) <=> ($_[0]->{effective}||0) },
             master => sub {

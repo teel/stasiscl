@@ -45,7 +45,7 @@ sub key {
 }
 
 sub value {
-    qw(count total min max hitCount hitTotal hitMin hitMax critCount critTotal critMin critMax tickCount tickTotal tickMin tickMax partialResistCount partialBlockCount partialAbsorbCount partialResistTotal partialBlockTotal partialAbsorbTotal crushing glancing dodgeCount absorbCount resistCount parryCount missCount blockCount reflectCount deflectCount immuneCount);
+    qw(count hitCount hitTotal hitMin hitMax critCount critTotal critMin critMax tickCount tickTotal tickMin tickMax partialResistCount partialBlockCount partialAbsorbCount partialResistTotal partialBlockTotal partialAbsorbTotal crushing glancing dodgeCount absorbCount resistCount parryCount missCount blockCount reflectCount deflectCount immuneCount);
 }
 
 sub process {
@@ -76,6 +76,9 @@ sub process {
     # Add to targets.
     $self->{targets}{ $entry->{target} }{ $spell }{ $actor } ||= $ddata;
     
+    # Add to the count.
+    $ddata->{count} += 1;
+    
     # Check if this was a hit or a miss.
     if( $entry->{extra}{amount} && !$entry->{extra}{misstype} ) {
         # HIT
@@ -88,10 +91,6 @@ sub process {
         } else {
             $type = "hit";
         }
-        
-        # Add the damage to the total for this spell.
-        $ddata->{count} += 1;
-        $ddata->{total} += $entry->{extra}{amount};
         
         # Add the damage to the total for this type of hit (hit/crit/tick).
         $ddata->{"${type}Count"} += 1;
@@ -130,7 +129,6 @@ sub process {
         $ddata->{glancing}++ if $entry->{extra}{glancing};
     } elsif( $entry->{extra}{misstype} ) {
         # MISS
-        $ddata->{count} += 1;
         $ddata->{ lc( $entry->{extra}{misstype} ) . "Count" }++;
     }
 }

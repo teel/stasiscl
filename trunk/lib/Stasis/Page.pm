@@ -123,6 +123,11 @@ sub _avoidanceText {
     return ($pct, @text ? join( ";", @text ) : undef );
 }
 
+sub _addHCT {
+    my ($self, $sdata, $suffix) = @_;
+    return ($sdata->{"hit$suffix"}||0) + ($sdata->{"crit$suffix"}||0) + ($sdata->{"tick$suffix"}||0);
+}
+
 sub _rowDamage {
     my ($self, $sdata, $mnum, $header, $title, $time) = @_;
     
@@ -155,7 +160,7 @@ sub _rowHealing {
         "R-Eff. Heal" => $sdata->{effective}||0,
         "R-%" => $sdata->{effective} && $mnum && _tidypct( $sdata->{effective} / $mnum * 100 ),
         "R-Overheal" => $sdata->{total} && sprintf( "%0.1f%%", ($sdata->{total} - ($sdata->{effective}||0) ) / $sdata->{total} * 100 ),
-        "R-Count" => $_[1]->{count}||0,
+        "R-Count" => $sdata->{count}||0,
         "R-Hits" => $sdata->{hitCount} && sprintf( "%d", $sdata->{hitCount} ),
         "R-AvHit" => $sdata->{hitCount} && $sdata->{hitTotal} && $self->{pm}->tip( int($sdata->{hitTotal} / $sdata->{hitCount}), sprintf( "Range: %d&ndash;%d", $sdata->{hitMin}, $sdata->{hitMax} ) ),
         "R-Ticks" => $sdata->{tickCount} && sprintf( "%d", $sdata->{tickCount} ),
