@@ -46,7 +46,7 @@ sub actions {
 }
 
 sub value {
-    qw(count total effective hitCount hitTotal hitEffective hitMin hitMax critCount critTotal critEffective critMin critMax tickCount tickTotal tickEffective tickMin tickMax);
+    qw(hitCount hitTotal hitEffective hitMin hitMax critCount critTotal critEffective critMin critMax tickCount tickTotal tickEffective tickMin tickMax);
 }
 
 sub process_healing {
@@ -78,11 +78,6 @@ sub process_healing {
         }
     }
 
-    # Add total healing to the healer.
-    $hdata->{count} += 1;
-    $hdata->{total} += $entry->{extra}{amount};
-    $hdata->{effective} += $effective;
-
     # Add this as the appropriate kind of healing: tick, hit, or crit.
     my $type;
     if( $entry->{action} eq "SPELL_PERIODIC_HEAL" ) {
@@ -93,6 +88,7 @@ sub process_healing {
         $type = "hit";
     }
     
+    # Add total healing to the healer.
     $hdata->{"${type}Count"} += 1;
     $hdata->{"${type}Total"} += $entry->{extra}{amount};
     $hdata->{"${type}Effective"} += $effective;
