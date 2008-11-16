@@ -117,7 +117,7 @@ sub page {
     if( $SPELL ) {
         my @nameShare = $self->{ext}{Index}->spellid( $SPELL );
         if( @nameShare > 1 ) {
-            push @summaryRows, "Shares Name With" => join "<br />", map { $pm->spellLink($_) . " &#187;" } grep { $_ != $SPELL } @nameShare;
+            push @summaryRows, "Shares Name With" => join "<br />", map { $pm->spellLink($_) . ( $_ == $SPELL ? " (currently viewing)" : "" ) } @nameShare;
         }
     }
     
