@@ -69,6 +69,20 @@ sub _tidypct {
     }
 }
 
+sub _tidymag {
+    my $n = pop;
+    
+    if( !$n ) {
+        return 0;
+    } elsif( $n < 1_000 ) {
+        return sprintf "%d", $n;
+    } elsif( $n < 100_000 ) {
+        return sprintf "%0.1fK", $n/1_000;
+    } else {
+        return sprintf "%0.1fM", $n/1_000_000;
+    }
+}
+
 sub _cricruglaText {
     my $sdata = pop;
     

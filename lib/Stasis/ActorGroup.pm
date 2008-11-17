@@ -50,7 +50,7 @@ sub run {
     # Hash reference to %ext
     my $ext = shift;
     
-    return $self unless $raid && $ext;
+    return $self unless defined $raid && defined $ext;
     
     # Return value, will be an array of hashes like this:
     

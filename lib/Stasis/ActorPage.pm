@@ -206,7 +206,8 @@ sub page {
     
     my $displayName = sprintf "%s%s", HTML::Entities::encode_entities($self->{ext}{Index}->actorname($MOB)), @PLAYER > 1 ? " (group)" : "";
     $displayName ||= "Actor";
-    $PAGE .= $pm->pageHeader($self->{name}, $displayName, $raidStart);
+    $PAGE .= $pm->pageHeader($self->{name}, $displayName);
+    $PAGE .= $pm->statHeader($self->{name}, $displayName, $raidStart);
     $PAGE .= sprintf "<h3 class=\"color%s\">%s%s</h3>", $self->{raid}{$MOB}{class} || "Mob", $pm->actorLink($MOB, @PLAYER == 1 ? 1 : 0 ), @PLAYER > 1 ? " (group)" : "";
     
     my @summaryRows;

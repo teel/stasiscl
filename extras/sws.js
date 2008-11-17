@@ -131,6 +131,13 @@ function hashTab() {
     if( t.length > 0 ) {
         toggleTab(t)
     }
+    
+    /* Add yui-skin-sam to the body's class. */
+    if(document.body.className) {
+        document.body.className += ' yui-skin-sam';
+    } else {
+        document.body.className = 'yui-skin-sam';
+    }
 }
 
 function initTabs() {
@@ -147,4 +154,11 @@ function initTabs() {
     if( tips.length > 0 ) {
         var myTooltip = new YAHOO.widget.Tooltip( "swstips", { context: tips, showdelay: 0, hidedelay: 0 } );
     }
+}
+
+/* Call hashTab when the page loads so we switch to the right tab. */
+if(window.addEventListener) {
+    window.addEventListener('load', hashTab, false);
+} else if(window.attachEvent) {
+    window.attachEvent('onload', hashTab);
 }
