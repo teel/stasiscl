@@ -250,24 +250,18 @@ sub tableRows {
 
 sub pageHeader {
     my $self = shift;
-    my $boss = shift || "Page";
-    my $origtitle = shift || "";
-    my $start = shift || 0;
-    
-    # Default vars
-    my $title = $origtitle ? "$boss : $origtitle" : $boss;
-    
+    my $title = shift || "Page";
+    my $subtitle = shift || "";
+
     # Reset table row ID
     $self->{id} = 0;
-    
+
     # Reset tip ID
     $self->{tid} = 0;
     
-    #my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime( $start );
-    #my $starttxt = sprintf "%4d-%02d-%02d %02d:%02d:%02d", $year + 1900, $mon + 1, $mday, $hour, $min, $sec;
-    my $starttxt = asctime localtime $start;
-    
-    my $PAGE = <<END;
+    # Add subtitle if it's nonempty
+    $title .= " : $subtitle" if $subtitle;    
+    return <<END;
 <html>
 <head>
 <title>$title</title>
@@ -281,17 +275,29 @@ sub pageHeader {
 <script type="text/javascript" src="http://yui.yahooapis.com/2.5.2/build/container/container-min.js"></script> 
 
 </head>
-<body class="yui-skin-sam" onLoad="hashTab();">
+<body class="yui-skin-sam">
+<div class="yui-skin-sam">
 <div class="swsmaster">
-<div class="top">
-<h2>$boss: $starttxt</h2>
 END
-    if( $origtitle ) {
+}
+
+sub statHeader {
+    my $self = shift;
+    my $title = shift || "Page";
+    my $subtitle = shift || "";
+    my $start = shift || 0;
+
+    # Start off with a header
+    my $starttxt = asctime localtime $start;
+    my $PAGE = "<div class=\"top\"><h2>$title: $starttxt</h2>";
+    
+    # Print navigation links
+    if( $subtitle ) {
         $PAGE .= '<b><a href="index.html#damage_out">Damage Out</a> &ndash; <a href="index.html#damage_in">Damage In</a> &ndash; <a href="index.html#healing">Healing</a> &ndash; <a href="index.html#raid__amp__mobs">Raid &amp; Mobs</a> &ndash; <a href="index.html#deaths">Deaths</a></b>';
     } else {
         $PAGE .= '<b><a href="#damage_out" onclick="toggleTab(\'damage_out\');">Damage Out</a> &ndash; <a href="#damage_in" onclick="toggleTab(\'damage_in\');">Damage In</a> &ndash; <a href="#healing" onclick="toggleTab(\'healing\');">Healing</a> &ndash; <a href="#raid__amp__mobs" onclick="toggleTab(\'raid__amp__mobs\');">Raid &amp; Mobs</a> &ndash; <a href="#deaths" onclick="toggleTab(\'deaths\');">Deaths</a></b>';
     }
-    
+
     return "$PAGE</div>";
 }
 
@@ -303,6 +309,7 @@ sub pageFooter {
     return <<END;
 <p class="footer">Generated on $timestr</p>
 <p class="footer">stasiscl available at <a href="http://code.google.com/p/stasiscl/">http://code.google.com/p/stasiscl/</a></p>
+</div>
 </div>
 <script src="http://www.wowhead.com/widgets/power.js"></script>
 <script type="text/javascript">initTabs();</script>

@@ -179,7 +179,8 @@ sub page {
     # PRINT TOP HEADER #
     ####################
     
-    $PAGE .= $pm->pageHeader($self->{name}, "", $raidStart);
+    $PAGE .= $pm->pageHeader($self->{name}, "");
+    $PAGE .= $pm->statHeader($self->{name}, "", $raidStart);
     
     $PAGE .= $pm->vertBox( "Raid summary",
         "Duration"   => sprintf( "%dm%02ds", $raidPresence/60, $raidPresence%60 ),
