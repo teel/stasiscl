@@ -1,3 +1,43 @@
+function sendXHR(url, callback) {
+    var req;
+
+	req = false;
+    // branch for native XMLHttpRequest object
+    if(window.XMLHttpRequest && !(window.ActiveXObject)) {
+    	try {
+			req = new XMLHttpRequest();
+        } catch(e) {
+			req = false;
+        }
+    // branch for IE/Windows ActiveX version
+    } else if(window.ActiveXObject) {
+       	try {
+        	req = new ActiveXObject("Msxml2.XMLHTTP");
+      	} catch(e) {
+        	try {
+          		req = new ActiveXObject("Microsoft.XMLHTTP");
+        	} catch(e) {
+          		req = false;
+        	}
+		}
+    }
+    
+	if(req) {
+	    req.onreadystatechange = function() {
+            // only if req shows "loaded"
+            if (req.readyState == 4) {
+                // only if "OK"
+                if (!req.status || req.status == 200) {
+                    callback(req);
+                }
+            }
+        };
+        
+		req.open("GET", url, true);
+		req.send("");
+	}
+}
+
 function toggleTableSection(secName, url) {
     // 'url' is for death reports
     // it would work with anything else but it isn't used for that
@@ -12,8 +52,9 @@ function toggleTableSection(secName, url) {
                 if( url && ! trs[x].cells[0].innerHTML ) {
                     var success = function(o) {
                         if( o.responseText !== undefined ) {
-                            var autopsy = eval('(' + o.responseText + ')');
-
+                            //var autopsy = YAHOO.lang.JSON.parse(o.responseText);
+                            var autopsy = eval( "(" + o.responseText + ")" );
+                            
                             var xi = 0;
                             var trs = document.getElementsByTagName('tr');
                             for( var x = 0 ; x < trs.length ; x ++ ) {
@@ -43,16 +84,8 @@ function toggleTableSection(secName, url) {
                             showTableSection(secName);
                         }
                     };
-
-                    var failure = function(o) { };
-
-                    var callback = {
-                        success: success,
-                        failure: failure,
-                        argument: {}
-                    };
-
-                    var request = YAHOO.util.Connect.asyncRequest('GET', url, callback);
+                    
+                    sendXHR( url, success );
                 } else {
                     showTableSection(secName);
                 }

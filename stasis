@@ -156,6 +156,7 @@ my $opt_combine;
 my $opt_server;
 my $opt_collapse;
 my $opt_tail;
+my $opt_nav;
 
 ## SUBS ##
 
@@ -226,7 +227,7 @@ sub writedir($$$$$$$) {
     # Group actors.
     my $grouper = Stasis::ActorGroup->new;
     $grouper->run( $raid, $exts );
-
+    
     # Write the actor files.
     my $ap = Stasis::ActorPage->new( server => $opt_server, dirname => $dname_suffix, name => $long, short => $short, raid => $raid, ext => $exts, collapse => $collapse );
     foreach my $actor (keys %{$exts->{Presence}{actors}}) {
@@ -280,7 +281,7 @@ sub writedir($$$$$$$) {
                 $lc->add( $entry->{entry}, hp => $entry->{hp}, t => $entry->{t} );
             }
             
-            open DEATHPAGE, sprintf ">$dname/death_%s_%d.html", $id, ++$dn or die;
+            open DEATHPAGE, sprintf ">$dname/death_%s_%d.js", $id, ++$dn or die;
             print DEATHPAGE $lc->json;
             close DEATHPAGE;
         }
@@ -320,14 +321,6 @@ sub lagstring($) {
 	return $lagstring;
 }
 
-# For File::Find later
-my @dataxmls;
-sub wantedDataXML {
-    if( -f $_ && ( $File::Find::name =~ /\/sws-[0-9]+\/data.xml$/ || $File::Find::name =~ /\/sws-[\w]+-[0-9]+\/data.xml$/ ) ) {
-        push @dataxmls, $File::Find::name;
-    }
-}
-
 ## CODE ##
 
 # Get the action first.
@@ -352,6 +345,7 @@ my $rc = GetOptions(
     "server=s"      => \$opt_server,
     "collapse"      => \$opt_collapse,
     "tail"          => \$opt_tail,
+    "navigation"    => \$opt_nav,
 );
 
 # Clean up opt_dir
@@ -448,9 +442,9 @@ if( $action eq "print" ) {
                 bomb "please install File::Tail from CPAN or try again without -tail";
             }
             
-            # Can't do trash, combine, or overall with -tail
-            if( $opt_trash || $opt_combine || $opt_overall ) {
-                bomb "-trash, -combine, and -overall are not supported with -tail"
+            # Can't do trash, combine, overall, or navigation with -tail
+            if( $opt_trash || $opt_combine || $opt_overall || $opt_nav ) {
+                bomb "-trash, -combine, -overall, and -navigation are not supported with -tail";
             }
             
             tie *TAILFH, "File::Tail", ( 
@@ -730,8 +724,16 @@ if( $action eq "print" ) {
     my $xml = "<wws-history>\n";
     
     # Look at all data.xmls.
-    @dataxmls = ();
-    File::Find::find( \&wantedDataXML, ($opt_dir) );
+    my @dataxmls;
+    File::Find::find( 
+        sub {
+            if( -f $_ && ( $File::Find::name =~ /\/sws-[0-9]+\/data.xml$/ || $File::Find::name =~ /\/sws-[\w]+-[0-9]+\/data.xml$/ ) ) {
+                push @dataxmls, $File::Find::name;
+            }
+        },
+         
+        $opt_dir 
+    );
     
     status "Reading from " . (scalar @dataxmls) . " subdirectories.";
     
