@@ -1147,7 +1147,7 @@ sub _powerName {
     my ($self, $code) = @_;
     
     if( !defined $code ) {
-        return "unknown";
+        return "power";
     } elsif( $code == 0 ) {
         return "mana";
     } elsif( $code == 1 ) {

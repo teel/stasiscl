@@ -17,7 +17,8 @@ body {
     padding-top: 8px;
     padding-bottom: 12px;
     margin-bottom: 8px;
-    background-color: #f2f2ff;
+    padding-bottom: 0;
+    background-color: #e5e5ff;
     color: black;
 }
 
@@ -271,6 +272,39 @@ body {
 
 .swsmaster .colorMob {
     color: #464646;
+}
+
+li#bossnav {
+    margin-left: 15px;
+}
+
+.swsmaster .yuimenubar {
+    background-image: none;
+    background-color: none;
+    border-left: 0;
+    border-right: 0;
+    border-color: #55a;
+}
+
+.swsmaster .yuimenubar .yuimenubaritem:hover {
+    background-image: none;
+    background-color: #55a;
+    color: white;
+}
+
+.swsmaster .yuimenubar .yuimenubaritemlabel {
+    border-color: #55a;
+}
+
+.swsmaster .yuimenubar .yuimenubaritemlabel-selected {
+    background-image: none;
+    background-color: #55a;
+    border-color: #55a;
+    color: white;
+}
+
+.swsmaster .yuimenubar a {
+    text-decoration: none;
 }
 
 div.swstip {

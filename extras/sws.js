@@ -52,7 +52,6 @@ function toggleTableSection(secName, url) {
                 if( url && ! trs[x].cells[0].innerHTML ) {
                     var success = function(o) {
                         if( o.responseText !== undefined ) {
-                            //var autopsy = YAHOO.lang.JSON.parse(o.responseText);
                             var autopsy = eval( "(" + o.responseText + ")" );
                             
                             var xi = 0;
@@ -69,7 +68,7 @@ function toggleTableSection(secName, url) {
                                         tms = "0" + tms;
                                     }
 
-                                    trs[x].cells[0].innerHTML = ( tmin < 10 ? '0' + tmin.toString() : tmin.toString() ) + ":" + ( tsec < 10 ? '0' + tsec.toString() : tsec.toString() ) + "." + tms;
+                                    trs[x].cells[ trs[x].cells.length - 3 ].innerHTML = ( tmin < 10 ? '0' + tmin.toString() : tmin.toString() ) + ":" + ( tsec < 10 ? '0' + tsec.toString() : tsec.toString() ) + "." + tms;
 
                                     if( autopsy[xi].hp != "0" ) {
                                         trs[x].cells[ trs[x].cells.length - 2 ].innerHTML = autopsy[xi].hp;
@@ -138,31 +137,43 @@ function hideTableSection(secName) {
     }
 }
 
-function toggleTab(tabId) {
-    var divs = document.getElementsByTagName('div');
-    for( var x = 0 ; x < divs.length ; x ++ ) {
-        if( divs[x].className == 'tab' ) {
-            divs[x].style.display = 'none';
-        }
-    }
+function toggleTab(tabId,front) {
+    /* Bail out if we're supposed to be on the front page but we're not. */
+    if( front && !document.getElementById('tab_damage_out') ) return;
     
-    var as = document.getElementsByTagName('a');
-    for( var x = 0 ; x < as.length ; x ++ ) {
-        if( as[x].className == 'tabLink select' ) {
-            as[x].className = 'tabLink';
-        }
-    }
-    
+    /* Check if the target tab exists. */
     var div = document.getElementById('tab_' + tabId);
     var a = document.getElementById('tablink_' + tabId);
-    div.style.display = 'block';
-    a.className = 'tabLink select';
+    
+    if( div && a ) {
+        /* Find other tabs and turn them off. */
+        var divs = document.getElementsByTagName('div');
+        for( var x = 0 ; x < divs.length ; x ++ ) {
+            if( divs[x].className == 'tab' ) {
+                divs[x].style.display = 'none';
+            }
+        }
+        
+        /* Disable other tab links. */
+        var as = document.getElementsByTagName('a');
+        for( var x = 0 ; x < as.length ; x ++ ) {
+            if( as[x].className == 'tabLink select' ) {
+                as[x].className = 'tabLink';
+            }
+        }
+        
+        /* Enable ours. */
+        div.style.display = 'block';
+        a.className = 'tabLink select';
+    }
 }
 
+/* Even though this is called hashTab, it does a bunch of other page-load type things. */
 function hashTab() {
+    /* Figure out what tab we're on. */
     var t = location.hash.substring(1);
     if( t.length > 0 ) {
-        toggleTab(t)
+        toggleTab(t);
     }
     
     /* Add yui-skin-sam to the body's class. */
@@ -171,6 +182,52 @@ function hashTab() {
     } else {
         document.body.className = 'yui-skin-sam';
     }
+}
+
+function initMenu() {
+    /* Set up the top navigation menu. */
+    YAHOO.util.Event.onContentReady("swsmenu", function () {
+        /* Standard menu items are marked up already */
+        var oMenuBar = new YAHOO.widget.MenuBar("swsmenu", { autosubmenudisplay: true, hidedelay: 750, lazyload: true });
+        
+        /* Use XHR to add boss navigation */
+        sendXHR( 'raid.json', function(o) {
+            if( o.responseText !== undefined ) {
+                try {
+                    var splits = YAHOO.lang.JSON.parse(o.responseText);
+
+                    if( splits.length > 0 ) {
+                        var splitsData = [];
+                        for( var x = 0 ; x < splits.length ; x++ ) {
+                            /* Boss name */
+                            var splitText = splits[x].longname + " (";
+                            
+                            /* Amount of damage */
+                            var n = splits[x].damage;
+                            if( !n ) {
+                                splitText += "0";
+                            } else if( n < 1000 ) {
+                                splitText += Math.floor(n);
+                            } else if( n < 100000 ) {
+                                splitText += Math.floor(n / 100)/10 + "K";
+                            } else {
+                                splitText += Math.floor(n / 100000)/10 + "M";
+                            }
+                            
+                            splitText += " dmg)";
+                            
+                            splitsData.push( { "text": splitText, "url": splits[x].dname } );
+                        }
+                        
+                        oMenuBar.getItem(0).cfg.setProperty("submenu", { id: "splits", itemdata: splitsData });
+                        oMenuBar.render();
+                    }
+                } catch(e) {}
+            }
+        });
+        
+        oMenuBar.render();
+    });
 }
 
 function initTabs() {

@@ -573,7 +573,7 @@ sub page {
                     "R-Given" => $_[1]->{amount},
                     "R-Ticks" => $_[1]->{count},
                     "R-Avg" => $_[1]->{count} && sprintf( "%d", $_[1]->{amount} / $_[1]->{count} ),
-                    "R-Per 5" => $ptime && sprintf( "%0.1f", $_[1]->{amount} / $slave_ptime * 5 ),
+                    "R-Per 5" => $slave_ptime && sprintf( "%0.1f", $_[1]->{amount} / $slave_ptime * 5 ),
                 };
             },
         ) if %$powerOut;
@@ -844,7 +844,7 @@ sub page {
                         "Event" => $text,
                     },
                     type => "master",
-                    url => sprintf( "death_%s_%d.js", $id, ++$dnum{ $death->{actor} } ),
+                    url => sprintf( "death_%s_%d.json", $id, ++$dnum{ $death->{actor} } ),
                 );
 
                 # Print subsequent rows.

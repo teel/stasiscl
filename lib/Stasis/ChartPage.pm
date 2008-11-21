@@ -485,7 +485,7 @@ sub page {
                     "Event" => $text,
                 },
                 type => "master",
-                url => sprintf( "death_%s_%d.js", $id, ++$dnum{ $death->{actor} } ),
+                url => sprintf( "death_%s_%d.json", $id, ++$dnum{ $death->{actor} } ),
             );
             
             # Print subsequent rows.

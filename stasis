@@ -107,6 +107,8 @@ B<-collapse>  For boss attempts and kills, collapse all mobs that have the
            is always done for trash parses to save space, but by
            default is not done for boss parses.
 
+B<-nav>       Add a cross-split navigation menu to each parse.
+
 =head1 BUGS
 
 http://code.google.com/p/stasiscl/
@@ -125,6 +127,7 @@ use Stasis::ClassGuess;
 use Stasis::Extension;
 use Stasis::ExtensionRunner;
 use Stasis::EventDispatcher;
+use Stasis::Page;
 use Stasis::ChartPage;
 use Stasis::ActorPage;
 use Stasis::SpellPage;
@@ -142,7 +145,7 @@ use Getopt::Long;
 
 ## OPTIONS ##
 my $opt_version = 2;
-my $opt_minlength = 30;
+my $opt_minlength;
 my $opt_sfile;
 my $opt_dir = ".";
 my $opt_nowrite;
@@ -216,20 +219,34 @@ sub writedir($$$$$$$) {
     # Get the suffix of the directory.
     my $dname_suffix = $dname;
     $dname_suffix = $1 if $dname_suffix =~ /[\/\\:]([^\/\\:]+)$/;
-
-    # Write the index.
-    my $charter = Stasis::ChartPage->new( name => $long, dirname => $dname_suffix, short => $short, raid => $raid, ext => $exts, collapse => $collapse );
-    my ($chart_xml, $chart_html) = $charter->page;
-    open CHARTPAGE, ">$dname/index.html" or die;
-    print CHARTPAGE $chart_html;
-    close CHARTPAGE;
     
     # Group actors.
     my $grouper = Stasis::ActorGroup->new;
     $grouper->run( $raid, $exts );
     
+    # Initialize Pages with these parameters.
+    my %page_init = (
+        server => $opt_server, 
+        dirname => $dname_suffix, 
+        name => $long, 
+        short => $short, 
+        raid => $raid, 
+        ext => $exts, 
+        collapse => $collapse,
+        grouper => $grouper,
+    );
+
+    # Write the index.
+    my $charter = Stasis::ChartPage->new( %page_init );
+    
+    my ($chart_xml, $chart_html) = $charter->page;
+    open CHARTPAGE, ">$dname/index.html" or die;
+    print CHARTPAGE $chart_html;
+    close CHARTPAGE;
+    
     # Write the actor files.
-    my $ap = Stasis::ActorPage->new( server => $opt_server, dirname => $dname_suffix, name => $long, short => $short, raid => $raid, ext => $exts, collapse => $collapse );
+    my $ap = Stasis::ActorPage->new( %page_init );
+    
     foreach my $actor (keys %{$exts->{Presence}{actors}}) {
         # Respect $collapse.
         next if $collapse && $grouper->group($actor);
@@ -258,7 +275,8 @@ sub writedir($$$$$$$) {
     close ENVPAGE;
     
     # Write the spell files.
-    my $sp = Stasis::SpellPage->new( name => $long, dirname => $dname_suffix, short => $short, raid => $raid, ext => $exts, collapse => $collapse );
+    my $sp = Stasis::SpellPage->new( %page_init );
+    
     foreach my $spell (keys %{$exts->{Index}{spells}}) {
         my $id = lc $spell;
         $id = Stasis::PageMaker->tameText($id);
@@ -269,7 +287,8 @@ sub writedir($$$$$$$) {
     }
     
     # Write death clips.
-    my $lc = Stasis::LogClip->new( raid => $raid, ext => $exts );
+    my $lc = Stasis::LogClip->new( %page_init );
+    
     while( my ($kactor, $vactor) = each(%{$exts->{Death}{actors}}) ) {
         my $id = lc $kactor;
         $id = Stasis::PageMaker->tameText($id);
@@ -281,7 +300,7 @@ sub writedir($$$$$$$) {
                 $lc->add( $entry->{entry}, hp => $entry->{hp}, t => $entry->{t} );
             }
             
-            open DEATHPAGE, sprintf ">$dname/death_%s_%d.js", $id, ++$dn or die;
+            open DEATHPAGE, sprintf ">$dname/death_%s_%d.json", $id, ++$dn or die;
             print DEATHPAGE $lc->json;
             close DEATHPAGE;
         }
@@ -291,6 +310,19 @@ sub writedir($$$$$$$) {
     open DATAXML, ">$dname/data.xml" or die;
     print DATAXML $chart_xml;
     close DATAXML;
+    
+    # Return a hash describing what we just wrote.
+    my ($rdamage, $rtime) = (0, 0);
+    $rdamage = $1 if( $chart_xml =~ /<raid[^>]+dmg="(\d+)"/ );
+    $rtime = $1 if( $chart_xml =~ /<raid[^>]+lg="([\d\.]+)"/ );
+    
+    return {
+        dname => $dname_suffix,
+        shortname => $short,
+        longname => $long,
+        damage => $rdamage,
+        ptime => $rtime,
+    };
 }
 
 sub lagstring($) {
@@ -481,6 +513,9 @@ if( $action eq "print" ) {
         $fh = \*STDIN;
     }
     
+    # Display a warning for nav mode.
+    status "WARNING: -nav is an experimental option, and forwards compatibility is not guaranteed!" if $opt_nav;
+    
     # Going to output in $opt_dir
     bomb "not a directory: $opt_dir" unless $opt_dir && -d $opt_dir;
     status "Using directory: $opt_dir";
@@ -503,6 +538,9 @@ if( $action eq "print" ) {
     
     # Holds "-combine" extensions.
     my %combine_exts;
+    
+    # Keep track of directories we've written out.
+    my @dirs_written;
     
     my $classer = Stasis::ClassGuess->new( version => $opt_version );
     my $splitter = Stasis::LogSplit->new( version => $opt_version, callback =>
@@ -574,7 +612,7 @@ if( $action eq "print" ) {
                     # Write the files for this split.
                     unless( $opt_nowrite ) {
                         eval {
-                            writedir $dname, $dname_old, $long, $short, \%raid, $split_exts, $opt_collapse;
+                            push @dirs_written, writedir( $dname, $dname_old, $long, $short, \%raid, $split_exts, $opt_collapse );
                         }; if( $@ ) {
                             bomb $@;
                         }
@@ -671,7 +709,7 @@ if( $action eq "print" ) {
         status sprintf "Writing Trash Mobs (sws-trash-%d) .. ", floor($first);
         
         eval {
-            writedir $dname, $dname_old, "Trash Mobs", "trash", \%raid, $trash_exts, 1;
+            push @dirs_written, writedir( $dname, $dname_old, "Trash Mobs", "trash", \%raid, $trash_exts, 1 );
             status "done.";
         }; if( $@ ) {
             bomb $@;
@@ -691,7 +729,7 @@ if( $action eq "print" ) {
             
                 status sprintf "Writing $bname (combined) (sws-%s-combine-%d) .. ", $kboss, floor($first);
                 eval {
-                    writedir $dname, $dname_old, "$bname (combined)", $kboss . "-combine", \%raid, $exts, $opt_collapse;
+                    push @dirs_written, writedir( $dname, $dname_old, "$bname (combined)", $kboss . "-combine", \%raid, $exts, $opt_collapse );
                 }; if( $@ ) {
                     bomb $@;
                 }
@@ -708,12 +746,41 @@ if( $action eq "print" ) {
         status sprintf "Writing Overall (sws-overall-%d) .. ", floor($first);
         
         eval {
-            writedir $dname, $dname_old, "Overall", "overall", \%raid, $overall_exts, 1;
+            push @dirs_written, writedir( $dname, $dname_old, "Overall", "overall", \%raid, $overall_exts, 1 );
         }; if( $@ ) {
             bomb $@;
         }
         
         status "done.";
+    }
+    
+    # Write navigation
+    if( $opt_nav && !$opt_nowrite && @dirs_written ) {
+        # All directories we wrote will get the same file, make it here.
+        my $NAV = "[" . 
+            join( ",",
+                map { 
+                    $a = $_;
+                    
+                    "{" .
+                    join( ",", map { sprintf '"%s":"%s"', $_, Stasis::Page->_dqesc( $_ eq "dname" ? "../" . $a->{$_} . "/index.html" : $a->{$_} ) } keys %$a )
+                    . "}"
+                    
+                } @dirs_written
+            ) . "]";
+        
+        foreach my $dir (@dirs_written) {
+            eval {
+                my $dname = sprintf "%s/%s", $opt_dir, $dir->{dname};
+                die "Could not find " . $dir->{dname} unless -d $dname;
+                
+                open DNAV, ">$dname/raid.json" or die "Could not open $dname/raid.json";
+                print DNAV $NAV;
+                close DNAV;
+            }; if( $@ ) {
+                bomb $@;
+            }
+        }
     }
 } elsif( $action eq "history" ) {
     # Going to output in $opt_dir
@@ -731,7 +798,7 @@ if( $action eq "print" ) {
                 push @dataxmls, $File::Find::name;
             }
         },
-         
+        
         $opt_dir 
     );
     
