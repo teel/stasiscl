@@ -55,6 +55,13 @@ sub page {
     return $self->{pm}->pageHeader() . $self->{pm}->pageFooter();
 }
 
+# Escape for double quotes
+sub _dqesc {
+    my $str = pop;
+    $str =~ s/([\t\r\n\/\\\"])/\\$1/g;
+    return $str;
+}
+
 sub _tidypct {
     my $n = pop;
     

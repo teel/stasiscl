@@ -33,13 +33,6 @@ use Stasis::PageMaker;
 
 our @ISA = "Stasis::Page";
 
-# Escape for double quotes
-sub _dqesc($) {
-    my ($str) = @_;
-    $str =~ s/([\t\r\n\/\\\"])/\\$1/g;
-    return $str;
-}
-
 sub add {
     my ($self, $line, %params) = @_;
     
@@ -71,7 +64,7 @@ sub json {
         my ($line, $lp) = @$ldata;
         
         push @out, sprintf( '{"str":"%s","hp":"%d","t":"%0.3f"}',
-            _dqesc $line,
+            $self->_dqesc( $line ),
             $lp->{hp} || 0,
             ($lp->{t} || 0) - $start||0,
         );

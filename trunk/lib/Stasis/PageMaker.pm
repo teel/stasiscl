@@ -273,7 +273,7 @@ sub pageHeader {
 <link rel="stylesheet" type="text/css" href="../extras/sws2.css" />
 <script type="text/javascript" src="../extras/sws.js"></script>
 </head>
-<body class="yui-skin-sam">
+<body>
 <div class="yui-skin-sam">
 <div class="swsmaster">
 END
@@ -286,15 +286,45 @@ sub statHeader {
     my $start = shift || 0;
 
     # Start off with a header
-    my $starttxt = asctime localtime $start;
+    my $starttxt = strftime( "%a %B %e, %Y %H:%M", localtime($start) );
     my $PAGE = "<div class=\"top\"><h2>$title: $starttxt</h2>";
     
     # Print navigation links
-    if( $subtitle ) {
-        $PAGE .= '<b><a href="index.html#damage_out">Damage Out</a> &ndash; <a href="index.html#damage_in">Damage In</a> &ndash; <a href="index.html#healing">Healing</a> &ndash; <a href="index.html#raid__amp__mobs">Raid &amp; Mobs</a> &ndash; <a href="index.html#deaths">Deaths</a></b>';
-    } else {
-        $PAGE .= '<b><a href="#damage_out" onclick="toggleTab(\'damage_out\');">Damage Out</a> &ndash; <a href="#damage_in" onclick="toggleTab(\'damage_in\');">Damage In</a> &ndash; <a href="#healing" onclick="toggleTab(\'healing\');">Healing</a> &ndash; <a href="#raid__amp__mobs" onclick="toggleTab(\'raid__amp__mobs\');">Raid &amp; Mobs</a> &ndash; <a href="#deaths" onclick="toggleTab(\'deaths\');">Deaths</a></b>';
-    }
+    $title .= " : $subtitle" if $subtitle;
+    
+    $PAGE .= <<MENU;
+<script type="text/javascript">initMenu('swsmenu','raid.json');</script>
+<div id="swsmenu" class="yuimenubar yuimenubarnav">
+    <div class="bd">
+        <ul class="first-of-type">
+            <li id="bossnav" class="yuimenubaritem first-of-type">
+                <a class="yuimenubaritemlabel first-of-type" href=""><b>$title</b></a>
+            </li>
+            <li class="yuimenubaritem">
+                <a class="yuimenubaritemlabel" href="index.html#damage_out" onClick="toggleTab('damage_out',1)">Damage Out</a>
+            </li>
+            <li class="yuimenubaritem">
+                <a class="yuimenubaritemlabel" href="index.html#damage_in" onClick="toggleTab('damage_in',1)">Damage In</a>
+            </li>
+            <li class="yuimenubaritem">
+                <a class="yuimenubaritemlabel" href="index.html#healing" onClick="toggleTab('healing',1)">Healing</a>
+            </li>
+            <li class="yuimenubaritem">
+                <a class="yuimenubaritemlabel" href="index.html#raid__amp__mobs" onClick="toggleTab('raid__amp__mobs',1)">Raid &amp; Mobs</a>
+            </li>
+            <li class="yuimenubaritem">
+                <a class="yuimenubaritemlabel" href="index.html#deaths" onClick="toggleTab('deaths',1)">Deaths</a>
+            </li>
+        </ul>
+    </div>
+</div>
+MENU
+    
+    # if( $subtitle ) {
+    #     $PAGE .= '<b><a href="index.html#damage_out">Damage Out</a> &ndash; <a href="index.html#damage_in">Damage In</a> &ndash; <a href="index.html#healing">Healing</a> &ndash; <a href="index.html#raid__amp__mobs">Raid &amp; Mobs</a> &ndash; <a href="index.html#deaths">Deaths</a></b>';
+    # } else {
+    #     $PAGE .= '<b><a href="#damage_out" onclick="toggleTab(\'damage_out\');">Damage Out</a> &ndash; <a href="#damage_in" onclick="toggleTab(\'damage_in\');">Damage In</a> &ndash; <a href="#healing" onclick="toggleTab(\'healing\');">Healing</a> &ndash; <a href="#raid__amp__mobs" onclick="toggleTab(\'raid__amp__mobs\');">Raid &amp; Mobs</a> &ndash; <a href="#deaths" onclick="toggleTab(\'deaths\');">Deaths</a></b>';
+    # }
 
     return "$PAGE</div>";
 }
