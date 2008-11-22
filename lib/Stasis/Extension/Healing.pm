@@ -53,36 +53,36 @@ sub process_healing {
     my ($self, $entry) = @_;
     
     # This was a heal. Create an empty hash if it does not exist yet.
-    my $hdata = ($self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} } ||= {});
+    my $hdata = ($self->{actors}{ $entry->{actor} }{ $entry->{spellid} }{ $entry->{target} } ||= {});
     
     # Add to targets.
-    $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} } ||= $hdata;
+    $self->{targets}{ $entry->{target} }{ $entry->{spellid} }{ $entry->{actor} } ||= $hdata;
     
     # Add the HP to the target for overheal-tracking purposes.
-    $self->{ohtrack}{ $entry->{target} } += $entry->{extra}{amount};
+    $self->{ohtrack}{ $entry->{target} } += $entry->{amount};
     
     # Figure out how much effective healing there was.
     my $effective;
-    if( exists $entry->{extra}{extraamount} ) {
+    if( exists $entry->{extraamount} ) {
         # WLK-style. Overhealing is included.
-        $effective = $entry->{extra}{amount} - $entry->{extra}{extraamount};
+        $effective = $entry->{amount} - $entry->{extraamount};
     } else {
         # TBC-style. Overhealing is not included.
         if( $self->{ohtrack}{ $entry->{target} } > 0 ) {
-            $effective = $entry->{extra}{amount} - $self->{ohtrack}{ $entry->{target} };
+            $effective = $entry->{amount} - $self->{ohtrack}{ $entry->{target} };
 
             # Reset HP to zero (meaning full).
             $self->{ohtrack}{ $entry->{target} } = 0;
         } else {
-            $effective = $entry->{extra}{amount};
+            $effective = $entry->{amount};
         }
     }
 
     # Add this as the appropriate kind of healing: tick, hit, or crit.
     my $type;
-    if( $entry->{action} eq "SPELL_PERIODIC_HEAL" ) {
+    if( $entry->{action} == Stasis::Parser::SPELL_PERIODIC_HEAL ) {
         $type = "tick";
-    } elsif( $entry->{extra}{critical} ) {
+    } elsif( $entry->{critical} ) {
         $type = "crit";
     } else {
         $type = "hit";
@@ -90,20 +90,20 @@ sub process_healing {
     
     # Add total healing to the healer.
     $hdata->{"${type}Count"} += 1;
-    $hdata->{"${type}Total"} += $entry->{extra}{amount};
+    $hdata->{"${type}Total"} += $entry->{amount};
     $hdata->{"${type}Effective"} += $effective;
     
     # Update min/max hit size.
-    $hdata->{"${type}Min"} = $entry->{extra}{amount}
+    $hdata->{"${type}Min"} = $entry->{amount}
         if( 
             !$hdata->{"${type}Min"} ||
-            $entry->{extra}{amount} < $hdata->{"${type}Min"}
+            $entry->{amount} < $hdata->{"${type}Min"}
         );
 
-    $hdata->{"${type}Max"} = $entry->{extra}{amount}
+    $hdata->{"${type}Max"} = $entry->{amount}
         if( 
             !$hdata->{"${type}Max"} ||
-            $entry->{extra}{amount} > $hdata->{"${type}Max"}
+            $entry->{amount} > $hdata->{"${type}Max"}
         );
 }
 
@@ -111,7 +111,7 @@ sub process_damage {
     my ($self, $entry) = @_;
     
     # If someone is taking damage we need to debit it for overheal tracking.
-    $self->{ohtrack}{ $entry->{target} } -= $entry->{extra}{amount};
+    $self->{ohtrack}{ $entry->{target} } -= $entry->{amount};
 }
 
 1;

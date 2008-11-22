@@ -667,7 +667,7 @@ my %fingerprints = (
 "maexxna" => {
     long => "Maexxna",
     mobStart => [ 15952 ],
-    mobContinue => [ 15952 ],
+    mobContinue => [ 15952, 17055 ],
     mobEnd => [ 15952 ],
     timeout => 30,
 },
@@ -928,7 +928,7 @@ sub process {
             $vboss->{end} = $entry->{t};
             
             # Also possibly end it.
-            if( $entry->{action} eq "UNIT_DIED" && $fend{$target_id} && $fend{$target_id} eq $kboss ) {
+            if( $entry->{action} == Stasis::Parser::UNIT_DIED && $fend{$target_id} && $fend{$target_id} eq $kboss ) {
                 $vboss->{dead}{$target_id} = 1;
                 
                 if( !$fingerprints{$kboss}{endAll} || ( scalar keys %{$vboss->{dead}} == scalar @{$fingerprints{$kboss}{mobEnd}} ) ) {

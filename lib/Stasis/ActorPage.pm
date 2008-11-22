@@ -395,13 +395,13 @@ sub page {
             data => $self->_abilityRows($heOut),
             sort => sub ($$) { ($_[1]->{effective}||0) <=> ($_[0]->{effective}||0) },
             preprocess => sub { 
-                # Add to eff_on_others if this is a slave row
-                $eff_on_others += ($_[1]->{effective}||0) if( @_ == 2 );
-                
                 # Sum on all rows
                 $_[1]->{count} = $self->_addHCT( $_[1], "Count" );
                 $_[1]->{total} = $self->_addHCT( $_[1], "Total" );
                 $_[1]->{effective} = $self->_addHCT( $_[1], "Effective" );
+                
+                # Add to eff_on_others if this is a slave row
+                $eff_on_others += ($_[1]->{effective}||0) if( @_ == 2 );
             },
             master => sub {
                 my ($spellactor, $spellname, $spellid) = $self->_decodespell($_[0], $pm, "Healing", @PLAYER);
@@ -445,7 +445,15 @@ sub page {
             header => [ "Source", "R-Eff. Heal", "R-%", "R-Hits", "R-Crits", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Overheal", ],
             data => $heIn,
             sort => sub ($$) { ($_[1]->{effective}||0) <=> ($_[0]->{effective}||0) },
-            preprocess => sub { $eff_on_me += ($_[1]->{effective}||0) if( @_ == 2 ) },
+            preprocess => sub { 
+                # Sum on all rows
+                $_[1]->{count} = $self->_addHCT( $_[1], "Count" );
+                $_[1]->{total} = $self->_addHCT( $_[1], "Total" );
+                $_[1]->{effective} = $self->_addHCT( $_[1], "Effective" );
+                
+                # Add to eff_on_me if this is a slave row
+                $eff_on_me += ($_[1]->{effective}||0) if( @_ == 2 );
+            },
             master => sub {
                 return $self->_rowHealing( $_[1], $eff_on_me, "Source", $pm->actorLink($_[0]) );
             },

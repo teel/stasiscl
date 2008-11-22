@@ -48,42 +48,54 @@ use Carp;
 
 # Constants from the 2.4 combat log
 use constant {
-    COMBATLOG_OBJECT_AFFILIATION_MINE => 0x00000001,
-    COMBATLOG_OBJECT_AFFILIATION_PARTY => 0x00000002,
-    COMBATLOG_OBJECT_AFFILIATION_RAID => 0x00000004,
-    COMBATLOG_OBJECT_AFFILIATION_OUTSIDER => 0x00000008,
-    COMBATLOG_OBJECT_AFFILIATION_MASK => 0x0000000F,
-
-    COMBATLOG_OBJECT_REACTION_FRIENDLY => 0x00000010,
-    COMBATLOG_OBJECT_REACTION_NEUTRAL => 0x00000020,
-    COMBATLOG_OBJECT_REACTION_HOSTILE => 0x00000040,
-    COMBATLOG_OBJECT_REACTION_MASK => 0x000000F0,
-
-    COMBATLOG_OBJECT_CONTROL_PLAYER => 0x00000100,
-    COMBATLOG_OBJECT_CONTROL_NPC => 0x00000200,
-    COMBATLOG_OBJECT_CONTROL_MASK => 0x00000300,
-
-    COMBATLOG_OBJECT_TYPE_PLAYER => 0x00000400,
-    COMBATLOG_OBJECT_TYPE_NPC => 0x00000800,
-    COMBATLOG_OBJECT_TYPE_PET => 0x00001000,
-    COMBATLOG_OBJECT_TYPE_GUARDIAN => 0x00002000,
-    COMBATLOG_OBJECT_TYPE_OBJECT => 0x00004000,
-    COMBATLOG_OBJECT_TYPE_MASK => 0x0000FC00,
-
-    COMBATLOG_OBJECT_TARGET => 0x00010000,
-    COMBATLOG_OBJECT_FOCUS => 0x00020000,
-    COMBATLOG_OBJECT_MAINTANK => 0x00040000,
-    COMBATLOG_OBJECT_MAINASSIST => 0x00080000,
-    COMBATLOG_OBJECT_RAIDTARGET1 => 0x00100000,
-    COMBATLOG_OBJECT_RAIDTARGET2 => 0x00200000,
-    COMBATLOG_OBJECT_RAIDTARGET3 => 0x00400000,
-    COMBATLOG_OBJECT_RAIDTARGET4 => 0x00800000,
-    COMBATLOG_OBJECT_RAIDTARGET5 => 0x01000000,
-    COMBATLOG_OBJECT_RAIDTARGET6 => 0x02000000,
-    COMBATLOG_OBJECT_RAIDTARGET7 => 0x04000000,
-    COMBATLOG_OBJECT_RAIDTARGET8 => 0x08000000,
-    COMBATLOG_OBJECT_NONE => 0x80000000,
-    COMBATLOG_OBJECT_SPECIAL_MASK => 0xFFFF0000,
+    SWING_DAMAGE => 1,
+    SWING_MISSED => 2,
+    RANGE_DAMAGE => 3,
+    RANGE_MISSED => 4,
+    SPELL_DAMAGE => 5,
+    SPELL_MISSED => 6,
+    SPELL_HEAL => 7,
+    SPELL_ENERGIZE => 8,
+    SPELL_PERIODIC_MISSED => 9,
+    SPELL_PERIODIC_DAMAGE => 10,
+    SPELL_PERIODIC_HEAL => 11,
+    SPELL_PERIODIC_DRAIN => 12,
+    SPELL_PERIODIC_LEECH => 13,
+    SPELL_PERIODIC_ENERGIZE => 14,
+    SPELL_DRAIN => 15,
+    SPELL_LEECH => 16,
+    SPELL_INTERRUPT => 17,
+    SPELL_EXTRA_ATTACKS => 18,
+    SPELL_INSTAKILL => 19,
+    SPELL_DURABILITY_DAMAGE => 20,
+    SPELL_DURABILITY_DAMAGE_ALL => 21,
+    SPELL_DISPEL_FAILED => 22,
+    SPELL_AURA_DISPELLED => 23,
+    SPELL_AURA_STOLEN => 24,
+    SPELL_AURA_APPLIED => 25,
+    SPELL_AURA_REMOVED => 26,
+    SPELL_AURA_APPLIED_DOSE => 27,
+    SPELL_AURA_REMOVED_DOSE => 28,
+    SPELL_CAST_START => 29,
+    SPELL_CAST_SUCCESS => 30,
+    SPELL_CAST_FAILED => 31,
+    DAMAGE_SHIELD => 32,
+    DAMAGE_SHIELD_MISSED => 33,
+    ENCHANT_APPLIED => 34,
+    ENCHANT_REMOVED => 35,
+    ENVIRONMENTAL_DAMAGE => 36,
+    DAMAGE_SPLIT => 37,
+    UNIT_DIED => 38,
+    SPELL_SUMMON => 39,
+    SPELL_CREATE => 40,
+    PARTY_KILL => 41,
+    UNIT_DESTROYED => 42,
+    SPELL_AURA_REFRESH => 43,
+    SPELL_AURA_BROKEN_SPELL => 44,
+    SPELL_DISPEL => 45,
+    SPELL_STOLEN => 46,
+    SPELL_AURA_BROKEN => 47,
+    SPELL_RESURRECT => 48,
 };
 
 our %action_map = (
@@ -179,7 +191,12 @@ sub new {
     $params{logger} ||= "You";
     $params{version} = 2 if !$params{version} || $params{version} != 1;
     
-    bless \%params, $class;
+    bless {
+        year => $params{year} || strftime( "%Y", localtime ),
+        logger => $params{logger} || "You",
+        version => ( !$params{version} || $params{version} != 1 ? 2 : 1 ),
+        compact => $params{compact},
+    }, $class;
 }
 
 =head3 parse( $line )
@@ -188,10 +205,32 @@ Parses a single line.
 
 =cut
 
-sub parse {
-    $_[0]->{version} == 1 ? goto &parse1 : goto &parse2;
+{
+    my %reverse_action_map;
+    @reverse_action_map{ values %action_map } = keys %action_map;
+    
+    sub parse {
+        my $entry;
+        
+        if( $_[0]->{version} == 1 ) {
+            # v1, compact
+            $entry = parse1(@_);
+        } else {
+            # v2, compact
+            $entry = parse2(@_);
+        }
+        
+        if( !$_[0]->{compact} ) {
+            # modify it for heathens
+            $entry->{action} = $entry->{action} ? $reverse_action_map{ $entry->{action} } : "";
+            $entry->{$_} = delete $entry->{$_} foreach( grep { $_ ne "action" && $_ ne "actor" && $_ ne "actor_name" && $_ ne "actor_relationship" && $_ ne "target" && $_ ne "target_name" && $_ ne "target_relationship" && $_ ne "t" } keys %$entry );
+        }
+        
+        return $entry;
+    }
 }
 
+# Returns compact hashes for v1 logs.
 sub parse1 {
     my ($self, $line) = @_;
     
@@ -199,24 +238,15 @@ sub parse1 {
     my $t;
     ($t, $line) = $self->_pullStamp( $line );
     if( !$t ) {
-        carp "bad line: $line";
-        
-         my %result = (
-            action => "",
+        return {
+            action => 0,
             actor => 0,
             actor_name => "",
             actor_relationship => 0,
             target => 0,
             target_name => "",
             target_relationship => 0,
-            extra => {},
-        );
-        
-        if( $self->{ref} ) {
-            return \%result;
-        } else {
-            return %result;
-        }
+        };
     }
     
     my %result;
@@ -352,8 +382,8 @@ sub parse1 {
         );
         
         # Remove doses from the name
-        $result{extra}{spellid} =~ s/ \([0-9]+\)$//;
-        $result{extra}{spellname} = $result{extra}{spellid};
+        $result{spellid} =~ s/ \([0-9]+\)$//;
+        $result{spellname} = $result{spellid};
     } elsif( $line =~ /^(.+) (?:is|are) afflicted by (.+)\.$/ ) {
         # DEBUFF GAIN
         %result = $self->_legacyAction(
@@ -369,8 +399,8 @@ sub parse1 {
         );
         
         # Remove doses from the name
-        $result{extra}{spellid} =~ s/ \([0-9]+\)$//;
-        $result{extra}{spellname} = $result{extra}{spellid};
+        $result{spellid} =~ s/ \([0-9]+\)$//;
+        $result{spellname} = $result{spellid};
     } elsif( $line =~ /^(?:(You)r|(.+?)\s*'s) (.+) causes (.+) ([0-9]+) damage\.\w*(.*?)$/ ) {
         # CAUSED DAMAGE (e.g. SOUL LINK)
         
@@ -395,11 +425,11 @@ sub parse1 {
         
         # Assign mods
         my $mods = $self->_parseMods($6);
-        $result{extra}{resisted} = $mods->{resistValue} if $mods->{resistValue};
-        $result{extra}{absorbed} = $mods->{absorbValue} if $mods->{absorbValue};
-        $result{extra}{blocked} = $mods->{blockValue} if $mods->{blockValue};
-        $result{extra}{crushing} = $mods->{crush} if $mods->{crush};
-        $result{extra}{glancing} = $mods->{glance} if $mods->{glance};
+        $result{resisted} = $mods->{resistValue} if $mods->{resistValue};
+        $result{absorbed} = $mods->{absorbValue} if $mods->{absorbValue};
+        $result{blocked} = $mods->{blockValue} if $mods->{blockValue};
+        $result{crushing} = $mods->{crush} if $mods->{crush};
+        $result{glancing} = $mods->{glance} if $mods->{glance};
     } elsif( $line =~ /^(?:(You)r|(.+?)\s*'s) (.+) (crits|crit|hit|hits) (.+) for ([0-9]+)( [a-zA-Z]+ damage|)\.\w*(.*?)$/ ) {
         # DIRECT YELLOW HIT (SPELL OR MELEE)
         %result = $self->_legacyAction(
@@ -423,16 +453,16 @@ sub parse1 {
         
         # Check if it was a critical
         if( $4 eq "crits" || $4 eq "crit" ) {
-            $result{extra}{critical} = 1;
+            $result{critical} = 1;
         }
         
         # Assign mods
         my $mods = $self->_parseMods($8);
-        $result{extra}{resisted} = $mods->{resistValue} if $mods->{resistValue};
-        $result{extra}{absorbed} = $mods->{absorbValue} if $mods->{absorbValue};
-        $result{extra}{blocked} = $mods->{blockValue} if $mods->{blockValue};
-        $result{extra}{crushing} = $mods->{crush} if $mods->{crush};
-        $result{extra}{glancing} = $mods->{glance} if $mods->{glance};
+        $result{resisted} = $mods->{resistValue} if $mods->{resistValue};
+        $result{absorbed} = $mods->{absorbValue} if $mods->{absorbValue};
+        $result{blocked} = $mods->{blockValue} if $mods->{blockValue};
+        $result{crushing} = $mods->{crush} if $mods->{crush};
+        $result{glancing} = $mods->{glance} if $mods->{glance};
     } elsif( $line =~ /^(.+) (crits|crit|hit|hits) (.+) for ([0-9]+)( [a-zA-Z]+ damage|)\.\w*(.*?)$/ ) {
         # DIRECT WHITE HIT (MELEE)
         %result = $self->_legacyAction(
@@ -453,16 +483,16 @@ sub parse1 {
         
         # Check if it was a critical
         if( $2 eq "crits" || $2 eq "crit" ) {
-            $result{extra}{critical} = 1;
+            $result{critical} = 1;
         }
         
         # Assign mods
         my $mods = $self->_parseMods($6);
-        $result{extra}{resisted} = $mods->{resistValue} if $mods->{resistValue};
-        $result{extra}{absorbed} = $mods->{absorbValue} if $mods->{absorbValue};
-        $result{extra}{blocked} = $mods->{blockValue} if $mods->{blockValue};
-        $result{extra}{crushing} = $mods->{crush} if $mods->{crush};
-        $result{extra}{glancing} = $mods->{glance} if $mods->{glance};
+        $result{resisted} = $mods->{resistValue} if $mods->{resistValue};
+        $result{absorbed} = $mods->{absorbValue} if $mods->{absorbValue};
+        $result{blocked} = $mods->{blockValue} if $mods->{blockValue};
+        $result{crushing} = $mods->{crush} if $mods->{crush};
+        $result{glancing} = $mods->{glance} if $mods->{glance};
     } elsif( $line =~ /^(.+) (?:attack|attacks)\. (.+) (?:block|blocks)\.$/ ) {
         # WHITE FULL BLOCK
         %result = $self->_legacyAction(
@@ -701,11 +731,11 @@ sub parse1 {
         
         # Assign mods
         my $mods = $self->_parseMods($7);
-        $result{extra}{resisted} = $mods->{resistValue} if $mods->{resistValue};
-        $result{extra}{absorbed} = $mods->{absorbValue} if $mods->{absorbValue};
-        $result{extra}{blocked} = $mods->{blockValue} if $mods->{blockValue};
-        $result{extra}{crushing} = $mods->{crush} if $mods->{crush};
-        $result{extra}{glancing} = $mods->{glance} if $mods->{glance};
+        $result{resisted} = $mods->{resistValue} if $mods->{resistValue};
+        $result{absorbed} = $mods->{absorbValue} if $mods->{absorbValue};
+        $result{blocked} = $mods->{blockValue} if $mods->{blockValue};
+        $result{crushing} = $mods->{crush} if $mods->{crush};
+        $result{glancing} = $mods->{glance} if $mods->{glance};
     } elsif( $line =~ /^(.+) (?:suffer|suffers) ([0-9]+) (\w+) damage from (.+)\.\w*(.*?)$/ ) {
         # YELLOW DOT WITHOUT SOURCE
         %result = $self->_legacyAction(
@@ -729,11 +759,11 @@ sub parse1 {
         
         # Assign mods
         my $mods = $self->_parseMods($5);
-        $result{extra}{resisted} = $mods->{resistValue} if $mods->{resistValue};
-        $result{extra}{absorbed} = $mods->{absorbValue} if $mods->{absorbValue};
-        $result{extra}{blocked} = $mods->{blockValue} if $mods->{blockValue};
-        $result{extra}{crushing} = $mods->{crush} if $mods->{crush};
-        $result{extra}{glancing} = $mods->{glance} if $mods->{glance};
+        $result{resisted} = $mods->{resistValue} if $mods->{resistValue};
+        $result{absorbed} = $mods->{absorbValue} if $mods->{absorbValue};
+        $result{blocked} = $mods->{blockValue} if $mods->{blockValue};
+        $result{crushing} = $mods->{crush} if $mods->{crush};
+        $result{glancing} = $mods->{glance} if $mods->{glance};
     } elsif( $line =~ /^(?:(You)r|(.+?)\s*'s) (.+?) (critically heals|heals) (.+) for ([0-9]+)\.$/ ) {
         # HEAL
         %result = $self->_legacyAction(
@@ -876,11 +906,11 @@ sub parse1 {
         );
         
         my $mods = $self->_parseMods($5);
-        $result{extra}{resisted} = $mods->{resistValue} if $mods->{resistValue};
-        $result{extra}{absorbed} = $mods->{absorbValue} if $mods->{absorbValue};
-        $result{extra}{blocked} = $mods->{blockValue} if $mods->{blockValue};
-        $result{extra}{crushing} = $mods->{crush} if $mods->{crush};
-        $result{extra}{glancing} = $mods->{glance} if $mods->{glance};
+        $result{resisted} = $mods->{resistValue} if $mods->{resistValue};
+        $result{absorbed} = $mods->{absorbValue} if $mods->{absorbValue};
+        $result{blocked} = $mods->{blockValue} if $mods->{blockValue};
+        $result{crushing} = $mods->{crush} if $mods->{crush};
+        $result{glancing} = $mods->{glance} if $mods->{glance};
     } elsif( $line =~ /^(?:(You)r|(.+?)\s*'s) (.+?) (?:fails|failed)\.\s+(.+) (?:are|is) immune\.$/ ) {
         # YELLOW IMMUNITY
         %result = $self->_legacyAction(
@@ -937,6 +967,9 @@ sub parse1 {
         );
     }
     
+    # Replace action with a number
+    $result{action} = $action_map{$result{action}} || 0;
+    
     # Replace "You" with name of the logger
     $result{actor} = $self->{logger} if $result{actor} && lc $result{actor} eq "you";
     $result{target} = $self->{logger} if $result{target} && lc $result{target} eq "you";
@@ -961,17 +994,13 @@ sub parse1 {
     }
     
     # Replace other undefs with zeros
-    foreach my $rkey ( keys %{$result{extra}} ) {
-        if( !defined($result{extra}{$rkey}) ) {
-            $result{extra}{$rkey} = 0;
+    foreach my $rkey ( keys %result ) {
+        if( !defined($result{$rkey}) ) {
+            $result{$rkey} = 0;
         }
     }
     
-    if( $self->{ref} ) {
-        return \%result;
-    } else {
-        return %result;
-    }
+    return \%result;
 }
 
 my @fspell      = qw(spellid spellname spellschool);
@@ -986,34 +1015,28 @@ my @fenergize   = qw(amount powertype extraamount);
 my @faura       = qw(auratype amount);
 my @fenv        = qw(environmentaltype);
 
+# Returns compact hashes for v2 logs.
 sub parse2 {
     my ($self, $line) = @_;
     
     # Pull the stamp out.
     my ($t, @col) = $self->_split( $line );
-    if( !$t ) {
-        carp "bad line: $line";
-        
-         my %result = (
-            action => "",
+    if( !$t || @col < 7 ) {
+        return {
+            action => 0,
             actor => 0,
             actor_name => "",
             actor_relationship => 0,
             target => 0,
             target_name => "",
             target_relationship => 0,
-        );
-        
-        if( $self->{ref} ) {
-            return \%result;
-        } else {
-            return %result;
-        }
+        };
     }
     
     # Common processing
+    my $action = $action_map{ shift @col };
     my $result = {
-        action              => shift @col,
+        action              => $action,
         actor               => shift @col,
         actor_name          => shift @col || "",
         actor_relationship  => hex shift @col,
@@ -1021,94 +1044,90 @@ sub parse2 {
         target_name         => shift @col || "",
         target_relationship => hex shift @col,
         t                   => $t,
-        extra               => {},
     };
     
     $result->{target} = 0 unless $result->{target_name};
     $result->{actor} = 0 unless $result->{actor_name};
     
     # Action specific processing
-    if( $result->{action} eq "SWING_DAMAGE" ) {
+    if( $action == SWING_DAMAGE ) {
         if( @col <= 8 ) {
-            @{$result->{extra}}{@fdamage} = @col;
+            @{$result}{@fdamage} = @col;
         } else {
-            @{$result->{extra}}{@fdamage_wlk} = @col;
+            @{$result}{@fdamage_wlk} = @col;
         }
-    } elsif( $result->{action} eq "SWING_MISSED" ) {
-        @{$result->{extra}}{@fmiss} = @col;
+    } elsif( $action == SWING_MISSED ) {
+        @{$result}{@fmiss} = @col;
     } elsif( 
-        $result->{action} eq "RANGE_DAMAGE" || 
-        $result->{action} eq "SPELL_DAMAGE" || 
-        $result->{action} eq "SPELL_PERIODIC_DAMAGE" || 
-        $result->{action} eq "DAMAGE_SHIELD" || 
-        $result->{action} eq "DAMAGE_SPLIT"
+        $action == RANGE_DAMAGE || 
+        $action == SPELL_DAMAGE || 
+        $action == SPELL_PERIODIC_DAMAGE || 
+        $action == DAMAGE_SHIELD || 
+        $action == DAMAGE_SPLIT
     ) {
         if( @col <= 11 ) {
-            @{$result->{extra}}{ (@fspell, @fdamage) } = @col;
+            @{$result}{ (@fspell, @fdamage) } = @col;
         } else {
-            @{$result->{extra}}{ (@fspell, @fdamage_wlk) } = @col;
+            @{$result}{ (@fspell, @fdamage_wlk) } = @col;
         }
     } elsif( 
-        $result->{action} eq "RANGE_MISSED" || 
-        $result->{action} eq "SPELL_MISSED" || 
-        $result->{action} eq "SPELL_PERIODIC_MISSED" || 
-        $result->{action} eq "SPELL_CAST_FAILED" || 
-        $result->{action} eq "DAMAGE_SHIELD_MISSED"
+        $action == RANGE_MISSED || 
+        $action == SPELL_MISSED || 
+        $action == SPELL_PERIODIC_MISSED || 
+        $action == SPELL_CAST_FAILED || 
+        $action == DAMAGE_SHIELD_MISSED
     ) {
-        @{$result->{extra}}{ (@fspell, @fmiss) } = @col;
-    } elsif( $result->{action} eq "SPELL_HEAL" || $result->{action} eq "SPELL_PERIODIC_HEAL" ) {
+        @{$result}{ (@fspell, @fmiss) } = @col;
+    } elsif( $action == SPELL_HEAL || $action == SPELL_PERIODIC_HEAL ) {
         if( @col <= 5 ) {
-            @{$result->{extra}}{ (@fspell, @fheal) } = @col;
+            @{$result}{ (@fspell, @fheal) } = @col;
         } else {
-            @{$result->{extra}}{ (@fspell, @fheal_wlk) } = @col;
+            @{$result}{ (@fspell, @fheal_wlk) } = @col;
         }
     } elsif(
-        $result->{action} eq "SPELL_PERIODIC_DRAIN" ||
-        $result->{action} eq "SPELL_PERIODIC_LEECH" ||
-        $result->{action} eq "SPELL_PERIODIC_ENERGIZE" ||
-        $result->{action} eq "SPELL_DRAIN" ||
-        $result->{action} eq "SPELL_LEECH" ||
-        $result->{action} eq "SPELL_ENERGIZE" ||
-        $result->{action} eq "SPELL_EXTRA_ATTACKS"
+        $action == SPELL_PERIODIC_DRAIN ||
+        $action == SPELL_PERIODIC_LEECH ||
+        $action == SPELL_PERIODIC_ENERGIZE ||
+        $action == SPELL_DRAIN ||
+        $action == SPELL_LEECH ||
+        $action == SPELL_ENERGIZE ||
+        $action == SPELL_EXTRA_ATTACKS
     ) {
-        @{$result->{extra}}{ (@fspell, @fenergize) } = @col;
+        @{$result}{ (@fspell, @fenergize) } = @col;
     } elsif(
-        $result->{action} eq "SPELL_DISPEL_FAILED" ||
-        $result->{action} eq "SPELL_AURA_DISPELLED" ||
-        $result->{action} eq "SPELL_AURA_STOLEN" ||
-        $result->{action} eq "SPELL_INTERRUPT" ||
-        $result->{action} eq "SPELL_AURA_BROKEN_SPELL" ||
-        $result->{action} eq "SPELL_DISPEL" ||
-        $result->{action} eq "SPELL_STOLEN"
+        $action == SPELL_DISPEL_FAILED ||
+        $action == SPELL_AURA_DISPELLED ||
+        $action == SPELL_AURA_STOLEN ||
+        $action == SPELL_INTERRUPT ||
+        $action == SPELL_AURA_BROKEN_SPELL ||
+        $action == SPELL_DISPEL ||
+        $action == SPELL_STOLEN
     ) {
-        @{$result->{extra}}{ (@fspell, @fextraspell) } = @col;
+        @{$result}{ (@fspell, @fextraspell) } = @col;
     } elsif(
-        $result->{action} eq "SPELL_AURA_APPLIED" ||
-        $result->{action} eq "SPELL_AURA_REMOVED" ||
-        $result->{action} eq "SPELL_AURA_APPLIED_DOSE" ||
-        $result->{action} eq "SPELL_AURA_REMOVED_DOSE" ||
-        $result->{action} eq "SPELL_AURA_REFRESH"
+        $action == SPELL_AURA_APPLIED ||
+        $action == SPELL_AURA_REMOVED ||
+        $action == SPELL_AURA_APPLIED_DOSE ||
+        $action == SPELL_AURA_REMOVED_DOSE ||
+        $action == SPELL_AURA_REFRESH
     ) {
-        @{$result->{extra}}{ (@fspell, @faura) } = @col;
+        @{$result}{ (@fspell, @faura) } = @col;
     } elsif(
-        $result->{action} eq "ENCHANT_APPLIED" ||
-        $result->{action} eq "ENCHANT_REMOVED"
+        $action == ENCHANT_APPLIED ||
+        $action == ENCHANT_REMOVED
     ) {
-        @{$result->{extra}}{@fspellname} = @col;
-    } elsif( $result->{action} eq "ENVIRONMENTAL_DAMAGE" ) {
+        @{$result}{@fspellname} = @col;
+    } elsif( $action == ENVIRONMENTAL_DAMAGE ) {
         if( @col <= 9 ) {
-            @{$result->{extra}}{ (@fenv, @fdamage) } = @col;
+            @{$result}{ (@fenv, @fdamage) } = @col;
         } else {
-            @{$result->{extra}}{ (@fenv, @fdamage_wlk) } = @col;
+            @{$result}{ (@fenv, @fdamage_wlk) } = @col;
         }
-    } elsif( $action_map{ $result->{action} } ) {
-        @{$result->{extra}}{@fspell} = @col;
-    } else {
-        # Unrecognized action
-        $result->{extra} = {};
+    } elsif( $action ) {
+        @{$result}{@fspell} = @col;
     }
     
-    return $self->{ref} ? $result : %$result;
+    return $result;
 }
 
 sub _parseMods {
@@ -1178,7 +1197,7 @@ sub _legacyAction {
         target => $target,
         target_name => $target,
         target_relationship => 0,
-        extra => $extra,
+        %$extra
     );
 }
 
@@ -1187,265 +1206,265 @@ sub toString {
     
     my $actor = $actor_callback ? $actor_callback->( $entry->{actor} ) : ($entry->{actor_name} || "Environment");
     my $target = $actor_callback ? $actor_callback->( $entry->{target} ) : ($entry->{target_name} || "Environment");
-    my $spell = $spell_callback ? $spell_callback->( $entry->{extra}{spellid} ) : ($entry->{extra}{spellname});
-    my $extraspell = $spell_callback ? $spell_callback->( $entry->{extra}{extraspellid} ) : ($entry->{extra}{extraspellname});
+    my $spell = $spell_callback ? $spell_callback->( $entry->{spellid} ) : ($entry->{spellname});
+    my $extraspell = $spell_callback ? $spell_callback->( $entry->{extraspellid} ) : ($entry->{extraspellname});
     my $text = "";
     
-    if( $entry->{action} eq "SWING_DAMAGE" ) {
+    if( $entry->{action} == SWING_DAMAGE ) {
         $text = sprintf "[%s] %s [%s] %d",
             $actor,
-            $entry->{extra}{critical} ? "crit" : "hit",
+            $entry->{critical} ? "crit" : "hit",
             $target,
-            $entry->{extra}{amount};
+            $entry->{amount};
         
-        $text .= sprintf " (%d resisted)", $entry->{extra}{resisted} if $entry->{extra}{resisted};
-        $text .= sprintf " (%d blocked)", $entry->{extra}{blocked} if $entry->{extra}{blocked};
-        $text .= sprintf " (%d absorbed)", $entry->{extra}{absorbed} if $entry->{extra}{absorbed};
-        $text .= " (crushing)" if $entry->{extra}{crushing};
-        $text .= " (glancing)" if $entry->{extra}{glancing};
+        $text .= sprintf " (%d resisted)", $entry->{resisted} if $entry->{resisted};
+        $text .= sprintf " (%d blocked)", $entry->{blocked} if $entry->{blocked};
+        $text .= sprintf " (%d absorbed)", $entry->{absorbed} if $entry->{absorbed};
+        $text .= " (crushing)" if $entry->{crushing};
+        $text .= " (glancing)" if $entry->{glancing};
         
         # WLK log overdamage
-        if( $entry->{extra}{extraamount} ) {
-            $text .= sprintf " {%s}", $entry->{extra}{extraamount};
+        if( $entry->{extraamount} ) {
+            $text .= sprintf " {%s}", $entry->{extraamount};
         }
-    } elsif( $entry->{action} eq "SWING_MISSED" ) {
+    } elsif( $entry->{action} == SWING_MISSED ) {
         $text = sprintf "[%s] melee [%s] %s",
             $actor,
             $target,
-            lc( $entry->{extra}{misstype} );
-    } elsif( $entry->{action} eq "RANGE_DAMAGE" ) {
+            lc( $entry->{misstype} );
+    } elsif( $entry->{action} == RANGE_DAMAGE ) {
         $text = sprintf "[%s] %s %s [%s] %d",
             $actor,
             $spell,
-            $entry->{extra}{critical} ? "crit" : "hit",
+            $entry->{critical} ? "crit" : "hit",
             $target,
-            $entry->{extra}{amount};
+            $entry->{amount};
         
-        $text .= sprintf " (%d resisted)", $entry->{extra}{resisted} if $entry->{extra}{resisted};
-        $text .= sprintf " (%d blocked)", $entry->{extra}{blocked} if $entry->{extra}{blocked};
-        $text .= sprintf " (%d absorbed)", $entry->{extra}{absorbed} if $entry->{extra}{absorbed};
-        $text .= " (crushing)" if $entry->{extra}{crushing};
-        $text .= " (glancing)" if $entry->{extra}{glancing};
+        $text .= sprintf " (%d resisted)", $entry->{resisted} if $entry->{resisted};
+        $text .= sprintf " (%d blocked)", $entry->{blocked} if $entry->{blocked};
+        $text .= sprintf " (%d absorbed)", $entry->{absorbed} if $entry->{absorbed};
+        $text .= " (crushing)" if $entry->{crushing};
+        $text .= " (glancing)" if $entry->{glancing};
         
         # WLK log overdamage
-        if( $entry->{extra}{extraamount} ) {
-            $text .= sprintf " {%s}", $entry->{extra}{extraamount};
+        if( $entry->{extraamount} ) {
+            $text .= sprintf " {%s}", $entry->{extraamount};
         }
-    } elsif( $entry->{action} eq "RANGE_MISSED" ) {
+    } elsif( $entry->{action} == RANGE_MISSED ) {
         $text = sprintf "[%s] %s [%s] %s",
             $actor,
             $spell,
             $target,
-            lc( $entry->{extra}{misstype} );
-    } elsif( $entry->{action} eq "SPELL_DAMAGE" ) {
+            lc( $entry->{misstype} );
+    } elsif( $entry->{action} == SPELL_DAMAGE ) {
         $text = sprintf "[%s] %s %s [%s] %d",
             $actor,
             $spell,
-            $entry->{extra}{critical} ? "crit" : "hit",
+            $entry->{critical} ? "crit" : "hit",
             $target,
-            $entry->{extra}{amount};
+            $entry->{amount};
         
-        $text .= sprintf " (%d resisted)", $entry->{extra}{resisted} if $entry->{extra}{resisted};
-        $text .= sprintf " (%d blocked)", $entry->{extra}{blocked} if $entry->{extra}{blocked};
-        $text .= sprintf " (%d absorbed)", $entry->{extra}{absorbed} if $entry->{extra}{absorbed};
-        $text .= " (crushing)" if $entry->{extra}{crushing};
-        $text .= " (glancing)" if $entry->{extra}{glancing};
+        $text .= sprintf " (%d resisted)", $entry->{resisted} if $entry->{resisted};
+        $text .= sprintf " (%d blocked)", $entry->{blocked} if $entry->{blocked};
+        $text .= sprintf " (%d absorbed)", $entry->{absorbed} if $entry->{absorbed};
+        $text .= " (crushing)" if $entry->{crushing};
+        $text .= " (glancing)" if $entry->{glancing};
         
         # WLK log overdamage
-        if( $entry->{extra}{extraamount} ) {
-            $text .= sprintf " {%s}", $entry->{extra}{extraamount};
+        if( $entry->{extraamount} ) {
+            $text .= sprintf " {%s}", $entry->{extraamount};
         }
-    } elsif( $entry->{action} eq "SPELL_MISSED" ) {
+    } elsif( $entry->{action} == SPELL_MISSED ) {
         $text = sprintf "[%s] %s [%s] %s",
             $actor,
             $spell,
             $target,
-            lc( $entry->{extra}{misstype} );
-    } elsif( $entry->{action} eq "SPELL_HEAL" ) {
+            lc( $entry->{misstype} );
+    } elsif( $entry->{action} == SPELL_HEAL ) {
         $text = sprintf "[%s] %s %s [%s] %d",
             $actor,
             $spell,
-            $entry->{extra}{critical} ? "crit heal" : "heal",
+            $entry->{critical} ? "crit heal" : "heal",
             $target,
-            $entry->{extra}{amount};
+            $entry->{amount};
         
         # WLK log overhealing
-        if( $entry->{extra}{extraamount} ) {
-            $text .= sprintf " {%s}", $entry->{extra}{extraamount};
+        if( $entry->{extraamount} ) {
+            $text .= sprintf " {%s}", $entry->{extraamount};
         }
-    } elsif( $entry->{action} eq "SPELL_ENERGIZE" ) {
+    } elsif( $entry->{action} == SPELL_ENERGIZE ) {
         $text = sprintf "[%s] %s energize [%s] %d %s",
             $actor,
             $spell,
             $target,
-            $entry->{extra}{amount},
-            $self->_powerName( $entry->{extra}{powertype} );
-    } elsif( $entry->{action} eq "SPELL_PERIODIC_MISSED" ) {
+            $entry->{amount},
+            $self->_powerName( $entry->{powertype} );
+    } elsif( $entry->{action} == SPELL_PERIODIC_MISSED ) {
         $text = sprintf "[%s] %s [%s] %s",
             $actor,
             $spell,
             $target,
-            lc( $entry->{extra}{misstype} );
-    } elsif( $entry->{action} eq "SPELL_PERIODIC_DAMAGE" ) {
+            lc( $entry->{misstype} );
+    } elsif( $entry->{action} == SPELL_PERIODIC_DAMAGE ) {
         $text = sprintf "[%s] %s dot [%s] %d",
             $actor,
             $spell,
             $target,
-            lc( $entry->{extra}{amount} );
+            lc( $entry->{amount} );
         
-        $text .= sprintf " (%d resisted)", $entry->{extra}{resisted} if $entry->{extra}{resisted};
-        $text .= sprintf " (%d blocked)", $entry->{extra}{blocked} if $entry->{extra}{blocked};
-        $text .= sprintf " (%d absorbed)", $entry->{extra}{absorbed} if $entry->{extra}{absorbed};
-        $text .= " (crushing)" if $entry->{extra}{crushing};
-        $text .= " (glancing)" if $entry->{extra}{glancing};
+        $text .= sprintf " (%d resisted)", $entry->{resisted} if $entry->{resisted};
+        $text .= sprintf " (%d blocked)", $entry->{blocked} if $entry->{blocked};
+        $text .= sprintf " (%d absorbed)", $entry->{absorbed} if $entry->{absorbed};
+        $text .= " (crushing)" if $entry->{crushing};
+        $text .= " (glancing)" if $entry->{glancing};
         
         # WLK log overdamage
-        if( $entry->{extra}{extraamount} ) {
-            $text .= sprintf " {%s}", $entry->{extra}{extraamount};
+        if( $entry->{extraamount} ) {
+            $text .= sprintf " {%s}", $entry->{extraamount};
         }
-    } elsif( $entry->{action} eq "SPELL_PERIODIC_HEAL" ) {
+    } elsif( $entry->{action} == SPELL_PERIODIC_HEAL ) {
         $text = sprintf "[%s] %s hot [%s] %d",
             $actor,
             $spell,
             $target,
-            $entry->{extra}{amount};
+            $entry->{amount};
         
         # WLK log overhealing
-        if( $entry->{extra}{extraamount} ) {
-            $text .= sprintf " {%s}", $entry->{extra}{extraamount};
+        if( $entry->{extraamount} ) {
+            $text .= sprintf " {%s}", $entry->{extraamount};
         }
-    } elsif( $entry->{action} eq "SPELL_PERIODIC_DRAIN" ) {
+    } elsif( $entry->{action} == SPELL_PERIODIC_DRAIN ) {
         $text = sprintf "[%s] %s drain [%s] %d %s",
             $actor,
             $spell,
             $target,
-            $entry->{extra}{amount},
-            $self->_powerName( $entry->{extra}{powertype} );
-    } elsif( $entry->{action} eq "SPELL_PERIODIC_LEECH" ) {
+            $entry->{amount},
+            $self->_powerName( $entry->{powertype} );
+    } elsif( $entry->{action} == SPELL_PERIODIC_LEECH ) {
         $text = sprintf "[%s] %s leech [%s] %d %s",
             $actor,
             $spell,
             $target,
-            $entry->{extra}{amount},
-            $self->_powerName( $entry->{extra}{powertype} );
-    } elsif( $entry->{action} eq "SPELL_PERIODIC_ENERGIZE" ) {
+            $entry->{amount},
+            $self->_powerName( $entry->{powertype} );
+    } elsif( $entry->{action} == SPELL_PERIODIC_ENERGIZE ) {
         $text = sprintf "[%s] %s energize [%s] %d %s",
             $actor,
             $spell,
             $target,
-            $entry->{extra}{amount},
-            $self->_powerName( $entry->{extra}{powertype} );
-    } elsif( $entry->{action} eq "SPELL_DRAIN" ) {
+            $entry->{amount},
+            $self->_powerName( $entry->{powertype} );
+    } elsif( $entry->{action} == SPELL_DRAIN ) {
         $text = sprintf "[%s] %s drain [%s] %d %s",
             $actor,
             $spell,
             $target,
-            $entry->{extra}{amount},
-            $self->_powerName( $entry->{extra}{powertype} );
-    } elsif( $entry->{action} eq "SPELL_LEECH" ) {
+            $entry->{amount},
+            $self->_powerName( $entry->{powertype} );
+    } elsif( $entry->{action} == SPELL_LEECH ) {
         $text = sprintf "[%s] %s leech [%s] %d %s",
             $actor,
             $spell,
             $target,
-            $entry->{extra}{amount},
-            $self->_powerName( $entry->{extra}{powertype} );
-    } elsif( $entry->{action} eq "SPELL_INTERRUPT" ) {
+            $entry->{amount},
+            $self->_powerName( $entry->{powertype} );
+    } elsif( $entry->{action} == SPELL_INTERRUPT ) {
         $text = sprintf "[%s] %sinterrupt [%s] %s",
             $actor,
             $spell ? $spell . " " : "",
             $target,
             $extraspell,
-    } elsif( $entry->{action} eq "SPELL_EXTRA_ATTACKS" ) {
+    } elsif( $entry->{action} == SPELL_EXTRA_ATTACKS ) {
         $text = sprintf "[%s] %s +%d attack%s",
             $actor,
             $spell,
-            $entry->{extra}{amount},
-            $entry->{extra}{amount} > 1 ? "s" : "",
-    } elsif( $entry->{action} eq "SPELL_INSTAKILL" ) {
+            $entry->{amount},
+            $entry->{amount} > 1 ? "s" : "",
+    } elsif( $entry->{action} == SPELL_INSTAKILL ) {
         $text = sprintf "[%s] instakill [%s]",
             $actor,
             $target,
-    } elsif( $entry->{action} eq "SPELL_DURABILITY_DAMAGE" ) {
+    } elsif( $entry->{action} == SPELL_DURABILITY_DAMAGE ) {
 
-    } elsif( $entry->{action} eq "SPELL_DURABILITY_DAMAGE_ALL" ) {
+    } elsif( $entry->{action} == SPELL_DURABILITY_DAMAGE_ALL ) {
 
-    } elsif( $entry->{action} eq "SPELL_DISPEL_FAILED" ) {
+    } elsif( $entry->{action} == SPELL_DISPEL_FAILED ) {
 
-    } elsif( $entry->{action} eq "SPELL_AURA_DISPELLED" ) {
+    } elsif( $entry->{action} == SPELL_AURA_DISPELLED ) {
 
-    } elsif( $entry->{action} eq "SPELL_AURA_STOLEN" ) {
+    } elsif( $entry->{action} == SPELL_AURA_STOLEN ) {
         
-    } elsif( $entry->{action} eq "SPELL_AURA_APPLIED" ) {
+    } elsif( $entry->{action} == SPELL_AURA_APPLIED ) {
         $text = sprintf "[%s] %s %s",
             $target,
-            $entry->{extra}{auratype} eq "DEBUFF" ? "afflicted by" : "gain",
+            $entry->{auratype} eq "DEBUFF" ? "afflicted by" : "gain",
             $spell;
-    } elsif( $entry->{action} eq "SPELL_AURA_REMOVED" ) {
+    } elsif( $entry->{action} == SPELL_AURA_REMOVED ) {
         $text = sprintf "[%s] fade %s",
             $target,
             $spell;
-    } elsif( $entry->{action} eq "SPELL_AURA_APPLIED_DOSE" ) {
+    } elsif( $entry->{action} == SPELL_AURA_APPLIED_DOSE ) {
         $text = sprintf "[%s] %s %s (%d)",
             $target,
-            $entry->{extra}{auratype} eq "DEBUFF" ? "afflicted by" : "gain",
+            $entry->{auratype} eq "DEBUFF" ? "afflicted by" : "gain",
             $spell,
-            $entry->{extra}{amount};
-    } elsif( $entry->{action} eq "SPELL_AURA_REMOVED_DOSE" ) {
+            $entry->{amount};
+    } elsif( $entry->{action} == SPELL_AURA_REMOVED_DOSE ) {
         $text = sprintf "[%s] decrease dose %s (%d)",
             $target,
             $spell,
-            $entry->{extra}{amount};
-    } elsif( $entry->{action} eq "SPELL_CAST_START" ) {
+            $entry->{amount};
+    } elsif( $entry->{action} == SPELL_CAST_START ) {
 
-    } elsif( $entry->{action} eq "SPELL_CAST_SUCCESS" ) {
+    } elsif( $entry->{action} == SPELL_CAST_SUCCESS ) {
         $text = sprintf "[%s] cast %s [%s]",
             $actor,
             $spell,
             $target;
-    } elsif( $entry->{action} eq "SPELL_CAST_FAILED" ) {
+    } elsif( $entry->{action} == SPELL_CAST_FAILED ) {
 
-    } elsif( $entry->{action} eq "DAMAGE_SHIELD" ) {
+    } elsif( $entry->{action} == DAMAGE_SHIELD ) {
         $text = sprintf "[%s] %s reflect %s[%s] %d",
             $actor,
             $spell,
-            $entry->{extra}{critical} ? "crit " : "",
+            $entry->{critical} ? "crit " : "",
             $target,
-            $entry->{extra}{amount};
+            $entry->{amount};
         
-        $text .= sprintf " (%d resisted)", $entry->{extra}{resisted} if $entry->{extra}{resisted};
-        $text .= sprintf " (%d blocked)", $entry->{extra}{blocked} if $entry->{extra}{blocked};
-        $text .= sprintf " (%d absorbed)", $entry->{extra}{absorbed} if $entry->{extra}{absorbed};
-        $text .= " (crushing)" if $entry->{extra}{crushing};
-        $text .= " (glancing)" if $entry->{extra}{glancing};
-    } elsif( $entry->{action} eq "DAMAGE_SHIELD_MISSED" ) {
+        $text .= sprintf " (%d resisted)", $entry->{resisted} if $entry->{resisted};
+        $text .= sprintf " (%d blocked)", $entry->{blocked} if $entry->{blocked};
+        $text .= sprintf " (%d absorbed)", $entry->{absorbed} if $entry->{absorbed};
+        $text .= " (crushing)" if $entry->{crushing};
+        $text .= " (glancing)" if $entry->{glancing};
+    } elsif( $entry->{action} == DAMAGE_SHIELD_MISSED ) {
         $text = sprintf "[%s] %s [%s] %s",
             $actor,
             $spell,
             $target,
-            lc( $entry->{extra}{misstype} );
-    } elsif( $entry->{action} eq "ENCHANT_APPLIED" ) {
+            lc( $entry->{misstype} );
+    } elsif( $entry->{action} == ENCHANT_APPLIED ) {
 
-    } elsif( $entry->{action} eq "ENCHANT_REMOVED" ) {
+    } elsif( $entry->{action} == ENCHANT_REMOVED ) {
 
-    } elsif( $entry->{action} eq "ENVIRONMENTAL_DAMAGE" ) {
+    } elsif( $entry->{action} == ENVIRONMENTAL_DAMAGE ) {
 
-    } elsif( $entry->{action} eq "DAMAGE_SPLIT" ) {
+    } elsif( $entry->{action} == DAMAGE_SPLIT ) {
         $text = sprintf "[%s] %s %s [%s] %d (split)",
             $actor,
             $spell,
-            $entry->{extra}{critical} ? "crit" : "hit",
+            $entry->{critical} ? "crit" : "hit",
             $target,
-            $entry->{extra}{amount};
+            $entry->{amount};
         
-        $text .= sprintf " (%d resisted)", $entry->{extra}{resisted} if $entry->{extra}{resisted};
-        $text .= sprintf " (%d blocked)", $entry->{extra}{blocked} if $entry->{extra}{blocked};
-        $text .= sprintf " (%d absorbed)", $entry->{extra}{absorbed} if $entry->{extra}{absorbed};
-        $text .= " (crushing)" if $entry->{extra}{crushing};
-        $text .= " (glancing)" if $entry->{extra}{glancing};
-    } elsif( $entry->{action} eq "UNIT_DIED" ) {
+        $text .= sprintf " (%d resisted)", $entry->{resisted} if $entry->{resisted};
+        $text .= sprintf " (%d blocked)", $entry->{blocked} if $entry->{blocked};
+        $text .= sprintf " (%d absorbed)", $entry->{absorbed} if $entry->{absorbed};
+        $text .= " (crushing)" if $entry->{crushing};
+        $text .= " (glancing)" if $entry->{glancing};
+    } elsif( $entry->{action} == UNIT_DIED ) {
         $text = sprintf "[%s] dies",
             $target;
-    } elsif( $entry->{action} eq "SPELL_RESURRECT" ) {
+    } elsif( $entry->{action} == SPELL_RESURRECT ) {
         $text = sprintf "[%s] %s resurrect [%s]",
             $actor,
             $spell,

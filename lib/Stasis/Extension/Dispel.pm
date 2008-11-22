@@ -49,10 +49,10 @@ sub value {
 sub process {
     my ($self, $entry) = @_;
     
-    $self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{ $entry->{extra}{extraspellid} }{count} += 1;
+    $self->{actors}{ $entry->{actor} }{ $entry->{spellid} }{ $entry->{target} }{ $entry->{extraspellid} }{count} += 1;
     
-    if( $entry->{action} eq "SPELL_DISPEL_FAILED" ) {
-        $self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{ $entry->{extra}{extraspellid} }{resist} += 1;
+    if( $entry->{action} == Stasis::Parser::SPELL_DISPEL_FAILED ) {
+        $self->{actors}{ $entry->{actor} }{ $entry->{spellid} }{ $entry->{target} }{ $entry->{extraspellid} }{resist} += 1;
     }
 }
 

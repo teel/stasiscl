@@ -66,7 +66,7 @@ sub actions {
             $self->{scratch2}{pets}{ $owner }{ $entry->{target} } ++;
 
             # Shaman elemental totems (Fire and Earth respectively)
-            if( $entry->{extra}{spellid} == 2894 || $entry->{extra}{spellid} == 2062 ) {
+            if( $entry->{spellid} == 2894 || $entry->{spellid} == 2062 ) {
                 # Associate totem with shaman by SPELL_SUMMON event.
                 $self->{scratch2}{totems}{ $entry->{target} } = $entry->{actor};
             }
@@ -78,7 +78,7 @@ sub actions {
         return unless $entry->{actor} && $entry->{target};
         
         # Feed Pet Effect
-        if( !$self->{scratch2}{class}{ $entry->{target} } && $entry->{extra}{spellid} == 1539 ) {
+        if( !$self->{scratch2}{class}{ $entry->{target} } && $entry->{spellid} == 1539 ) {
             $self->{scratch2}{class}{ $entry->{target} } = "Pet";
             $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
         }
@@ -90,19 +90,19 @@ sub actions {
         
         if( !$self->{scratch2}{class}{ $entry->{target} } ) {
             # Go for the Throat
-            if( $entry->{extra}{spellid} == 34953 ) {
+            if( $entry->{spellid} == 34953 ) {
                 $self->{scratch2}{class}{ $entry->{target} } = "Pet";
                 $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
             }
             
             # Mana Feed
-            elsif( $entry->{extra}{spellid} == 32553 ) {
+            elsif( $entry->{spellid} == 32553 ) {
                 $self->{scratch2}{class}{ $entry->{target} } = "Pet";
                 $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
             }
             
             # Soul Leech Mana
-            elsif( $entry->{action} eq "SPELL_ENERGIZE" && $entry->{extra}{spellid} == 54607 ) {
+            elsif( $entry->{action} == Stasis::Parser::SPELL_ENERGIZE && $entry->{spellid} == 54607 ) {
                 $self->{scratch2}{class}{ $entry->{target} } = "Pet";
                 $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
             }
@@ -115,7 +115,7 @@ sub actions {
         return unless $entry->{actor} && $entry->{target};
         
         # Dark Pact
-        if( !$self->{scratch2}{class}{ $entry->{target} } && $entry->{extra}{spellid} == 27265 ) {
+        if( !$self->{scratch2}{class}{ $entry->{target} } && $entry->{spellid} == 27265 ) {
             $self->{scratch2}{class}{ $entry->{target} } = "Pet";
             $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
         }
@@ -125,7 +125,7 @@ sub actions {
         my ($self, $entry) = @_;
         
         # Dark Pact
-        if( !$self->{scratch2}{class}{ $entry->{target} } && $entry->{extra}{spellid} == 18788 ) {
+        if( !$self->{scratch2}{class}{ $entry->{target} } && $entry->{spellid} == 18788 ) {
             $self->{scratch2}{class}{ $entry->{target} } = "Pet";
             $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
         }
@@ -135,7 +135,7 @@ sub actions {
         my ($self, $entry) = @_;
         
         # Soul Link
-        if( !$self->{scratch2}{class}{ $entry->{target} } && $entry->{extra}{spellid} == 25288 ) {
+        if( !$self->{scratch2}{class}{ $entry->{target} } && $entry->{spellid} == 25288 ) {
             $self->{scratch2}{class}{ $entry->{target} } = "Pet";
             $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
         }
@@ -148,19 +148,19 @@ sub process_aura {
     
     if( !$self->{scratch2}{class}{ $entry->{actor} } ) {
         # Empowered Imp
-        if( $entry->{extra}{spellid} == 47283 ) {
+        if( $entry->{spellid} == 47283 ) {
             $self->{scratch2}{class}{ $entry->{actor} } = "Pet";
             $self->{scratch2}{pets}{ $entry->{target} }{ $entry->{actor} } ++;
         }
         
         # Kindred Spirits
-        elsif( $entry->{extra}{spellid} == 57484 ) {
+        elsif( $entry->{spellid} == 57484 ) {
             $self->{scratch2}{class}{ $entry->{actor} } = "Pet";
             $self->{scratch2}{pets}{ $entry->{target} }{ $entry->{actor} } ++;
         }
         
         # Master Demonologist
-        elsif( $entry->{extra}{spellid} == 35706 ) {
+        elsif( $entry->{spellid} == 35706 ) {
             $self->{scratch2}{class}{ $entry->{actor} } = "Pet";
             $self->{scratch2}{pets}{ $entry->{target} }{ $entry->{actor} } ++;
         }
@@ -168,7 +168,7 @@ sub process_aura {
     
     if( !$self->{scratch2}{class}{ $entry->{target} } ) {
         # Bestial Wrath
-        if( $entry->{extra}{spellid} == 19574 ) {
+        if( $entry->{spellid} == 19574 ) {
             $self->{scratch2}{class}{ $entry->{target} } = "Pet";
             $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
         }
@@ -188,7 +188,7 @@ sub process_misc {
         
         # See if this actor is a player.
         if( ($atype & 0x00F0) == 0 ) {
-            my $spell = Stasis::SpellUtil->spell( $entry->{extra}{spellid} );
+            my $spell = Stasis::SpellUtil->spell( $entry->{spellid} );
             if( $spell && $spell->{class} ) {
                 $self->{scratch2}{class}{ $entry->{actor} } = $spell->{class};
             }
@@ -196,7 +196,7 @@ sub process_misc {
         
         # See if this actor is a pet. Make sure it wasn't identified in the previous block, though.
         if( !$self->{scratch2}{class}{ $entry->{actor} } && $entry->{target} ne $entry->{actor} ) {
-            if( $entry->{action} eq "SPELL_PERIODIC_HEAL" && $entry->{extra}{spellid} == 24529 ) {
+            if( $entry->{action} == Stasis::Parser::SPELL_PERIODIC_HEAL && $entry->{spellid} == 24529 ) {
                 # Spirit Bond
                 $self->{scratch2}{class}{ $entry->{actor} } = "Pet";
                 $self->{scratch2}{pets}{ $entry->{target} }{ $entry->{actor} } ++;
@@ -220,13 +220,13 @@ sub process_misc {
     # Check for pet-looking things.
     if( !$self->{scratch2}{class}{ $entry->{target} } ) {
         # Mend Pet
-        if( $entry->{extra}{spellid} == 27046 && $entry->{action} eq "SPELL_PERIODIC_HEAL" ) {
+        if( $entry->{spellid} == 27046 && $entry->{action} == Stasis::Parser::SPELL_PERIODIC_HEAL ) {
             $self->{scratch2}{class}{ $entry->{target} } = "Pet";
             $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
         }
         
         # Fel Synergy
-        elsif( $entry->{extra}{spellid} == 54181 && $entry->{action} eq "SPELL_HEAL" ) {
+        elsif( $entry->{spellid} == 54181 && $entry->{action} == Stasis::Parser::SPELL_HEAL ) {
             $self->{scratch2}{class}{ $entry->{target} } = "Pet";
             $self->{scratch2}{pets}{ $entry->{actor} }{ $entry->{target} } ++;
         }
@@ -627,49 +627,49 @@ sub process1 {
     return if( $entry->{actor_name} eq "Unknown" || $entry->{target_name} eq "Unknown" );
     
     # Check damage.
-    if( ($entry->{action} eq "SPELL_MISS" || $entry->{action} eq "SPELL_DAMAGE" || $entry->{action} eq "SPELL_PERIODIC_MISS" || $entry->{action} eq "SPELL_PERIODIC_DAMAGE") && $entry->{actor_name} !~ /\s/ ) {
+    if( ($entry->{action} == Stasis::Parser::SPELL_MISSED || $entry->{action} == Stasis::Parser::SPELL_DAMAGE || $entry->{action} == Stasis::Parser::SPELL_PERIODIC_MISSED || $entry->{action} == Stasis::Parser::SPELL_PERIODIC_DAMAGE) && $entry->{actor_name} !~ /\s/ ) {
         # For each class profile...
         while( my($cname, $cdata) = each(%profiles) ) {
             # Check if this damage matches...
-            if( grep $_ eq $entry->{extra}{spellname}, @{$cdata->{damage}} ) {
+            if( grep $_ eq $entry->{spellname}, @{$cdata->{damage}} ) {
                 # And record if it does.
-                $self->{scratch1}{ $entry->{actor} }{class}{ $cname }{damage}{ $entry->{extra}{spellname} } ++;
+                $self->{scratch1}{ $entry->{actor} }{class}{ $cname }{damage}{ $entry->{spellname} } ++;
             }
         }
     }
     
     # Check heals.
-    if( ($entry->{action} eq "SPELL_HEAL" || $entry->{action} eq "SPELL_PERIODIC_HEAL") && $entry->{actor_name} !~ /\s/ ) {
+    if( ($entry->{action} == Stasis::Parser::SPELL_HEAL || $entry->{action} == Stasis::Parser::SPELL_PERIODIC_HEAL) && $entry->{actor_name} !~ /\s/ ) {
         # For each class profile...
         while( my($cname, $cdata) = each(%profiles) ) {
             # Check if this heal matches...
-            if( grep $_ eq $entry->{extra}{spellname}, @{$cdata->{healing}} ) {
+            if( grep $_ eq $entry->{spellname}, @{$cdata->{healing}} ) {
                 # And record if it does.
-                $self->{scratch1}{ $entry->{actor} }{class}{ $cname }{healing}{ $entry->{extra}{spellname} } ++;
+                $self->{scratch1}{ $entry->{actor} }{class}{ $cname }{healing}{ $entry->{spellname} } ++;
             }
         }
     }
     
     # Check casts.
-    if( $entry->{action} eq "SPELL_CAST_SUCCESS" && $entry->{actor_name} !~ /\s/ ) {
+    if( $entry->{action} == Stasis::Parser::SPELL_CAST_SUCCESS && $entry->{actor_name} !~ /\s/ ) {
         # For each class profile...
         while( my($cname, $cdata) = each(%profiles) ) {
             # Check if this cast matches...
-            if( grep $_ eq $entry->{extra}{spellname}, @{$cdata->{casts}} ) {
+            if( grep $_ eq $entry->{spellname}, @{$cdata->{casts}} ) {
                 # And record if it does.
-                $self->{scratch1}{ $entry->{actor} }{class}{ $cname }{casts}{ $entry->{extra}{spellname} } ++;
+                $self->{scratch1}{ $entry->{actor} }{class}{ $cname }{casts}{ $entry->{spellname} } ++;
             }
         }
     }
     
     # Check auras.
-    if( $entry->{action} eq "SPELL_AURA_APPLIED" && $entry->{target_name} !~ /\s/ ) {
+    if( $entry->{action} == Stasis::Parser::SPELL_AURA_APPLIED && $entry->{target_name} !~ /\s/ ) {
         # For each class profile...
         while( my($cname, $cdata) = each(%profiles) ) {
             # Check if this aura matches...
-            if( grep $_ eq $entry->{extra}{spellname}, @{$cdata->{auras}} ) {
+            if( grep $_ eq $entry->{spellname}, @{$cdata->{auras}} ) {
                 # And record if it does.
-                $self->{scratch1}{ $entry->{target} }{class}{ $cname }{auras}{ $entry->{extra}{spellname} } ++;
+                $self->{scratch1}{ $entry->{target} }{class}{ $cname }{auras}{ $entry->{spellname} } ++;
             }
         }
     }
@@ -680,57 +680,57 @@ sub process1 {
     return unless $entry->{actor} && $entry->{target};
     
     # Summons
-    if( $entry->{action} eq "SPELL_SUMMON" ) {
+    if( $entry->{action} == Stasis::Parser::SPELL_SUMMON ) {
         $self->{scratch1}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
     }
     
     # Mend Pet
-    if( $entry->{action} eq "SPELL_PERIODIC_HEAL" && $entry->{extra}{spellname} eq "Mend Pet" ) {
+    if( $entry->{action} == Stasis::Parser::SPELL_PERIODIC_HEAL && $entry->{spellname} eq "Mend Pet" ) {
         $self->{scratch1}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
     }
     
     # Spirit Bond
-    if( $entry->{action} eq "SPELL_PERIODIC_HEAL" && $entry->{extra}{spellname} eq "Spirit Bond" ) {
+    if( $entry->{action} == Stasis::Parser::SPELL_PERIODIC_HEAL && $entry->{spellname} eq "Spirit Bond" ) {
         $self->{scratch1}{ $entry->{target} }{pets}{ $entry->{actor} } ++ if $entry->{target} ne $entry->{actor};
     }
     
     # Feed Pet Effect
-    if( $entry->{action} =~ /^SPELL(_PERIODIC|)_ENERGIZE$/ && $entry->{extra}{spellname} eq "Feed Pet Effect" ) {
+    if( $entry->{action} =~ /^SPELL(_PERIODIC|)_ENERGIZE$/ && $entry->{spellname} eq "Feed Pet Effect" ) {
         $self->{scratch1}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
     }
     
     # Go for the Throat
-    if( $entry->{action} =~ /^SPELL(_PERIODIC|)_ENERGIZE$/ && $entry->{extra}{spellname} eq "Go for the Throat" ) {
+    if( $entry->{action} =~ /^SPELL(_PERIODIC|)_ENERGIZE$/ && $entry->{spellname} eq "Go for the Throat" ) {
         $self->{scratch1}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
     }
     
     # Improved Mend Pet
-    if( $entry->{action} eq "SPELL_CAST_SUCCESS" && $entry->{extra}{spellname} eq "Improved Mend Pet" ) {
+    if( $entry->{action} == Stasis::Parser::SPELL_CAST_SUCCESS && $entry->{spellname} eq "Improved Mend Pet" ) {
         $self->{scratch1}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
     }
     
     # Dark Pact
-    if( $entry->{action} =~ /^SPELL(_PERIODIC|)_ENERGIZE$/ && $entry->{extra}{spellname} eq "Dark Pact" ) {
+    if( $entry->{action} =~ /^SPELL(_PERIODIC|)_ENERGIZE$/ && $entry->{spellname} eq "Dark Pact" ) {
         $self->{scratch1}{ $entry->{target} }{pets}{ $entry->{actor} } ++ if $entry->{target} ne $entry->{actor};
     }
     
     # Also Dark Pact
-    if( $entry->{action} eq "SPELL_LEECH" && $entry->{extra}{spellname} eq "Dark Pact" ) {
+    if( $entry->{action} == Stasis::Parser::SPELL_LEECH && $entry->{spellname} eq "Dark Pact" ) {
         $self->{scratch1}{ $entry->{target} }{pets}{ $entry->{actor} } ++ if $entry->{target} ne $entry->{actor};
     }
     
     # Demonic Sacrifice
-    if( $entry->{action} eq "SPELL_CAST_SUCCESS" && $entry->{extra}{spellname} eq "Demonic Sacrifice" ) {
+    if( $entry->{action} == Stasis::Parser::SPELL_CAST_SUCCESS && $entry->{spellname} eq "Demonic Sacrifice" ) {
         $self->{scratch1}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
     }
     
     # Soul Link
-    if( $entry->{action} eq "DAMAGE_SPLIT" && $entry->{extra}{spellname} eq "Soul Link" ) {
+    if( $entry->{action} == Stasis::Parser::DAMAGE_SPLIT && $entry->{spellname} eq "Soul Link" ) {
         $self->{scratch1}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
     }
 
     # Mana Feed
-    if( $entry->{action} eq "SPELL_ENERGIZE" && $entry->{extra}{spellname} eq "Life Tap" ) {
+    if( $entry->{action} == Stasis::Parser::SPELL_ENERGIZE && $entry->{spellname} eq "Life Tap" ) {
         $self->{scratch1}{ $entry->{actor} }{pets}{ $entry->{target} } ++ if $entry->{target} ne $entry->{actor};
     }
 }

@@ -79,7 +79,7 @@ sub process_applied {
 
     # Create a blank entry if none exists.
     # Stored "backwards", the person the aura is applied to (the target) is first.
-    my $sdata = $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} || 0 } ||= {
+    my $sdata = $self->{targets}{ $entry->{target} }{ $entry->{spellid} }{ $entry->{actor} || 0 } ||= {
         gains => 0,
         fades => 0,
         type => undef,
@@ -105,14 +105,14 @@ sub process_applied {
     $sdata->{gains} ++;
     
     # Update the type of this aura.
-    $sdata->{type} ||= $entry->{extra}{auratype};
+    $sdata->{type} ||= $entry->{auratype};
 }
 
 sub process_removed {
     my ($self, $entry) = @_;
     
     # Create a blank entry if none exists.
-    my $sdata = $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} || 0 } ||= {
+    my $sdata = $self->{targets}{ $entry->{target} }{ $entry->{spellid} }{ $entry->{actor} || 0 } ||= {
         gains => 0,
         fades => 0,
         type => undef,
@@ -137,9 +137,9 @@ sub process_removed {
             # only have been created if no auras were on the target, so odds are this remove event corresponds to that
             # aura.
             
-            if( exists $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{0} && @{$self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{0}{spans}} == 1 ) {
-                my ($envstart, $envend) = unpack "dd", $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{0}{spans}[0];
-                delete $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{0} if $envstart == 0 && $envend == 0;
+            if( exists $self->{targets}{ $entry->{target} }{ $entry->{spellid} }{0} && @{$self->{targets}{ $entry->{target} }{ $entry->{spellid} }{0}{spans}} == 1 ) {
+                my ($envstart, $envend) = unpack "dd", $self->{targets}{ $entry->{target} }{ $entry->{spellid} }{0}{spans}[0];
+                delete $self->{targets}{ $entry->{target} }{ $entry->{spellid} }{0} if $envstart == 0 && $envend == 0;
             }
             
             push @{$sdata->{spans}}, pack "dd", 0, $entry->{t};
@@ -150,7 +150,7 @@ sub process_removed {
     $sdata->{fades} ++;
     
     # Update the type of this aura.
-    $sdata->{type} ||= $entry->{extra}{auratype};
+    $sdata->{type} ||= $entry->{auratype};
 }
 
 sub process_refresh {
@@ -160,14 +160,14 @@ sub process_refresh {
     # this aura has not been seen on this target before.
     
     # As such, first check for pre-existing auras.
-    return if exists $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} };
+    return if exists $self->{targets}{ $entry->{target} }{ $entry->{spellid} };
     
     # OK, none exist. Create a new entry for the environment.
     # Stored "backwards", the person the aura is applied to (the target) is first.
-    my $sdata = $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{ 0 } = {
+    my $sdata = $self->{targets}{ $entry->{target} }{ $entry->{spellid} }{ 0 } = {
         gains => 0,
         fades => 0,
-        type => $entry->{extra}{auratype},
+        type => $entry->{auratype},
         spans => [
             pack "dd", 0, 0
         ],

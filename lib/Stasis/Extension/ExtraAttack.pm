@@ -49,11 +49,11 @@ sub value {
 sub process {
     my ($self, $entry) = @_;
     
-    if( $entry->{action} eq "SPELL_EXTRA_ATTACKS" ) {
+    if( $entry->{action} == Stasis::Parser::SPELL_EXTRA_ATTACKS ) {
         # Store this in the same format as power gains (Power.pm)
         # Except there will be no "type" key
-        $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} }{amount} += $entry->{extra}{amount};
-        $self->{targets}{ $entry->{target} }{ $entry->{extra}{spellid} }{ $entry->{actor} }{count} += 1;
+        $self->{targets}{ $entry->{target} }{ $entry->{spellid} }{ $entry->{actor} }{amount} += $entry->{amount};
+        $self->{targets}{ $entry->{target} }{ $entry->{spellid} }{ $entry->{actor} }{count} += 1;
     }
 }
 

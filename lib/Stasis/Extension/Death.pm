@@ -49,7 +49,7 @@ sub process_heal {
     my ($self, $entry) = @_;
     
     # This was a heal. Add the HP to the target.
-    $self->{ohtrack}{ $entry->{target} } += $entry->{extra}{amount};
+    $self->{ohtrack}{ $entry->{target} } += $entry->{amount};
 
     # Account for overhealing, if it happened, by removing the excess.
     $self->{ohtrack}{ $entry->{target} } = 0 if( $self->{ohtrack}{ $entry->{target} } > 0 );
@@ -61,7 +61,7 @@ sub process_damage {
     my ($self, $entry) = @_;
     
     # If someone is taking damage we need to debit the HP.
-    $self->{ohtrack}{ $entry->{target} } -= $entry->{extra}{amount};
+    $self->{ohtrack}{ $entry->{target} } -= $entry->{amount};
     
     goto &process_common;
 }

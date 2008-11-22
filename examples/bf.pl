@@ -57,7 +57,6 @@ my %actions = (
     RANGE_DAMAGE => 1,
     SPELL_DAMAGE => 1,
     DAMAGE_SPLIT => 1,
-    SPELL_DAMAGE => 1,
     SPELL_PERIODIC_DAMAGE => 1,
     DAMAGE_SHIELD => 1,
 );

@@ -49,8 +49,8 @@ sub value {
 sub process {
     my ($self, $entry) = @_;
     
-    if( $entry->{action} eq "SPELL_INTERRUPT" ) {
-        $self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{ $entry->{extra}{extraspellid} }{count} += 1;
+    if( $entry->{action} == Stasis::Parser::SPELL_INTERRUPT ) {
+        $self->{actors}{ $entry->{actor} }{ $entry->{spellid} }{ $entry->{target} }{ $entry->{extraspellid} }{count} += 1;
     }
 }
 
