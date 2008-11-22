@@ -135,8 +135,8 @@ sub addLine {
             );
             
             # Add extra columns.
-            while( my ($kextra, $vextra) = each (%{$entry->{extra}}) ) {
-                $col{$kextra} = defined $vextra ? $vextra : 0;
+            foreach (@extra_fields) {
+                $col{$_} = defined $entry->{$_} ? $entry->{$_} : 0;
             }
             
             # Insert the line itself
@@ -199,9 +199,8 @@ sub line {
                 $result{target_name} = "";
             }
             
-            $result{extra} = {};
             foreach (@extra_fields) {
-                $result{extra}{$_} = $self->{readline_result}{$_} if defined $self->{readline_result}{$_};
+                $result{$_} = $self->{readline_result}{$_} if defined $self->{readline_result}{$_};
             }
             
             return \%result;

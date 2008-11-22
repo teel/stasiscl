@@ -298,7 +298,7 @@ sub statHeader {
     <div class="bd">
         <ul class="first-of-type">
             <li id="bossnav" class="yuimenubaritem first-of-type">
-                <a class="yuimenubaritemlabel first-of-type" href=""><b>$title</b></a>
+                <a class="yuimenubaritemlabel first-of-type" href="javascript:void();"><b>$title</b></a>
             </li>
             <li class="yuimenubaritem">
                 <a class="yuimenubaritemlabel" href="index.html#damage_out" onClick="toggleTab('damage_out',1)">Damage Out</a>

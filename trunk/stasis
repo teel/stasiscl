@@ -386,7 +386,12 @@ if( $opt_dir ) {
 }
 
 # Create a parser.
-my $parser = Stasis::Parser->new( ref => 1, version => $opt_version, logger => $opt_logger, year => $opt_year );
+my $parser = Stasis::Parser->new( 
+    compact => 1,
+    version => $opt_version, 
+    logger => $opt_logger, 
+    year => $opt_year
+);
 
 # Set encoding of STDOUT to UTF-8 (which Blizzard uses for combat logs)
 binmode(STDOUT, ":utf8");
@@ -448,13 +453,15 @@ if( $action eq "print" ) {
         # Because File::Tail screws up Unicode
         utf8::decode($_) if $opt_tail;
         
-        my $pline = $opt_file ? $parser->parse( $_ ) : $_;
+        my $pline = $opt_file ? $parser->parse($_) : $_;
         if( $pline->{action} ) {
             if( my $text = $parser->toString( $pline ) ) {
                 $pline->{t} =~ /^(\d+)(\.(\d+)|)$/;
                 my @t = localtime $1;
                 printf "%d/%d %02d:%02d:%02d\.%03d  %s\n", $t[4]+1, $t[3], $t[2], $t[1], $t[0], $2?$3:0, $text;
             }
+        } else {
+            warn "bad line: " . $_;
         }
     }
 } elsif( $action eq "add" ) {
@@ -644,11 +651,11 @@ if( $action eq "print" ) {
         $first ||= $pline->{t};
         
         # Dispatch this action.
-        if( $Stasis::Parser::action_map{ $pline->{action} } ) {
+        if( $pline->{action} ) {
             $ed_splitter->process($pline);
             $ed->process($pline);
         } else {
-            warn "Unrecognized action: " . ($pline->{action} || "[undefined]");
+            warn "bad line: " . $_;
         }
     }
     

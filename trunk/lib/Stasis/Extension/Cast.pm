@@ -41,8 +41,8 @@ sub actions {
 sub process {
     my ($self, $entry) = @_;
     
-    if( $entry->{action} eq "SPELL_CAST_SUCCESS" ) {
-        $self->{actors}{ $entry->{actor} }{ $entry->{extra}{spellid} }{ $entry->{target} }{count} += 1;
+    if( $entry->{action} == Stasis::Parser::SPELL_CAST_SUCCESS ) {
+        $self->{actors}{ $entry->{actor} }{ $entry->{spellid} }{ $entry->{target} }{count} += 1;
     }
 }
 

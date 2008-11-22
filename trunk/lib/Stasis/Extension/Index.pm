@@ -57,13 +57,13 @@ sub process {
     }
     
     # SPELL INDEX: check for spellid
-    if( $entry->{extra}{spellid} ) {
-        $self->{spells}{ $entry->{extra}{spellid} } = $entry->{extra}{spellname};
+    if( $entry->{spellid} ) {
+        $self->{spells}{ $entry->{spellid} } = $entry->{spellname};
     }
     
     # SPELL INDEX: check for extraspellid
-    if( $entry->{extra}{extraspellid} ) {
-        $self->{spells}{ $entry->{extra}{extraspellid} } = $entry->{extra}{extraspellname};
+    if( $entry->{extraspellid} ) {
+        $self->{spells}{ $entry->{extraspellid} } = $entry->{extraspellname};
     }
 }
 

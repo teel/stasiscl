@@ -61,15 +61,15 @@ sub process {
     # will both fail to look up in Index, but that's okay.
     my $actor;
     my $spell;
-    if( $entry->{action} eq "ENVIRONMENTAL_DAMAGE" ) {
+    if( $entry->{action} == Stasis::Parser::ENVIRONMENTAL_DAMAGE ) {
         $actor = 0;
         $spell = 0;
-    } elsif( $entry->{action} eq "SWING_DAMAGE" || $entry->{action} eq "SWING_MISSED" ) {
+    } elsif( $entry->{action} == Stasis::Parser::SWING_DAMAGE || $entry->{action} == Stasis::Parser::SWING_MISSED ) {
         $actor = $entry->{actor};
         $spell = 0;
     } else {
         $actor = $entry->{actor};
-        $spell = $entry->{extra}{spellid};
+        $spell = $entry->{spellid};
     }
     
     my $target = $entry->{target};

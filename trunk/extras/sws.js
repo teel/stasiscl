@@ -184,14 +184,14 @@ function hashTab() {
     }
 }
 
-function initMenu() {
+function initMenu(idMenu, jsonFile) {
     /* Set up the top navigation menu. */
-    YAHOO.util.Event.onContentReady("swsmenu", function () {
+    YAHOO.util.Event.onContentReady(idMenu, function () {
         /* Standard menu items are marked up already */
-        var oMenuBar = new YAHOO.widget.MenuBar("swsmenu", { autosubmenudisplay: true, hidedelay: 750, lazyload: true });
+        var oMenuBar = new YAHOO.widget.MenuBar(idMenu, { autosubmenudisplay: true, showdelay: 0, hidedelay: 250, lazyload: true });
         
         /* Use XHR to add boss navigation */
-        sendXHR( 'raid.json', function(o) {
+        sendXHR( jsonFile, function(o) {
             if( o.responseText !== undefined ) {
                 try {
                     var splits = YAHOO.lang.JSON.parse(o.responseText);
@@ -200,23 +200,27 @@ function initMenu() {
                         var splitsData = [];
                         for( var x = 0 ; x < splits.length ; x++ ) {
                             /* Boss name */
-                            var splitText = splits[x].longname + " (";
+                            var splitText = splits[x].longname;
                             
                             /* Amount of damage */
+                            var dmgText = "";
                             var n = splits[x].damage;
-                            if( !n ) {
-                                splitText += "0";
-                            } else if( n < 1000 ) {
-                                splitText += Math.floor(n);
-                            } else if( n < 100000 ) {
-                                splitText += Math.floor(n / 100)/10 + "K";
-                            } else {
-                                splitText += Math.floor(n / 100000)/10 + "M";
+                            
+                            if( n && n > 0 ) {
+                                dmgText = " (";
+                                
+                                if( n < 1000 ) {
+                                    dmgText += Math.floor(n);
+                                } else if( n < 100000 ) {
+                                    dmgText += Math.floor(n / 100)/10 + "K";
+                                } else {
+                                    dmgText += Math.floor(n / 100000)/10 + "M";
+                                }
+                            
+                                dmgText += " dmg)";
                             }
                             
-                            splitText += " dmg)";
-                            
-                            splitsData.push( { "text": splitText, "url": splits[x].dname } );
+                            splitsData.push( { "text": splitText + dmgText, "url": splits[x].dname } );
                         }
                         
                         oMenuBar.getItem(0).cfg.setProperty("submenu", { id: "splits", itemdata: splitsData });

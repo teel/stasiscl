@@ -67,9 +67,7 @@ sub remove {
 sub process {
     my ($self, $entry) = @_;
     
-    foreach my $caller (@{ $self->[ $Stasis::Parser::action_map{ $entry->{action} } ] }) {
-        $caller->[0]->($caller->[1], $entry);
-    }
+    $_->[0]->($_->[1], $entry) foreach (@{ $self->[ $entry->{action} ] });
 }
 
 1;

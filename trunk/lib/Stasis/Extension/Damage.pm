@@ -59,15 +59,15 @@ sub process {
     # will both fail to look up in Index, but that's okay.
     my $actor;
     my $spell;
-    if( $entry->{action} eq "ENVIRONMENTAL_DAMAGE" ) {
+    if( $entry->{action} == Stasis::Parser::ENVIRONMENTAL_DAMAGE ) {
         $actor = 0;
         $spell = 0;
-    } elsif( $entry->{action} eq "SWING_DAMAGE" || $entry->{action} eq "SWING_MISSED" ) {
+    } elsif( $entry->{action} == Stasis::Parser::SWING_DAMAGE || $entry->{action} == Stasis::Parser::SWING_MISSED ) {
         $actor = $entry->{actor};
         $spell = 0;
     } else {
         $actor = $entry->{actor};
-        $spell = $entry->{extra}{spellid};
+        $spell = $entry->{spellid};
     }
     
     # Get the spell hash.
@@ -80,13 +80,13 @@ sub process {
     $ddata->{count} += 1;
     
     # Check if this was a hit or a miss.
-    if( $entry->{extra}{amount} && !$entry->{extra}{misstype} ) {
+    if( $entry->{amount} && !$entry->{misstype} ) {
         # HIT
         # Classify the damage WWS-style as a "hit", "crit", or "tick".
         my $type;
-        if( $entry->{action} eq "SPELL_PERIODIC_DAMAGE" ) {
+        if( $entry->{action} == Stasis::Parser::SPELL_PERIODIC_DAMAGE ) {
             $type = "tick";
-        } elsif( $entry->{extra}{critical} ) {
+        } elsif( $entry->{critical} ) {
             $type = "crit";
         } else {
             $type = "hit";
@@ -94,42 +94,42 @@ sub process {
         
         # Add the damage to the total for this type of hit (hit/crit/tick).
         $ddata->{"${type}Count"} += 1;
-        $ddata->{"${type}Total"} += $entry->{extra}{amount};
+        $ddata->{"${type}Total"} += $entry->{amount};
         
         # Update min/max hit size.
-        $ddata->{"${type}Min"} = $entry->{extra}{amount}
+        $ddata->{"${type}Min"} = $entry->{amount}
             if( 
                 !$ddata->{"${type}Min"} ||
-                $entry->{extra}{amount} < $ddata->{"${type}Min"}
+                $entry->{amount} < $ddata->{"${type}Min"}
             );
 
-        $ddata->{"${type}Max"} = $entry->{extra}{amount}
+        $ddata->{"${type}Max"} = $entry->{amount}
             if( 
                 !$ddata->{"${type}Max"} ||
-                $entry->{extra}{amount} > $ddata->{"${type}Max"}
+                $entry->{amount} > $ddata->{"${type}Max"}
             );
         
         # Add any mods.
-        if( $entry->{extra}{blocked} ) {
+        if( $entry->{blocked} ) {
             $ddata->{partialBlockCount} ++;
-            $ddata->{partialBlockTotal} += $entry->{extra}{blocked};
+            $ddata->{partialBlockTotal} += $entry->{blocked};
         }
         
-        if( $entry->{extra}{resisted} ) {
+        if( $entry->{resisted} ) {
             $ddata->{partialResistCount} ++;
-            $ddata->{partialResistTotal} += $entry->{extra}{resisted};
+            $ddata->{partialResistTotal} += $entry->{resisted};
         }
         
-        if( $entry->{extra}{absorbed} ) {
+        if( $entry->{absorbed} ) {
             $ddata->{partialAbsorbCount} ++;
-            $ddata->{partialAbsorbTotal} += $entry->{extra}{absorbed};
+            $ddata->{partialAbsorbTotal} += $entry->{absorbed};
         }
         
-        $ddata->{crushing}++ if $entry->{extra}{crushing};
-        $ddata->{glancing}++ if $entry->{extra}{glancing};
-    } elsif( $entry->{extra}{misstype} ) {
+        $ddata->{crushing}++ if $entry->{crushing};
+        $ddata->{glancing}++ if $entry->{glancing};
+    } elsif( $entry->{misstype} ) {
         # MISS
-        $ddata->{ lc( $entry->{extra}{misstype} ) . "Count" }++;
+        $ddata->{ lc( $entry->{misstype} ) . "Count" }++;
     }
 }
 
