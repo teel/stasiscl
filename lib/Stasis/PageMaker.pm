@@ -40,6 +40,9 @@ sub new {
     # Tooltip ID
     $params{tid} = 0;
     
+    # Header ID
+    $params{headid} = 0;
+    
     bless \%params, $class;
 }
 
@@ -52,7 +55,7 @@ sub tabBar {
     
     foreach my $tab (@_) {
         $BAR .= sprintf 
-            "<a href=\"#%s\" onclick=\"toggleTab('%s');\" id=\"tablink_%s\" class=\"tabLink\">%s</a>",
+            "<a href=\"#%s\" onclick=\"toggleTab('%s');return false;\" id=\"tablink_%s\" class=\"tabLink\">%s</a>",
             $self->tameText($tab),
             $self->tameText($tab), 
             $self->tameText($tab), 
@@ -70,6 +73,7 @@ sub tabStart {
     my $self = shift;
     my $name = shift;
     
+    $self->{headid} = 0;
     my $id = $self->tameText($name);
     return "<div class=\"tab\" id=\"tab_$id\">";
 }
@@ -95,7 +99,12 @@ sub tableTitle {
     my $self = shift;
     my $title = shift;
     
-    return sprintf "<tr><th class=\"title\" colspan=\"%d\">%s</th></tr>", scalar @_, $title;
+    my $style_text = "";
+    if( $self->{headid}++ == 0 ) {
+        $style_text .= " titlenoclear";
+    }
+    
+    return sprintf "<tr><th class=\"title${style_text}\" colspan=\"%d\">%s</th></tr>", scalar @_, $title;
 }
 
 # tableHeader( @header_rows )

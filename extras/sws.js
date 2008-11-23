@@ -166,6 +166,8 @@ function toggleTab(tabId,front) {
         div.style.display = 'block';
         a.className = 'tabLink select';
     }
+    
+    return false;
 }
 
 /* Even though this is called hashTab, it does a bunch of other page-load type things. */

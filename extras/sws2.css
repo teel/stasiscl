@@ -93,9 +93,12 @@ body {
 .swsmaster div.tabBar a {
     padding: 10px;
     margin: 5px;
+    margin-bottom: 8px;
     background-color: #e5e5ff;
     color: #55a;
     font-size: 14px;
+    display: block;
+    float: left;
 }
 
 .swsmaster div.tabBar a.select {
@@ -127,6 +130,7 @@ body {
     margin-left: auto;
     margin-right: auto;
     width: 100%;
+    clear: both;
 }
 
 .swsmaster table.chart {
@@ -171,6 +175,10 @@ body {
     font-size: 12px;
     padding: 4px;
     border-top: 20px solid white;
+}
+
+.swsmaster th.titlenoclear {
+    border-top: none;
 }
 
 .swsmaster tr.s {
