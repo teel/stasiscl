@@ -26,6 +26,7 @@ package Stasis::EventDispatcher;
 use strict;
 use warnings;
 use Stasis::Parser;
+use Stasis::EventListener;
 
 sub new {
     my $class = shift;
@@ -41,17 +42,24 @@ sub new {
     bless \@handlers, $class;
 }
 
-# Add an EventListener
+# Add an EventListener or subroutine
 sub add {
-    my ($self, $listener) = @_;
+    my ($self, $listener, @actions) = @_;
     
-    # Flush it first.
-    $self->remove($listener);
-    
-    # Now add it.
-    my %actions = $listener->actions;
-    while( my ($action, $handler) = each (%actions) ) {
-        push @{ $self->[ $Stasis::Parser::action_map{$action} ] }, [ $handler, $listener ];
+    # Check if $listener is an EventListener or a code reference
+    if( ref $listener eq 'CODE' ) {
+        foreach my $action (@actions) {
+            push @{ $self->[ $Stasis::Parser::action_map{$action} ] }, [ $listener, undef ];
+        }
+    } else {
+        # Flush it first.
+        $self->remove($listener);
+
+        # Now add it.
+        my %actions = $listener->actions;
+        while( my ($action, $handler) = each (%actions) ) {
+            push @{ $self->[ $Stasis::Parser::action_map{$action} ] }, [ $handler, $listener ];
+        }
     }
 }
 

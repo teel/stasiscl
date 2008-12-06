@@ -714,7 +714,7 @@ my %fingerprints = (
 
 "gothik" => {
     long => "Gothik the Harvester",
-    mobStart => [ 16060, 16124, 16125, 16126, 16127, 16148, 16150, 16149 ],
+    mobStart => [ 16124, 16125, 16126, 16127, 16148, 16150, 16149 ],
     mobContinue => [ 16060, 16124, 16125, 16126, 16127, 16148, 16150, 16149 ],
     mobEnd => [ 16060 ],
     timeout => 30,
@@ -796,9 +796,9 @@ my %fingerprints = (
 "sartharion" => {
     long => "Sartharion",
     mobStart => [ 28860 ],
-    mobContinue => [ 28860 ],
+    mobContinue => [ 28860, 31218, 31219 ],
     mobEnd => [ 28860 ],
-    timeout => 30,
+    timeout => 45,
 },
 
 "archavon" => {
