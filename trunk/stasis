@@ -763,23 +763,14 @@ if( $action eq "print" ) {
     
     # Write navigation
     if( $opt_nav && !$opt_nowrite && @dirs_written ) {
-        # All directories we wrote will get the same file, make it here.
-        my $NAV = "[" . 
-            join( ",",
-                map { 
-                    $a = $_;
-                    
-                    "{" .
-                    join( ",", map { sprintf '"%s":"%s"', $_, Stasis::Page->_dqesc( $_ eq "dname" ? "../" . $a->{$_} . "/index.html" : $a->{$_} ) } keys %$a )
-                    . "}"
-                    
-                } @dirs_written
-            ) . "]";
+        $_->{dname} &&= "../" . $_->{dname} . "/index.html" foreach (@dirs_written);
+        my $NAV = Stasis::Page->_json( \@dirs_written );
+        $_->{dname} =~ s/^\.\.\/(.*)\/index\.html$/$1/ foreach (@dirs_written);
         
         foreach my $dir (@dirs_written) {
             eval {
                 my $dname = sprintf "%s/%s", $opt_dir, $dir->{dname};
-                die "Could not find " . $dir->{dname} unless -d $dname;
+                die "Could not find " . $opt_dir . "/" . $dir->{dname} unless -d $dname;
                 
                 open DNAV, ">$dname/raid.json" or die "Could not open $dname/raid.json";
                 print DNAV $NAV;

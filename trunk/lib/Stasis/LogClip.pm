@@ -63,14 +63,14 @@ sub json {
     foreach my $ldata (@{$self->{lines}}) {
         my ($line, $lp) = @$ldata;
         
-        push @out, sprintf( '{"str":"%s","hp":"%d","t":"%0.3f"}',
-            $self->_dqesc( $line ),
-            $lp->{hp} || 0,
-            ($lp->{t} || 0) - $start||0,
-        );
+        push @out, {
+            str => $line,
+            hp => ($lp->{hp} || 0),
+            t => sprintf( "%0.3f", ($lp->{t} || 0) - $start||0 ),
+        };
     }
     
-    return "[" . join( ",", @out ) . "]";
+    return $self->_json(\@out);
 }
 
 1;
