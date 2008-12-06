@@ -277,7 +277,7 @@ body {
 }
 
 .swsmaster .colorPet {
-    color: #404040;
+    color: #666;
 }
 
 .swsmaster .colorMob {
@@ -299,7 +299,7 @@ li#bossnav {
 .swsmaster .yuimenubar .yuimenubaritem:hover {
     background-image: none;
     background-color: #55a;
-    color: white;
+    color: #e5e5ff;
 }
 
 .swsmaster .yuimenubar .yuimenubaritemlabel {
@@ -307,10 +307,21 @@ li#bossnav {
 }
 
 .swsmaster .yuimenubar .yuimenubaritemlabel-selected {
-    background-image: none;
     background-color: #55a;
     border-color: #55a;
-    color: white;
+    color: #e5e5ff;
+}
+
+.swsmaster .yuimenubar .yuimenuitem:hover {
+    background-image: none;
+    background-color: #55a;
+    color: #e5e5ff;
+}
+
+.swsmaster .yuimenubar .yuimenuitemlabel-selected {
+    border-color: #55a;
+    background-color: #55a;
+    color: #e5e5ff;
 }
 
 .swsmaster .yuimenubar a {
