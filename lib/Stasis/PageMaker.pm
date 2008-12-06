@@ -28,6 +28,7 @@ use warnings;
 use POSIX;
 use HTML::Entities qw();
 use Stasis::Extension qw(ext_sum);
+use Stasis::Page;
 use Carp;
 
 sub new {
@@ -289,53 +290,96 @@ END
 }
 
 sub statHeader {
-    my $self = shift;
-    my $title = shift || "Page";
-    my $subtitle = shift || "";
-    my $start = shift || 0;
+    my ($self, $title, $subtitle, $start) = @_;
+    
+    # Defaults
+    $title ||= "Page";
 
     # Start off with a header
-    my $starttxt = strftime( "%a %B %e, %Y %H:%M", localtime($start) );
-    my $PAGE = "<div class=\"top\"><h2>$title: $starttxt</h2>";
+    my $starttxt = $start ? ": " . strftime( "%a %B %d, %Y %H:%M", localtime($start) ) : "";
+    my $PAGE = "<div class=\"top\"><h2>${title}${starttxt}</h2>";
     
-    # Print navigation links
-    $title .= " : $subtitle" if $subtitle;
-    
-    $PAGE .= <<MENU;
-<script type="text/javascript">initMenu('swsmenu','raid.json');</script>
-<div id="swsmenu" class="yuimenubar yuimenubarnav">
-    <div class="bd">
-        <ul class="first-of-type">
-            <li id="bossnav" class="yuimenubaritem first-of-type">
-                <a class="yuimenubaritemlabel first-of-type" href="javascript:void();"><b>$title</b></a>
-            </li>
-            <li class="yuimenubaritem">
-                <a class="yuimenubaritemlabel" href="index.html#damage_out" onClick="toggleTab('damage_out',1)">Damage Out</a>
-            </li>
-            <li class="yuimenubaritem">
-                <a class="yuimenubaritemlabel" href="index.html#damage_in" onClick="toggleTab('damage_in',1)">Damage In</a>
-            </li>
-            <li class="yuimenubaritem">
-                <a class="yuimenubaritemlabel" href="index.html#healing" onClick="toggleTab('healing',1)">Healing</a>
-            </li>
-            <li class="yuimenubaritem">
-                <a class="yuimenubaritemlabel" href="index.html#raid__amp__mobs" onClick="toggleTab('raid__amp__mobs',1)">Raid &amp; Mobs</a>
-            </li>
-            <li class="yuimenubaritem">
-                <a class="yuimenubaritemlabel" href="index.html#deaths" onClick="toggleTab('deaths',1)">Deaths</a>
-            </li>
-        </ul>
-    </div>
-</div>
-MENU
-    
-    # if( $subtitle ) {
-    #     $PAGE .= '<b><a href="index.html#damage_out">Damage Out</a> &ndash; <a href="index.html#damage_in">Damage In</a> &ndash; <a href="index.html#healing">Healing</a> &ndash; <a href="index.html#raid__amp__mobs">Raid &amp; Mobs</a> &ndash; <a href="index.html#deaths">Deaths</a></b>';
-    # } else {
-    #     $PAGE .= '<b><a href="#damage_out" onclick="toggleTab(\'damage_out\');">Damage Out</a> &ndash; <a href="#damage_in" onclick="toggleTab(\'damage_in\');">Damage In</a> &ndash; <a href="#healing" onclick="toggleTab(\'healing\');">Healing</a> &ndash; <a href="#raid__amp__mobs" onclick="toggleTab(\'raid__amp__mobs\');">Raid &amp; Mobs</a> &ndash; <a href="#deaths" onclick="toggleTab(\'deaths\');">Deaths</a></b>';
-    # }
+    if( $start ) {
+        # Raid & Mobs menu
+        my @raiders = map {
+            my $link = $self->actorLink( $_ );
+            $link =~ s/class="/class="yuimenuitemlabel /;
+            sprintf '<li class="yuimenuitem">%s</li>', $link;
+        } sort {
+            ( $self->{raid}{$a}{class} cmp $self->{raid}{$b}{class} ) || ( $self->{ext}{Index}->actorname($a) cmp $self->{ext}{Index}->actorname($b) )
+        } grep {
+            exists $self->{raid}{$_} && $self->{raid}{$_}{class} && $self->{raid}{$_}{class} ne "Pet"
+        } keys %{$self->{ext}{Presence}{actors}};
+        
+        my %group_seen;
+        my @mobs = map {
+            my $link = $self->actorLink( $_ );
+            $link =~ s/class="/class="yuimenuitemlabel /;
+            sprintf '<li class="yuimenuitem">%s</li>', $link;
+        } sort {
+            $self->{ext}{Index}->actorname($a) cmp $self->{ext}{Index}->actorname($b)
+        } grep {
+            my $group = $self->{grouper}->group($_);
+            ! ( $group && $group_seen{$group} ++ );
+        } grep {
+            ! exists $self->{raid}{$_} || ! $self->{raid}{$_}{class}
+        } keys %{$self->{ext}{Presence}{actors}};
+        
+        my $raid_text = join "", @raiders;
+        my $mob_text = join "", @mobs;
+        my $menu_init = Stasis::Page->_json( { bossnav => "raid.json" } );
+        
+        $PAGE .= <<MENU;
+        <script type="text/javascript">initMenu('swsmenu', $menu_init);</script>
+        <div id="swsmenu" class="yuimenubar yuimenubarnav">
+            <div class="bd">
+                <ul class="first-of-type">
+                    <li id="bossnav" class="yuimenubaritem first-of-type"><a class="yuimenubaritemlabel first-of-type" href="index.html"><b>$title</b></a></li>
 
-    return "$PAGE</div>";
+                    <li class="yuimenubaritem"><a class="yuimenubaritemlabel" href="index.html">Charts</a>
+                        <div id="charts" class="yuimenu">
+                            <div class="bd">
+                                <ul>
+                                    <li class="yuimenuitem"><a class="yuimenuitemlabel" href="index.html#damage_out" onClick="toggleTab('damage_out',1)">Damage Out</a></li>
+                                    <li class="yuimenuitem"><a class="yuimenuitemlabel" href="index.html#damage_in" onClick="toggleTab('damage_in',1)">Damage In</a></li>
+                                    <li class="yuimenuitem"><a class="yuimenuitemlabel" href="index.html#healing" onClick="toggleTab('healing',1)">Healing</a></li>
+                                    <li class="yuimenuitem"><a class="yuimenuitemlabel" href="index.html#deaths" onClick="toggleTab('deaths',1)">Deaths</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </li>
+
+                    <li id="raidandmobs" class="yuimenubaritem"><a class="yuimenubaritemlabel" href="index.html#raid__amp__mobs" onClick="toggleTab('raid__amp__mobs',1)">Raid &amp; Mobs</a>
+                        <div id="raid" class="yuimenu">
+                            <div class="bd">
+                                <ul>
+                                    $raid_text
+                                </ul>
+                                <ul>
+                                    <li class="yuimenuitem">
+                                        <a class="yuimenuitemlabel" href="index.html#raid__amp__mobs" onClick="toggleTab('raid__amp__mobs',1)">Mobs</a>
+                                        <div id="mobs" class="yuimenu">
+                                            <div class="bd">
+                                                <ul class="first-of-type">
+                                                    $mob_text
+                                                </ul>            
+                                            </div>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+MENU
+    }
+    
+    $PAGE .= "</div>";
+    $PAGE =~ s/\s\s\s*//g;
+    
+    return $PAGE;
 }
 
 # pageFooter()
@@ -376,7 +420,7 @@ sub vertBox {
     $TABLE .= "<tr><th colspan=\"2\">$title</th></tr>" if $title;
     
     for( my $row = 0; $row < (@_ - 1) ; $row += 2 ) {
-        $TABLE .= "<tr><td class=\"vh\">" . $_[$row] . "</td><td>" . $_[$row + 1] . "</td></tr>";
+        $TABLE .= "<tr><td class=\"vh\">" . $_[$row] . "</td><td>" . ($_[$row+1] =~ /^\d+$/ ? $self->_commify($_[$row+1]) : $_[$row+1] ) . "</td></tr>";
     }
     
     $TABLE .= "</table>";
@@ -477,7 +521,7 @@ sub tip {
     
     if( $long ) {
         $long =~ s/"/&quot;/g;
-        return sprintf '<span id="tip%d" class="tip" title="%s">%s</span>', $id, $long, $short;
+        return sprintf '<span id="tip%d" class="tip" title="%s">%s</span>', $id, $long, ( $short =~ /^\d+$/ ? $self->_commify($short) : $short );
     } else {
         return $short || "";
     }

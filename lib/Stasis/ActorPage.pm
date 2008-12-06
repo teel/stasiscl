@@ -32,6 +32,7 @@ use Stasis::Page;
 use Stasis::PageMaker;
 use Stasis::ActorGroup;
 use Stasis::Extension qw(span_sum);
+use Stasis::MobUtil qw(splitguid);
 
 our @ISA = "Stasis::Page";
 
@@ -215,6 +216,12 @@ sub page {
     # Type info
     push @summaryRows, "Class" => $self->{raid}{$MOB}{class} || "Mob";
     
+    # Wowhead link
+    if( $MOB && ! $self->{raid}{$MOB}{class} ) {
+        my (undef, $npc, undef) = splitguid $MOB;
+        push @summaryRows, "Wowhead Link" => sprintf "<a href=\"http://www.wowhead.com/?npc=%s\" target=\"swswha_%s\">%s (#%s)</a> &#187;", $npc, $npc, HTML::Entities::encode_entities($self->{ext}{Index}->actorname($MOB)), $npc if $npc && $npc < 2**16;
+    }
+    
     if( $self->{server} && $self->{raid}{$MOB}{class} && $self->{raid}{$MOB}{class} ne "Pet" ) {
         my $r = $self->{server};
         my $n = $self->{ext}{Index}->actorname($MOB);
@@ -313,6 +320,7 @@ sub page {
     # DAMAGE #
     ##########
     
+    my $deOutAbility;
     if( %$deOut || %$deIn ) {
         $PAGE .= $pm->tabStart("Damage");
         $PAGE .= $pm->tableStart;
@@ -321,10 +329,12 @@ sub page {
         # DAMAGE OUT ABILITIES #
         ########################
         
+        $deOutAbility = $self->_abilityRows($deOut);
+        
         $PAGE .= $pm->tableRows(
             title => "Damage Out by Ability",
-            header => [ "Ability", "R-Total", "R-%", "", "", "R-Hits", "R-Crits", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Avoid", ],
-            data => $self->_abilityRows($deOut),
+            header => [ "Ability", "R-Total", "R-%", "", "", "R-Direct", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Avoid", ],
+            data => $deOutAbility,
             sort => sub ($$) { ($_[1]->{total}||0) <=> ($_[0]->{total}||0) },
             master => sub {
                 my ($spellactor, $spellname, $spellid) = $self->_decodespell($_[0], $pm, "Damage", @PLAYER);
@@ -341,7 +351,7 @@ sub page {
         
         $PAGE .= $pm->tableRows(
             title => "Damage Out by Target",
-            header => [ "Target", "R-Total", "R-%", "R-DPS", "R-Time", "R-Hits", "R-Crits", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Avoid", ],
+            header => [ "Target", "R-Total", "R-%", "R-DPS", "R-Time", "R-Direct", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Avoid", ],
             data => $self->_targetRows($deOut),
             sort => sub ($$) { ($_[1]->{total}||0) <=> ($_[0]->{total}||0) },
             master => sub {
@@ -360,7 +370,7 @@ sub page {
 
         $PAGE .= $pm->tableRows(
             title => "Damage In by Source",
-            header => [ "Source", "R-Total", "R-%", "R-DPS", "R-Time", "R-Hits", "R-Crits", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Avoid", ],
+            header => [ "Source", "R-Total", "R-%", "R-DPS", "R-Time", "R-Direct", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Avoid", ],
             data => $deIn,
             sort => sub ($$) { ($_[1]->{total}||0) <=> ($_[0]->{total}||0) },
             master => sub {
@@ -380,7 +390,7 @@ sub page {
     # HEALING #
     ###########
     
-    my ($eff_on_others, $eff_on_me);
+    my ($eff_on_others, $eff_on_me, $heOutAbility);
     if( %$heIn || %$heOut ) {
         $PAGE .= $pm->tabStart("Healing");
         $PAGE .= $pm->tableStart;
@@ -389,10 +399,12 @@ sub page {
         # HEALING OUT ABILITIES #
         #########################
         
+        $heOutAbility = $self->_abilityRows($heOut);
+        
         $PAGE .= $pm->tableRows(
             title => "Healing Out by Ability",
-            header => [ "Ability", "R-Eff. Heal", "R-%", "R-Hits", "R-Crits", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Overheal", ],
-            data => $self->_abilityRows($heOut),
+            header => [ "Ability", "R-Eff. Heal", "R-%", "R-Direct", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Overheal", ],
+            data => $heOutAbility,
             sort => sub ($$) { ($_[1]->{effective}||0) <=> ($_[0]->{effective}||0) },
             preprocess => sub { 
                 # Sum on all rows
@@ -418,7 +430,7 @@ sub page {
         
         $PAGE .= $pm->tableRows(
             title => "Healing Out by Target",
-            header => [ "Target", "R-Eff. Heal", "R-%", "R-Hits", "R-Crits", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Overheal", ],
+            header => [ "Target", "R-Eff. Heal", "R-%", "R-Direct", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Overheal", ],
             data => $self->_targetRows($heOut),
             sort => sub ($$) { ($_[1]->{effective}||0) <=> ($_[0]->{effective}||0) },
             preprocess => sub { 
@@ -442,7 +454,7 @@ sub page {
 
         $PAGE .= $pm->tableRows(
             title => "Healing In by Source",
-            header => [ "Source", "R-Eff. Heal", "R-%", "R-Hits", "R-Crits", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Overheal", ],
+            header => [ "Source", "R-Eff. Heal", "R-%", "R-Direct", "R-Ticks", "R-AvHit", "R-AvCrit", "R-AvTick", "R-% Crit", "R-Overheal", ],
             data => $heIn,
             sort => sub ($$) { ($_[1]->{effective}||0) <=> ($_[0]->{effective}||0) },
             preprocess => sub { 
@@ -477,17 +489,42 @@ sub page {
         #########
         # CASTS #
         #########
+        
+        # Inject fake junk into castsOut that makes the page a little more useful.
+
+        # foreach my $eOutAbility ($deOutAbility, $heOutAbility) {
+        #     if( $eOutAbility ) {
+        #         while( my ($kspell, $vspell) = each (%$eOutAbility) ) {
+        #             # This might be an encoded spell.
+        #             my ($spellactor, $spellname, $spellid) = $self->_decodespell($kspell, $pm, "Casts and Power", @PLAYER);
+        #             if( ( !$castsOut->{$spellid} ) && grep $_ eq $spellactor, @PLAYER ) {
+        #                 # Missing from Casts table, and this is not a pet action. Inject fake entries.
+        #                 while( my ($ktarget, $vtarget) = each (%$vspell) ) {
+        #                     $castsOut->{$spellid}{$ktarget} = {
+        #                         count => ((($vtarget->{hitCount}||0) + ($vtarget->{critCount}||0))||0),
+        #                         ticks => $vtarget->{tickCount},
+        #                         fake => 1,
+        #                     }
+        #                 }
+        #             }
+        #         }
+        #     }
+        # }
 
         $PAGE .= $pm->tableRows(
             title => "Casts",
-            header => [ "Name", "R-Targets", "R-Casts", "", "", "", ],
+            header => [ "Name", "R-Targets", "R-Casts", "R-Ticks", "", "", ],
             data => $castsOut,
-            sort => sub ($$) { $_[1]->{count} <=> $_[0]->{count} },
+            sort => sub ($$) { ($_[1]->{count}||0) <=> ($_[0]->{count}||0) },
             master => sub {
+                my $link = $pm->spellLink( $_[0], "Casts and Power" );
+                $link = "<i>$link</i>" if $_[1]->{fake};
+                
                 return {
-                    "Name" => $pm->spellLink( $_[0], "Casts and Power" ),
+                    "Name" => $link,
                     "R-Targets" => scalar keys %{$castsOut->{$_[0]}},
                     "R-Casts" => $_[1]->{count},
+                    "R-Ticks" => $_[1]->{ticks},
                 };
             },
             slave => sub {
@@ -495,6 +532,7 @@ sub page {
                     "Name" => $pm->actorLink( $_[0] ),
                     "R-Targets" => "",
                     "R-Casts" => $_[1]->{count},
+                    "R-Ticks" => $_[1]->{ticks},
                 };
             },
         ) if %$castsOut;
@@ -872,7 +910,7 @@ sub page {
         }
     }
     
-    $PAGE .= $pm->jsTab( $eff_on_others && $eff_on_others > 2 * ($dmg_to_all||0) ? "Healing" : $tabs[0]) if @tabs;
+    $PAGE .= $pm->jsTab( $eff_on_others && $eff_on_others > 2 * ($dmg_to_mobs||0) ? "Healing" : $tabs[0]) if @tabs;
     $PAGE .= $pm->tabBarEnd;
     
     ##########

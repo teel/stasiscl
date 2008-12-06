@@ -186,51 +186,65 @@ function hashTab() {
     }
 }
 
-function initMenu(idMenu, jsonFile) {
+function initMenu(idMenu, jsonFiles) {
     /* Set up the top navigation menu. */
     YAHOO.util.Event.onContentReady(idMenu, function () {
         /* Standard menu items are marked up already */
-        var oMenuBar = new YAHOO.widget.MenuBar(idMenu, { autosubmenudisplay: true, showdelay: 0, hidedelay: 250, lazyload: true });
+        var oMenuBar = new YAHOO.widget.MenuBar(idMenu, { autosubmenudisplay: true, showdelay: 0, hidedelay: 750, lazyload: true, scrollincrement: 5 });
         
-        /* Use XHR to add boss navigation */
-        sendXHR( jsonFile, function(o) {
-            if( o.responseText !== undefined ) {
-                try {
-                    var splits = YAHOO.lang.JSON.parse(o.responseText);
+        for( var idMenuItem in jsonFiles ) {
+            var jsonFile = jsonFiles[idMenuItem];
+            
+            if( document.getElementById(idMenuItem) ) {
+                /* Use XHR to add boss navigation */
+                sendXHR( jsonFile, function(o) {
+                    if( o.responseText !== undefined ) {
+                        try {
+                            var splits = YAHOO.lang.JSON.parse(o.responseText);
 
-                    if( splits.length > 0 ) {
-                        var splitsData = [];
-                        for( var x = 0 ; x < splits.length ; x++ ) {
-                            /* Boss name */
-                            var splitText = splits[x].longname;
-                            
-                            /* Amount of damage */
-                            var dmgText = "";
-                            var n = splits[x].damage;
-                            
-                            if( n && n > 0 ) {
-                                dmgText = " (";
-                                
-                                if( n < 1000 ) {
-                                    dmgText += Math.floor(n);
-                                } else if( n < 100000 ) {
-                                    dmgText += Math.floor(n / 100)/10 + "K";
-                                } else {
-                                    dmgText += Math.floor(n / 100000)/10 + "M";
+                            if( splits.length > 0 ) {
+                                var splitsData = [];
+                                for( var x = 0 ; x < splits.length ; x++ ) {
+                                    /* Boss name */
+                                    var splitText = splits[x].longname;
+
+                                    /* Amount of damage */
+                                    var dmgText = "";
+                                    var n = splits[x].damage;
+
+                                    if( n && n > 0 ) {
+                                        dmgText = " (";
+
+                                        if( n < 1000 ) {
+                                            dmgText += Math.floor(n);
+                                        } else if( n < 100000 ) {
+                                            dmgText += Math.floor(n / 100)/10 + "K";
+                                        } else {
+                                            dmgText += Math.floor(n / 100000)/10 + "M";
+                                        }
+
+                                        dmgText += " dmg)";
+                                    }
+
+                                    splitsData.push( { "text": splitText + dmgText, "url": splits[x].dname } );
                                 }
-                            
-                                dmgText += " dmg)";
+                                
+                                var items = oMenuBar.getItems();
+                                for( var xx in items ) {
+                                    if( items[xx].id == idMenuItem ) {
+                                        oMenuItem = items[xx];
+                                    }
+                                }
+                                
+                                oMenuItem.cfg.setProperty("submenu", { id: "splits", itemdata: splitsData });
+                                oMenuBar.render();
                             }
-                            
-                            splitsData.push( { "text": splitText + dmgText, "url": splits[x].dname } );
-                        }
-                        
-                        oMenuBar.getItem(0).cfg.setProperty("submenu", { id: "splits", itemdata: splitsData });
-                        oMenuBar.render();
+                        } catch(e) {}
                     }
-                } catch(e) {}
+                });
+                
             }
-        });
+        }
         
         oMenuBar.render();
     });

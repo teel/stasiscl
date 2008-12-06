@@ -58,6 +58,8 @@ sub page {
 # Escape for double quotes
 sub _dqesc {
     my $str = pop;
+    
+    $str = "$str";
     $str =~ s/([\t\r\n\/\\\"])/\\$1/g;
     return $str;
 }
@@ -161,6 +163,7 @@ sub _rowDamage {
         "R-%" => $sdata->{total} && $mnum && _tidypct( $sdata->{total} / $mnum * 100 ),
         "R-DPS" => $sdata->{total} && $time && sprintf( "%d", $sdata->{total}/$time ),
         "R-Time" => $time && sprintf( "%02d:%02d", $time/60, $time%60 ),
+        "R-Direct" => (($sdata->{hitCount}||0) + ($sdata->{critCount}||0)) && $self->{pm}->tip( sprintf( "%d", ($sdata->{hitCount}||0) + ($sdata->{critCount}||0) ), join( "<br />", map { $sdata->{$_ . "Count"} ? $sdata->{$_ . "Count"} . " ${_}s" : () } qw(hit crit) ) ),
         "R-Hits" => $sdata->{hitCount} && sprintf( "%d", $sdata->{hitCount} ),
         "R-AvHit" => $sdata->{hitCount} && $sdata->{hitTotal} && $self->{pm}->tip( int($sdata->{hitTotal} / $sdata->{hitCount}), sprintf( "Range: %d&ndash;%d", $sdata->{hitMin}, $sdata->{hitMax} ) ),
         "R-Ticks" => $sdata->{tickCount} && sprintf( "%d", $sdata->{tickCount} ),
@@ -182,6 +185,7 @@ sub _rowHealing {
         "R-%" => $sdata->{effective} && $mnum && _tidypct( $sdata->{effective} / $mnum * 100 ),
         "R-Overheal" => $sdata->{total} && sprintf( "%0.1f%%", ($sdata->{total} - ($sdata->{effective}||0) ) / $sdata->{total} * 100 ),
         "R-Count" => $sdata->{count}||0,
+        "R-Direct" => (($sdata->{hitCount}||0) + ($sdata->{critCount}||0)) && $self->{pm}->tip( sprintf( "%d", ($sdata->{hitCount}||0) + ($sdata->{critCount}||0) ), join( "<br />", map { $sdata->{$_ . "Count"} ? $sdata->{$_ . "Count"} . " ${_}s" : () } qw(hit crit) ) ),
         "R-Hits" => $sdata->{hitCount} && sprintf( "%d", $sdata->{hitCount} ),
         "R-AvHit" => $sdata->{hitCount} && $sdata->{hitTotal} && $self->{pm}->tip( int($sdata->{hitTotal} / $sdata->{hitCount}), sprintf( "Range: %d&ndash;%d", $sdata->{hitMin}, $sdata->{hitMax} ) ),
         "R-Ticks" => $sdata->{tickCount} && sprintf( "%d", $sdata->{tickCount} ),
@@ -190,6 +194,20 @@ sub _rowHealing {
         "R-AvCrit" => $sdata->{critCount} && $sdata->{critTotal} && $self->{pm}->tip( int($sdata->{critTotal} / $sdata->{critCount}), sprintf( "Range: %d&ndash;%d", $sdata->{critMin}, $sdata->{critMax} ) ),
         "R-% Crit" => $sdata->{count} && $sdata->{critCount} && ($sdata->{count} - ($sdata->{tickCount}||0)) && sprintf( "%0.1f%%", ($sdata->{critCount}||0) / ($sdata->{count} - ($sdata->{tickCount}||0)) * 100 ),
     };
+}
+
+sub _json {
+    my ($self, $ds) = @_;
+    
+    if( ref $ds eq 'HASH' ) {
+        '{' . join( ',', map { "\"$_\":" . $self->_json( $ds->{$_} ) } keys %$ds ) . '}'
+    } elsif( ref $ds eq 'ARRAY' ) {
+        '[' . join( ',', map { $self->_json( $_ ) } @$ds ) . ']'
+    } elsif( $ds ) {
+        '"' . $self->_dqesc( $ds ) . '"'
+    } else {
+        '""'
+    }
 }
 
 1;
