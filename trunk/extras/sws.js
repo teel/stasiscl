@@ -206,12 +206,12 @@ function initMenu(idMenu, jsonFiles) {
                                 var splitsData = [];
                                 for( var x = 0 ; x < splits.length ; x++ ) {
                                     /* Boss name */
-                                    var splitText = splits[x].longname;
-
+                                    var splitText = splits[x].long;
+                                    
                                     /* Amount of damage */
                                     var dmgText = "";
                                     var n = splits[x].damage;
-
+                                    
                                     if( n && n > 0 ) {
                                         dmgText = " (";
 

@@ -34,6 +34,15 @@ body {
     font-size: 16px;
 }
 
+.swsmaster h4 {
+    background-color: #e5e5ff;
+    color: #55a;
+    font-size: 12px;
+    padding: 4px;
+    text-align: left;
+    border-bottom: 1px solid #55a;
+}
+
 .swsmaster a {
     text-decoration: none;
     color: #33d;
