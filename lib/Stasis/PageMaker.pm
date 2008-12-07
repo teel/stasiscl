@@ -110,13 +110,13 @@ sub tableTitle {
 
 # tableHeader( @header_rows )
 sub tableHeader {
-    my $self = shift;
-    
-    my $result = $self->tableTitle( shift, @_ );
-    
+    my ( $self, $title, @header ) = @_;
+
+    my $result = "";
+    $result = $self->tableTitle( $title, @header ) if $title;    
     $result .= "<tr>";
     
-    foreach my $col (@_) {
+    foreach my $col (@header) {
         my $style_text = "";
         if( $col =~ /^R-/ ) {
             $style_text .= "text-align: right;";
@@ -290,16 +290,16 @@ END
 }
 
 sub statHeader {
-    my ($self, $title, $subtitle, $start) = @_;
+    my ($self, $title, undef, $start) = @_;
     
-    # Defaults
-    $title ||= "Page";
-
     # Start off with a header
-    my $starttxt = $start ? ": " . strftime( "%a %B %d, %Y %H:%M", localtime($start) ) : "";
-    my $PAGE = "<div class=\"top\"><h2>${title}${starttxt}</h2>";
+    my $PAGE = "<div class=\"top\">";
     
-    if( $start ) {
+    if( $start && $start =~ /^\d+(?:\.\d+|)$/ ) {
+        # Header with time
+        my $starttxt = $start ? ": " . strftime( "%a %B %d, %Y %H:%M", localtime($start) ) : "";
+        $PAGE .= "<h2>${title}${starttxt}</h2>" if $title;
+        
         # Raid & Mobs menu
         my @raiders = map {
             my $link = $self->actorLink( $_ );
@@ -374,6 +374,9 @@ sub statHeader {
             </div>
         </div>
 MENU
+    } else {
+        $PAGE .= "<h2>${title}</h2>";
+        $PAGE .= "<h4>${start}</h4>" if $start;
     }
     
     $PAGE .= "</div>";

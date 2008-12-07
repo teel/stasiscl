@@ -312,16 +312,16 @@ sub writedir($$$$$$$) {
     close DATAXML;
     
     # Return a hash describing what we just wrote.
-    my ($rdamage, $rtime) = (0, 0);
+    my ($rdamage, $rstart, $rend) = (0, $exts->{Presence}->presence);
     $rdamage = $1 if( $chart_xml =~ /<raid[^>]+dmg="(\d+)"/ );
-    $rtime = $1 if( $chart_xml =~ /<raid[^>]+lg="([\d\.]+)"/ );
     
     return {
         dname => $dname_suffix,
-        shortname => $short,
-        longname => $long,
+        short => $short,
+        long => $long,
         damage => $rdamage,
-        ptime => $rtime,
+        start => $rstart,
+        end => $rend,
     };
 }
 
