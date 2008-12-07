@@ -293,16 +293,16 @@ body {
     color: #464646;
 }
 
-li#bossnav {
-    margin-left: 15px;
-}
-
 .swsmaster .yuimenubar {
     background-image: none;
     background-color: none;
     border-left: 0;
     border-right: 0;
     border-color: #55a;
+}
+
+.swsmaster .yuimenubaritem.first-of-type {
+    margin-left: 15px;
 }
 
 .swsmaster .yuimenubar .yuimenubaritem:hover {
