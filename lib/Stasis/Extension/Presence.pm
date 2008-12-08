@@ -103,7 +103,7 @@ sub presence {
             }
         }
         
-        return ( $start || 0, $end || 0, ($end || 0) - ($start || 0) );
+        return wantarray ? ( $start || 0, $end || 0, ($end || 0) - ($start || 0) ) : (($end||0) - ($start||0));
     } else {
         # Raid
         if( !$self->{total} ) {
@@ -121,7 +121,7 @@ sub presence {
         }
         
         my ($tstart, $tend) = ( $self->{total}{start}, $self->{total}{end} );
-        return ( $tstart, $tend, $tend - $tstart );
+        return wantarray ? ( $tstart, $tend, $tend - $tstart ) : ($tend-$tstart);
     }
 }
 

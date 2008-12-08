@@ -196,7 +196,11 @@ body {
 
 .swsmaster tr.s td {
     color: #222;
-    background-color: #f7f7f7;
+    background-color: #fafafa;
+}
+
+.swsmaster tr.odd td {
+    background-color: #f6f6f6;
 }
 
 /* Legacy */
