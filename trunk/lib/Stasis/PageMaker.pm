@@ -44,6 +44,9 @@ sub new {
     # Header ID
     $params{headid} = 0;
     
+    # Row ID (for odd/even coloring)
+    $params{rowid} = 0;
+    
     bless \%params, $class;
 }
 
@@ -116,6 +119,9 @@ sub tableHeader {
     $result = $self->tableTitle( $title, @header ) if $title;    
     $result .= "<tr>";
     
+    # Reset row number (odd/even coloring)
+    $self->{rowid} = 0;
+    
     foreach my $col (@header) {
         my $style_text = "";
         if( $col =~ /^R-/ ) {
@@ -153,12 +159,15 @@ sub tableRow {
     # Override 'name'
     $params{name} = $params{type} eq "master" ? ++$self->{id} : $self->{id};
     
+    # Track rows within a table
+    $self->{rowid}++ if $params{type} ne "slave";
+    
     if( $params{type} eq "slave" ) {
         $result .= "<tr class=\"s\" name=\"s" . $params{name} . "\">";
     } elsif( $params{type} eq "master" ) {
-        $result .= "<tr class=\"sectionMaster\">";
+        $result .= "<tr class=\"sectionMaster" . ($self->{rowid}%2==0 ? " odd" : "") . "\">";
     } else {
-        $result .= "<tr class=\"section\">";
+        $result .= "<tr class=\"section" . ($self->{rowid}%2==0 ? " odd" : "") . "\">";
     }
     
     my $firstflag;
@@ -183,10 +192,10 @@ sub tableRow {
         
         if( !$firstflag && $params{type} eq "master" ) {
             # This is the first one (flag hasn't been set yet)
-            $result .= sprintf "<td%s>(<a class=\"toggle\" id=\"as%s\" href=\"javascript:toggleTableSection(%s%s);\">+</a>) %s</td>", $align, $params{name}, $params{name}, $params{url} ? ",'" . $params{url} . "'" : "", $params{data}{$col} =~ /^\d+$/ ? $self->_commify($params{data}{$col}) : $params{data}{$col};
+            $result .= sprintf "<td%s>(<a class=\"toggle\" id=\"as%s\" href=\"javascript:toggleTableSection(%s%s);\">+</a>) %s</td>", $align, $params{name}, $params{name}, $params{url} ? ",'" . $params{url} . "'" : "", $self->_commify($params{data}{$col});
         } else {
             if( $params{data}{$col} ) {
-                $result .= "<td${align}>" . ($params{data}{$col} =~ /^\d+$/ ? $self->_commify($params{data}{$col}) : $params{data}{$col}) . "</td>";
+                $result .= "<td${align}>" . $self->_commify($params{data}{$col}) . "</td>";
             } else {
                 $result .= "<td${align}></td>";
             }
@@ -423,7 +432,7 @@ sub vertBox {
     $TABLE .= "<tr><th colspan=\"2\">$title</th></tr>" if $title;
     
     for( my $row = 0; $row < (@_ - 1) ; $row += 2 ) {
-        $TABLE .= "<tr><td class=\"vh\">" . $_[$row] . "</td><td>" . ($_[$row+1] =~ /^\d+$/ ? $self->_commify($_[$row+1]) : $_[$row+1] ) . "</td></tr>";
+        $TABLE .= "<tr><td class=\"vh\">" . $_[$row] . "</td><td>" . $self->_commify($_[$row+1]) . "</td></tr>";
     }
     
     $TABLE .= "</table>";
@@ -524,17 +533,18 @@ sub tip {
     
     if( $long ) {
         $long =~ s/"/&quot;/g;
-        return sprintf '<span id="tip%d" class="tip" title="%s">%s</span>', $id, $long, ( $short =~ /^\d+$/ ? $self->_commify($short) : $short );
+        return sprintf '<span id="tip%d" class="tip" title="%s">%s</span>', $id, $self->_commify($long), $self->_commify($short);
     } else {
         return $short || "";
     }
 }
 
 sub _commify {
-    shift;
-    local($_) = shift;
-    1 while s/^(-?\d+)(\d{3})/$1,$2/;
-    return $_;
+    my $text = pop;
+    
+    my $commas = sub { my $t = shift; 1 while $t =~ s/^(-?\d+)(\d{3})/$1,$2/; $t };
+    $text =~ s/(^|[\s\(\>])([0-9]+)($|[\s\)\<])/ $1 . $commas->($2) . $3 /eg;
+    return $text;
 }
 
 1;
