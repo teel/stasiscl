@@ -171,7 +171,7 @@ sub ext_sum {
     # Merge the rest of @_ into $sd1.
     foreach my $sd2 (@_) {
         while( my ($key, $val) = each (%$sd2) ) {
-            next unless $val;
+            next unless defined $val;
             
             if( $sd1->{$key} ) {
                 if( ref $val && ref $val eq 'ARRAY' ) {
