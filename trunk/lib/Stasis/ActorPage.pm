@@ -57,7 +57,7 @@ sub page {
     my @playpet = ( @PLAYER );
     foreach my $player (@PLAYER) {
         # Add pets that have presence in this set of extensions.
-        push @playpet, grep { $self->{ext}{Presence}->presence($_) } @{$self->{raid}{$player}{pets}} 
+        push @playpet, @{$self->{raid}{$player}{pets}} 
             if( exists $self->{raid}{$player} && exists $self->{raid}{$player}{pets} );
     }
     
@@ -66,6 +66,21 @@ sub page {
     ################
     
     my $keyActor = sub { $self->{grouper}->captain_for($_[0]) };
+    my $keyActorWithPets;
+    
+    {
+        # Used for grouping pets with their owners for damage and healing in.
+        # Doing it this way means we can't use encoded spell IDs to show the name of the pet, maybe change this.
+        
+        my %pet_owners;
+        foreach my $player (keys %{$self->{raid}}) {
+            if( $self->{raid}{$player}{class} && $self->{raid}{$player}{pets} && $self->{raid}{$player}{class} ne "Pet" ) {
+                $pet_owners{$_} = $player foreach @{$self->{raid}{$player}{pets}};
+            }
+        }
+        
+        $keyActorWithPets = sub { $self->{grouper}->captain_for($pet_owners{$_[0]} || $_[0]) };
+    }
     
     my $actOut = $self->{ext}{Activity}->sum(
         actor => \@playpet,
@@ -90,7 +105,7 @@ sub page {
     my $deIn = $self->{ext}{Damage}->sum( 
         target => \@PLAYER, 
         expand => [ "actor", "spell" ],
-        keyActor => $keyActor,
+        keyActor => $keyActorWithPets,
     );
     
     my $heOut = $self->{ext}{Healing}->sum( 
@@ -102,7 +117,7 @@ sub page {
     my $heIn = $self->{ext}{Healing}->sum( 
         target => \@PLAYER, 
         expand => [ "actor", "spell" ],
-        keyActor => $keyActor,
+        keyActor => $keyActorWithPets,
     );
     
     my $castsOut = $self->{ext}{Cast}->sum( 
