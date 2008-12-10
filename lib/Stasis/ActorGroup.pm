@@ -102,7 +102,7 @@ sub run {
     foreach my $mob (keys %{$ext->{Presence}{actors}}) {
         next if $raid->{$mob} && $raid->{$mob}{class};
         my ($type, $npc, $spawn) = Stasis::MobUtil::splitguid($mob);
-        next if !$npc;
+        next if !$npc || $npc <= 2;
         
         $name{ $npc } ||= [];
         push @{ $name{ $npc } }, $mob;
