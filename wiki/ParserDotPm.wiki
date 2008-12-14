@@ -32,8 +32,8 @@ use Stasis::Parser;
 my $parser = Stasis::Parser->new( version => 2 );
 
 while( <STDIN> ) {
-    my %entry = $parser->parse($_);
-    if( my $text = $parser->toString( \%entry ) ) {
+    my $entry = $parser->parse($_);
+    if( my $text = $parser->toString( $entry ) ) {
         print "$text\n";
     }
 }
