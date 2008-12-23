@@ -296,8 +296,8 @@ sub writedir($$$$$$$) {
         my $dn = 0;
         foreach my $death (@$vactor) {
             $lc->clear;
-            foreach my $entry (@{$death->{autopsy}}) {
-                $lc->add( $entry->{entry}, hp => $entry->{hp}, t => $entry->{t} );
+            foreach my $event (@{$death->{autopsy}}) {
+                $lc->add( $event->{entry}, hp => $event->{hp}, t => $event->{t} );
             }
             
             open DEATHPAGE, sprintf ">$dname/death_%s_%d.json", $id, ++$dn or die;
@@ -353,121 +353,8 @@ sub lagstring($) {
 	return $lagstring;
 }
 
-## CODE ##
-
-# Get the action first.
-usage(0) unless @ARGV;
-my $action = lc shift @ARGV;
-usage(0) if $action eq "-h" || $action eq "help" || $action eq "-help" || $action eq "--help";
-
-# Get options.
-my $rc = GetOptions(
-    "version=s"     => \$opt_version,
-    "logger=s"      => \$opt_logger,
-    "file=s"        => \$opt_file,
-    "dir=s"         => \$opt_dir,
-    "minlength=i"   => \$opt_minlength,
-    "attempts"      => \$opt_attempts,
-    "nowrite"       => \$opt_nowrite,
-    "year=i"        => \$opt_year,
-    "sfile=s"       => \$opt_sfile,
-    "trash"         => \$opt_trash,
-    "overall"       => \$opt_overall,
-    "combine"       => \$opt_combine,
-    "server=s"      => \$opt_server,
-    "collapse"      => \$opt_collapse,
-    "tail"          => \$opt_tail,
-    "navigation"    => \$opt_nav,
-);
-
-# Clean up opt_dir
-if( $opt_dir ) {
-    $opt_dir = File::Spec->rel2abs($opt_dir);
-}
-
-# Create a parser.
-my $parser = Stasis::Parser->new( 
-    compact => 1,
-    version => $opt_version, 
-    logger => $opt_logger, 
-    year => $opt_year
-);
-
-# Set encoding of STDOUT to UTF-8 (which Blizzard uses for combat logs)
-binmode(STDOUT, ":utf8");
-
-# Case out the various actions.
-if( $action eq "print" ) {
-    # action PRINT: used to print out actions from a log file
-    
-    # Figure out what input to use.
-    my $db;
-    my $fh;
-    
-    if( $opt_file ) {
-        # Get a filehandle.
-        
-        if( $opt_tail ) {
-            # See if we have File::Tail
-            eval {
-                require File::Tail;
-                import File::Tail;
-            }; if( $@ ) {
-                bomb "please install File::Tail from CPAN or try again without -tail";
-            }
-            
-            tie *TAILFH, "File::Tail", ( 
-                name => $opt_file,
-
-                # Never wait more than 1 second between checks.
-                maxinterval => 1,
-
-                # Tail from the end of the file, don't read in pre-existing data.
-                tail => 0,
-
-                # If the file is moved out of the way and replaced, read its entire replacement.
-                reset_tail => 1,
-            );
-            
-            $fh = \*TAILFH;
-            status "WARNING: -tail is an experimental option, please report any strange behavior";
-        } else {
-            open $fh, $opt_file or bomb "could not open file: $opt_file";
-        }
-    } elsif( $opt_sfile ) {
-        # Get a database connection.
-        
-        if( $opt_tail ) {
-            bomb "SQLite mode is not supported with -tail.";
-        } else {
-            status "WARNING: SQLite mode is experimental, and the file format is subject to change!";
-            $db = Stasis::DB->new( db => $opt_sfile );
-            $db->line(1);
-        }
-    } else {
-        $opt_file = 1;
-        $fh = \*STDIN;
-    }
-    
-    while( defined( $_ = $opt_file ? <$fh> : $db->line() ) ) {
-        # Because File::Tail screws up Unicode
-        utf8::decode($_) if $opt_tail;
-        
-        my $pline = $opt_file ? $parser->parse($_) : $_;
-        if( $pline->{action} ) {
-            if( my $text = $parser->toString( $pline ) ) {
-                $pline->{t} =~ /^(\d+)(\.(\d+)|)$/;
-                my @t = localtime $1;
-                printf "%d/%d %02d:%02d:%02d\.%03d  %s\n", $t[4]+1, $t[3], $t[2], $t[1], $t[0], $2?$3:0, $text;
-            }
-        } else {
-            warn "bad line: " . $_;
-        }
-    }
-} elsif( $action eq "add" ) {
-    # Figure out what input to use.
-    my $fh;
-    my $db;
+sub _getsource {
+    my ($db, $fh);
     
     if( $opt_file ) {
         # Get a filehandle.
@@ -519,6 +406,173 @@ if( $action eq "print" ) {
         $opt_file = 1;
         $fh = \*STDIN;
     }
+    
+    return ($fh, $db);
+}
+
+## CODE ##
+
+# Get the action first.
+usage(0) unless @ARGV;
+my $action = lc shift @ARGV;
+usage(0) if $action eq "-h" || $action eq "help" || $action eq "-help" || $action eq "--help";
+
+# Get options.
+my $rc = GetOptions(
+    "version=s"     => \$opt_version,
+    "logger=s"      => \$opt_logger,
+    "file=s"        => \$opt_file,
+    "dir=s"         => \$opt_dir,
+    "minlength=i"   => \$opt_minlength,
+    "attempts"      => \$opt_attempts,
+    "nowrite"       => \$opt_nowrite,
+    "year=i"        => \$opt_year,
+    "sfile=s"       => \$opt_sfile,
+    "trash"         => \$opt_trash,
+    "overall"       => \$opt_overall,
+    "combine"       => \$opt_combine,
+    "server=s"      => \$opt_server,
+    "collapse"      => \$opt_collapse,
+    "tail"          => \$opt_tail,
+    "navigation"    => \$opt_nav,
+);
+
+status "Warning! Ignoring extra arguments: " . join( " ", @ARGV ) . "\n" if @ARGV;
+
+# Clean up opt_dir
+if( $opt_dir ) {
+    $opt_dir = File::Spec->rel2abs($opt_dir);
+}
+
+# Create a parser.
+my $parser = Stasis::Parser->new( 
+    compact => 1,
+    version => $opt_version, 
+    logger => $opt_logger, 
+    year => $opt_year
+);
+
+# Set encoding of STDOUT to UTF-8 (which Blizzard uses for combat logs)
+binmode(STDOUT, ":utf8");
+
+# Case out the various actions.
+if( $action eq "print" ) {
+    # action PRINT: used to print out actions from a log file
+    
+    # Figure out what input to use.
+    my ($fh, $db) = _getsource();
+    
+    while( defined( $_ = $opt_file ? <$fh> : $db->line() ) ) {
+        # Because File::Tail screws up Unicode
+        utf8::decode($_) if $opt_tail;
+        
+        my $event = $opt_file ? $parser->parse($_) : $_;
+        if( $event->{action} ) {
+            if( my $text = $parser->toString( $event ) ) {
+                $event->{t} =~ /^(\d+)(\.(\d+)|)$/;
+                my @t = localtime $1;
+                printf "%d/%d %02d:%02d:%02d\.%03d  %s\n", $t[4]+1, $t[3], $t[2], $t[1], $t[0], $2?$3:0, $text;
+            }
+        } else {
+            warn "bad line: " . $_;
+        }
+    }
+} elsif( $action eq "split" ) {
+    # Not supported with db mode yet, mostly because we don't have an event => log line reverse map.
+    bomb "Splitting SQLite files is not yet supported" if $opt_sfile;
+    
+    # Figure out what input to use.
+    my ($fh, $db) = _getsource();
+    
+    # Going to output in $opt_dir
+    bomb "not a directory: $opt_dir" unless $opt_dir && -d $opt_dir;
+    status "Using directory: $opt_dir";
+    
+    # Keep track of number of tries per boss.
+    my %boss_tries;
+    
+    # We'll write to this handle.
+    my $fhout;
+    my $please_close;
+    
+    # Set up the log splitter.
+    my $ed = Stasis::EventDispatcher->new;
+    
+    my $splitter = Stasis::LogSplit->new( version => $opt_version, callback =>
+        # LogSplit callback
+        sub {
+            my ($short, $start, $long, $kill, $end) = @_;
+            if( ! defined $kill ) {
+                # Let the user know we saw a boss start.
+                $start =~ /^(\d+)(\.(\d+)|)$/;
+                my @t = localtime $1;
+                status sprintf(
+                    "Encounter start: %s at %d/%d %02d:%02d:%02d\.%03d%s .. ",
+                    $short,
+                    $t[4]+1,
+                    $t[3],
+                    $t[2],
+                    $t[1],
+                    $t[0],
+                    $2?$3:0,
+                    $opt_tail ? " (" . lagstring(time-int($start)) . ")" : "",
+                );
+                
+                # Open the file
+                my $fname = sprintf ">%s/sws-%s-%d.txt", $opt_dir, $short, floor($start);
+                open $fhout, $fname;
+            } else {
+                # Closing a split.
+                $boss_tries{ $short } ++;
+                $long .= " try " . $boss_tries{ $short } if !$kill;
+                
+                # We don't want to close right away, since we want the last line to get written.
+                $please_close = 1;
+                
+                # If we're in no-attempt mode, and this was not a kill, unlink the file.
+                my $fname = sprintf "%s/sws-%s-%d.txt", $opt_dir, $short, floor($start);
+                
+                if( $opt_minlength && $end - $start < $opt_minlength ) {
+                    # Check minlength option.
+                    status "skipping (too short).";
+                    unlink $fname;
+                } elsif( !$opt_attempts && !$kill ) {
+                    # Check attempts option.
+                    status "skipping (not a kill).";
+                    unlink $fname;
+                } else {
+                    status sprintf "wrote %s (sws-%s-%d.txt).", $long, $short, floor($start);
+                }
+            }
+        }
+    );
+    
+    $ed->add( $splitter );
+    
+    while( defined( $_ = $opt_file ? <$fh> : $db->line() ) ) {
+        # Because File::Tail screws up Unicode
+        utf8::decode($_) if $opt_tail;
+        
+        # Get the line.
+        my $event = $opt_file ? $parser->parse($_) : $_;
+        
+        # Dispatch this action.
+        if( $event->{action} ) {
+            $ed->process($event);
+            print $fhout $_ if $fhout;
+            
+            if( $please_close ) {
+                close $fhout;
+                undef $fhout;
+                undef $please_close;
+            }
+        } else {
+            warn "bad line: " . $_;
+        }
+    }
+} elsif( $action eq "add" ) {
+    # Figure out what input to use.
+    my ($fh, $db) = _getsource();
     
     # Display a warning for nav mode.
     status "WARNING: -nav is an experimental option, and forwards compatibility is not guaranteed!" if $opt_nav;
@@ -647,13 +701,13 @@ if( $action eq "print" ) {
         utf8::decode($_) if $opt_tail;
         
         # Get the line.
-        my $pline = $opt_file ? $parser->parse($_) : $_;
-        $first ||= $pline->{t};
+        my $event = $opt_file ? $parser->parse($_) : $_;
+        $first ||= $event->{t};
         
         # Dispatch this action.
-        if( $pline->{action} ) {
-            $ed_splitter->process($pline);
-            $ed->process($pline);
+        if( $event->{action} ) {
+            $ed_splitter->process($event);
+            $ed->process($event);
         } else {
             warn "bad line: " . $_;
         }
@@ -877,8 +931,8 @@ if( $action eq "print" ) {
         my $nlog = -1;
         while( <$fh> ) {
             $nlog++;
-            my $entry = $parser->parse($_);
-            $db->addLine( $nlog, $entry );
+            my $event = $parser->parse($_);
+            $db->addLine( $nlog, $event );
         }
         
         $db->finish();

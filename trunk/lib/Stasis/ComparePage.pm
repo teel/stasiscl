@@ -134,6 +134,7 @@ sub page {
     }
 
     # Print page footer.
+    $PAGE .= $pm->tableEnd if keys %$heOut || keys %$deOut;
     $PAGE .= $pm->tabBarEnd;
     # $PAGE .= $pm->jsTab( $tabs[0] ) if @tabs;
     $PAGE .= $pm->pageFooter;

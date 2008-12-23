@@ -96,6 +96,7 @@ use constant {
     SPELL_STOLEN => 46,
     SPELL_AURA_BROKEN => 47,
     SPELL_RESURRECT => 48,
+    SPELL_BUILDING_DAMAGE => 49,
 };
 
 our %action_map = (
@@ -147,6 +148,7 @@ our %action_map = (
     SPELL_STOLEN => 46,
     SPELL_AURA_BROKEN => 47,
     SPELL_RESURRECT => 48,
+    SPELL_BUILDING_DAMAGE => 49,
 );
 
 =head3 new
@@ -227,6 +229,11 @@ Parses a single line.
         }
         
         return $entry;
+    }
+    
+    sub action_name {
+        my ($self, $id) = @_;
+        return $reverse_action_map{$id};
     }
 }
 
@@ -1062,6 +1069,7 @@ sub parse2 {
         $action == RANGE_DAMAGE || 
         $action == SPELL_DAMAGE || 
         $action == SPELL_PERIODIC_DAMAGE || 
+        $action == SPELL_BUILDING_DAMAGE ||
         $action == DAMAGE_SHIELD || 
         $action == DAMAGE_SPLIT
     ) {
