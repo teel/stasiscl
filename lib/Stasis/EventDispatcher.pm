@@ -51,7 +51,7 @@ sub add {
         foreach my $action (@actions) {
             push @{ $self->[ $Stasis::Parser::action_map{$action} ] }, [ $listener, undef ];
         }
-    } else {
+    } elsif( $listener ) {
         # Flush it first.
         $self->remove($listener);
 
@@ -60,6 +60,8 @@ sub add {
         while( my ($action, $handler) = each (%actions) ) {
             push @{ $self->[ $Stasis::Parser::action_map{$action} ] }, [ $handler, $listener ];
         }
+    } else {
+        die "null listener";
     }
 }
 
@@ -75,7 +77,20 @@ sub remove {
 sub process {
     my ($self, $entry) = @_;
     
-    $_->[0]->($_->[1], $entry) foreach (@{ $self->[ $entry->{action} ] });
+    foreach my $pair (@{ $self->[ $entry->{action} ] }) {
+        if( defined $pair->[1] ) {
+            $pair->[0]->( $pair->[1], $entry );
+        } else {
+            $pair->[0]->( $entry );
+        }
+    }
+}
+
+# Remove everything
+sub flush {
+    my ($self) = @_;
+    
+    $self->[$_] = [] foreach (values %Stasis::Parser::action_map);
 }
 
 1;

@@ -542,6 +542,8 @@ sub tip {
 sub _commify {
     my $text = pop;
     
+    return $text if $text =~ /(?:January|February|March|April|May|June|July|August|September|October|November|December)/;
+    
     my $commas = sub { my $t = shift; 1 while $t =~ s/^(-?\d+)(\d{3})/$1,$2/; $t };
     $text =~ s/(^|[\s\(\>])([0-9]+)($|[\s\)\<])/ $1 . $commas->($2) . $3 /eg;
     return $text;
