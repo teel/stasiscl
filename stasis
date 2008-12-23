@@ -475,10 +475,34 @@ if( $action eq "print" ) {
                 my $match;
                 
                 FILTER: foreach (@$opt_filter) {
-                    my @f = split /\s*[+,]\s*/;
+                    my @ff = split /\s*[+,]\s*/;
                     
-                    foreach (@f) {
-                        next FILTER unless $_ eq $event->{actor_name} || $_ eq $event->{target_name} || ( $event->{spellname} && $_ eq $event->{spellname} ) || ( $event->{extraspellname} && $_ eq $event->{extraspellname} ) || ( $parser->action_name( $event->{action} ) =~ /$_/i );
+                    foreach my $f ( @ff ) {
+                        if( $f =~ /^(\w+):\s*(.*)$/ ) {
+                            my ( $k, $v ) = ( $1, $2 );
+
+                            if( $k eq 'from' ) {
+                                next FILTER unless $v eq $event->{actor_name};
+                            } elsif( $k eq 'to' ) {
+                                next FILTER unless $v eq $event->{target_name};
+                            } elsif( $k eq 'spell' ) {
+                                next FILTER
+                                  unless ( $event->{spellname} && $v eq $event->{spellname} )
+                                      || ( $event->{extraspellname} && $v eq $event->{extraspellname} );
+                            } elsif( $k eq 'event' ) {
+                                next FILTER unless $parser->action_name( $event->{action} ) =~ /$v/i;
+                            } else {
+                                die "bad filter key: $k";
+                            }
+                        } else {
+                            # check all
+                            next FILTER
+                              unless $_ eq $event->{actor_name}
+                                  || $_ eq $event->{target_name}
+                                  || ( $event->{spellname}      && $_ eq $event->{spellname} )
+                                  || ( $event->{extraspellname} && $_ eq $event->{extraspellname} )
+                                  || ( $parser->action_name( $event->{action} ) =~ /$_/i );
+                        }
                     }
                     
                     # matched this filter
