@@ -1057,7 +1057,7 @@ sub parse2 {
     $result->{actor} = 0 unless $result->{actor_name};
     
     # _split sometimes puts an extra quote mark in the last column
-    $col[-1] =~ s/"$//;
+    $col[$#col] =~ s/"$// if @col;
     
     # Action specific processing
     if( $action == SWING_DAMAGE ) {
@@ -1215,10 +1215,26 @@ sub _legacyAction {
 sub toString {
     my ($self, $event, $actor_callback, $spell_callback) = @_;
     
-    my $actor = $actor_callback ? $actor_callback->( $event->{actor} ) : ($event->{actor_name} || "Environment");
-    my $target = $actor_callback ? $actor_callback->( $event->{target} ) : ($event->{target_name} || "Environment");
-    my $spell = $spell_callback ? $spell_callback->( $event->{spellid} ) : ($event->{spellname});
-    my $extraspell = $spell_callback ? $spell_callback->( $event->{extraspellid} ) : ($event->{extraspellname});
+    my $actor =
+      ( $event->{actor} && $actor_callback )
+      ? $actor_callback->( $event->{actor} )
+      : ( $event->{actor_name} || "Environment" );
+    
+    my $target =
+      ( $event->{target} && $actor_callback )
+      ? $actor_callback->( $event->{target} )
+      : ( $event->{target_name} || "Environment" );
+    
+    my $spell =
+      ( $event->{spellid} && $spell_callback )
+      ? $spell_callback->( $event->{spellid}, $event->{spellname} )
+      : ( $event->{spellname} );
+      
+    my $extraspell =
+      ( $event->{extraspellid} && $spell_callback )
+      ? $spell_callback->( $event->{extraspellid}, $event->{spellname} )
+      : ( $event->{extraspellname} );
+    
     my $text = "";
     
     if( $event->{action} == SWING_DAMAGE ) {
@@ -1400,30 +1416,44 @@ sub toString {
     } elsif( $event->{action} == SPELL_DURABILITY_DAMAGE_ALL ) {
 
     } elsif( $event->{action} == SPELL_DISPEL_FAILED ) {
-
+        $text = sprintf "[%s] %sfail to dispel [%s] %s",
+            $actor,
+            $spell ? $spell . " " : "",
+            $target,
+            $extraspell,
     } elsif( $event->{action} == SPELL_AURA_DISPELLED ) {
-
+        $text = sprintf "[%s] %sdispel [%s] %s",
+            $actor,
+            $spell ? $spell . " " : "",
+            $target,
+            $extraspell,
     } elsif( $event->{action} == SPELL_AURA_STOLEN ) {
-        
+        $text = sprintf "[%s] steal [%s] %s",
+            $actor,
+            $target,
+            $spell;
     } elsif( $event->{action} == SPELL_AURA_APPLIED ) {
         $text = sprintf "[%s] %s [%s] %s",
             $target,
-            $event->{auratype} eq "DEBUFF" ? "afflicted by" : "gain",
+            $event->{auratype} eq "DEBUFF" ? "afflicted by" : "gained",
             $actor,
             $spell;
     } elsif( $event->{action} == SPELL_AURA_REMOVED ) {
-        $text = sprintf "[%s] fade %s",
+        $text = sprintf "[%s] fade [%s] %s",
             $target,
+            $actor,
             $spell;
     } elsif( $event->{action} == SPELL_AURA_APPLIED_DOSE ) {
-        $text = sprintf "[%s] %s %s (%d)",
+        $text = sprintf "[%s] %s [%s] %s (%d)",
             $target,
-            $event->{auratype} eq "DEBUFF" ? "afflicted by" : "gain",
+            $event->{auratype} eq "DEBUFF" ? "afflicted by" : "gained",
+            $actor,
             $spell,
             $event->{amount};
     } elsif( $event->{action} == SPELL_AURA_REMOVED_DOSE ) {
-        $text = sprintf "[%s] decrease dose %s (%d)",
+        $text = sprintf "[%s] decrease dose [%s] %s (%d)",
             $target,
+            $actor,
             $spell,
             $event->{amount};
     } elsif( $event->{action} == SPELL_CAST_START ) {
@@ -1486,6 +1516,11 @@ sub toString {
             $actor,
             $spell,
             $target;
+    } elsif( $event->{action} == SPELL_AURA_REFRESH ) {
+        $text = sprintf "[%s] refresh [%s] %s",
+            $actor,
+            $target,
+            $spell;
     }
     
     return $text;

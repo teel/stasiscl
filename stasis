@@ -160,6 +160,7 @@ my $opt_server;
 my $opt_collapse;
 my $opt_tail;
 my $opt_nav;
+my $opt_filter;
 
 ## SUBS ##
 
@@ -435,6 +436,7 @@ my $rc = GetOptions(
     "collapse"      => \$opt_collapse,
     "tail"          => \$opt_tail,
     "navigation"    => \$opt_nav,
+    "filter=s@"     => \$opt_filter,
 );
 
 status "Warning! Ignoring extra arguments: " . join( " ", @ARGV ) . "\n" if @ARGV;
@@ -468,10 +470,33 @@ if( $action eq "print" ) {
         
         my $event = $opt_file ? $parser->parse($_) : $_;
         if( $event->{action} ) {
-            if( my $text = $parser->toString( $event ) ) {
+            if( $opt_filter ) {
+                # Check filter
+                my $match;
+                
+                FILTER: foreach (@$opt_filter) {
+                    my @f = split /\s*[+,]\s*/;
+                    
+                    foreach (@f) {
+                        next FILTER unless $_ eq $event->{actor_name} || $_ eq $event->{target_name} || ( $event->{spellname} && $_ eq $event->{spellname} ) || ( $event->{extraspellname} && $_ eq $event->{extraspellname} ) || ( $parser->action_name( $event->{action} ) =~ /$_/i );
+                    }
+                    
+                    # matched this filter
+                    $match = 1;
+                    last;
+                }
+                
+                next unless $match;
+            }
+            
+            if( my $text = $parser->toString( $event, undef, sub { "$_[1] ($_[0])" } ) ) {
                 $event->{t} =~ /^(\d+)(\.(\d+)|)$/;
                 my @t = localtime $1;
                 printf "%d/%d %02d:%02d:%02d\.%03d  %s\n", $t[4]+1, $t[3], $t[2], $t[1], $t[0], $2?$3:0, $text;
+            } else {
+                # If we're not in SQLite mode, we can print out the un-stringified line.
+                # TODO: support for sqlite mode.
+                print if !$opt_sfile;
             }
         } else {
             warn "bad line: " . $_;
