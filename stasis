@@ -516,7 +516,7 @@ if( $action eq "print" ) {
             if( my $text = $parser->toString( $event, undef, sub { "$_[1] ($_[0])" } ) ) {
                 $event->{t} =~ /^(\d+)(\.(\d+)|)$/;
                 my @t = localtime $1;
-                printf "%d/%d %02d:%02d:%02d\.%03d  %s\n", $t[4]+1, $t[3], $t[2], $t[1], $t[0], $2?$3:0, $text;
+                printf "%d/%d %02d:%02d:%02d\.%03d  %s\n", $t[4]+1, $t[3], $t[2], $t[1], $t[0], $2?$2*1000:0, $text;
             } else {
                 # If we're not in SQLite mode, we can print out the un-stringified line.
                 # TODO: support for sqlite mode.
