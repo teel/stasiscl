@@ -67,6 +67,7 @@ my $handler_spell = sub {
     if( $e->{actor_name} eq $actor ) {
         $spells{ $parser->action_name( $e->{action} ) }{ $e->{spellid} }{name} ||= $e->{spellname};
         $spells{ $parser->action_name( $e->{action} ) }{ $e->{spellid} }{"count" . ($isup ? "_up" : "_down")}++;
+        $spells{ $parser->action_name( $e->{action} ) }{ $e->{spellid} }{crit}++ if $e->{critical};
     }
 };
 
@@ -112,7 +113,7 @@ while( my ( $kaction, $vaction ) = each( %spells ) ) {
     
     while( my ( $kspell, $vspell) = each ( %$vaction) ) {
         no warnings;
-        printf "    %-35s: %d (%d up, %d down, %0.1f%%)\n", $vspell->{name} . " ($kspell)", $vspell->{count_up} + $vspell->{count_down}, $vspell->{count_up}, $vspell->{count_down}, $vspell->{count_up} / ($vspell->{count_down}+$vspell->{count_up}) * 100;
+        printf "    %-35s: %d (%d crit) (%d up, %d down, %0.1f%%)\n", $vspell->{name} . " ($kspell)", $vspell->{count_up} + $vspell->{count_down}, $vspell->{crit}, $vspell->{count_up}, $vspell->{count_down}, $vspell->{count_up} / ($vspell->{count_down}+$vspell->{count_up}) * 100;
     }
 }
 
