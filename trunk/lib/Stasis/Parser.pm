@@ -212,23 +212,23 @@ Parses a single line.
     @reverse_action_map{ values %action_map } = keys %action_map;
     
     sub parse {
-        my $entry;
+        my $event;
         
         if( $_[0]->{version} == 1 ) {
             # v1, compact
-            $entry = parse1(@_);
+            $event = parse1(@_);
         } else {
             # v2, compact
-            $entry = parse2(@_);
+            $event = parse2(@_);
         }
         
         if( !$_[0]->{compact} ) {
             # modify it for heathens
-            $entry->{action} = $entry->{action} ? $reverse_action_map{ $entry->{action} } : "";
-            $entry->{$_} = delete $entry->{$_} foreach( grep { $_ ne "action" && $_ ne "actor" && $_ ne "actor_name" && $_ ne "actor_relationship" && $_ ne "target" && $_ ne "target_name" && $_ ne "target_relationship" && $_ ne "t" } keys %$entry );
+            $event->{action} = $event->{action} ? $reverse_action_map{ $event->{action} } : "";
+            $event->{$_} = delete $event->{$_} foreach( grep { $_ ne "action" && $_ ne "actor" && $_ ne "actor_name" && $_ ne "actor_relationship" && $_ ne "target" && $_ ne "target_name" && $_ ne "target_relationship" && $_ ne "t" } keys %$event );
         }
         
-        return $entry;
+        return $event;
     }
     
     sub action_name {
@@ -1056,6 +1056,9 @@ sub parse2 {
     $result->{target} = 0 unless $result->{target_name};
     $result->{actor} = 0 unless $result->{actor_name};
     
+    # _split sometimes puts an extra quote mark in the last column
+    $col[-1] =~ s/"$//;
+    
     # Action specific processing
     if( $action == SWING_DAMAGE ) {
         if( @col <= 8 ) {
@@ -1210,269 +1213,275 @@ sub _legacyAction {
 }
 
 sub toString {
-    my ($self, $entry, $actor_callback, $spell_callback) = @_;
+    my ($self, $event, $actor_callback, $spell_callback) = @_;
     
-    my $actor = $actor_callback ? $actor_callback->( $entry->{actor} ) : ($entry->{actor_name} || "Environment");
-    my $target = $actor_callback ? $actor_callback->( $entry->{target} ) : ($entry->{target_name} || "Environment");
-    my $spell = $spell_callback ? $spell_callback->( $entry->{spellid} ) : ($entry->{spellname});
-    my $extraspell = $spell_callback ? $spell_callback->( $entry->{extraspellid} ) : ($entry->{extraspellname});
+    my $actor = $actor_callback ? $actor_callback->( $event->{actor} ) : ($event->{actor_name} || "Environment");
+    my $target = $actor_callback ? $actor_callback->( $event->{target} ) : ($event->{target_name} || "Environment");
+    my $spell = $spell_callback ? $spell_callback->( $event->{spellid} ) : ($event->{spellname});
+    my $extraspell = $spell_callback ? $spell_callback->( $event->{extraspellid} ) : ($event->{extraspellname});
     my $text = "";
     
-    if( $entry->{action} == SWING_DAMAGE ) {
+    if( $event->{action} == SWING_DAMAGE ) {
         $text = sprintf "[%s] %s [%s] %d",
             $actor,
-            $entry->{critical} ? "crit" : "hit",
+            $event->{critical} ? "crit" : "hit",
             $target,
-            $entry->{amount};
+            $event->{amount};
         
-        $text .= sprintf " (%d resisted)", $entry->{resisted} if $entry->{resisted};
-        $text .= sprintf " (%d blocked)", $entry->{blocked} if $entry->{blocked};
-        $text .= sprintf " (%d absorbed)", $entry->{absorbed} if $entry->{absorbed};
-        $text .= " (crushing)" if $entry->{crushing};
-        $text .= " (glancing)" if $entry->{glancing};
+        $text .= sprintf " (%d resisted)", $event->{resisted} if $event->{resisted};
+        $text .= sprintf " (%d blocked)", $event->{blocked} if $event->{blocked};
+        $text .= sprintf " (%d absorbed)", $event->{absorbed} if $event->{absorbed};
+        $text .= " (crushing)" if $event->{crushing};
+        $text .= " (glancing)" if $event->{glancing};
         
         # WLK log overdamage
-        if( $entry->{extraamount} ) {
-            $text .= sprintf " {%s}", $entry->{extraamount};
+        if( $event->{extraamount} ) {
+            $text .= sprintf " {%s}", $event->{extraamount};
         }
-    } elsif( $entry->{action} == SWING_MISSED ) {
+    } elsif( $event->{action} == SWING_MISSED ) {
         $text = sprintf "[%s] melee [%s] %s",
             $actor,
             $target,
-            lc( $entry->{misstype} );
-    } elsif( $entry->{action} == RANGE_DAMAGE ) {
+            lc( $event->{misstype} );
+    } elsif( $event->{action} == RANGE_DAMAGE ) {
         $text = sprintf "[%s] %s %s [%s] %d",
             $actor,
             $spell,
-            $entry->{critical} ? "crit" : "hit",
+            $event->{critical} ? "crit" : "hit",
             $target,
-            $entry->{amount};
+            $event->{amount};
         
-        $text .= sprintf " (%d resisted)", $entry->{resisted} if $entry->{resisted};
-        $text .= sprintf " (%d blocked)", $entry->{blocked} if $entry->{blocked};
-        $text .= sprintf " (%d absorbed)", $entry->{absorbed} if $entry->{absorbed};
-        $text .= " (crushing)" if $entry->{crushing};
-        $text .= " (glancing)" if $entry->{glancing};
+        $text .= sprintf " (%d resisted)", $event->{resisted} if $event->{resisted};
+        $text .= sprintf " (%d blocked)", $event->{blocked} if $event->{blocked};
+        $text .= sprintf " (%d absorbed)", $event->{absorbed} if $event->{absorbed};
+        $text .= " (crushing)" if $event->{crushing};
+        $text .= " (glancing)" if $event->{glancing};
         
         # WLK log overdamage
-        if( $entry->{extraamount} ) {
-            $text .= sprintf " {%s}", $entry->{extraamount};
+        if( $event->{extraamount} ) {
+            $text .= sprintf " {%s}", $event->{extraamount};
         }
-    } elsif( $entry->{action} == RANGE_MISSED ) {
+    } elsif( $event->{action} == RANGE_MISSED ) {
         $text = sprintf "[%s] %s [%s] %s",
             $actor,
             $spell,
             $target,
-            lc( $entry->{misstype} );
-    } elsif( $entry->{action} == SPELL_DAMAGE ) {
+            lc( $event->{misstype} );
+    } elsif( $event->{action} == SPELL_DAMAGE ) {
         $text = sprintf "[%s] %s %s [%s] %d",
             $actor,
             $spell,
-            $entry->{critical} ? "crit" : "hit",
+            $event->{critical} ? "crit" : "hit",
             $target,
-            $entry->{amount};
+            $event->{amount};
         
-        $text .= sprintf " (%d resisted)", $entry->{resisted} if $entry->{resisted};
-        $text .= sprintf " (%d blocked)", $entry->{blocked} if $entry->{blocked};
-        $text .= sprintf " (%d absorbed)", $entry->{absorbed} if $entry->{absorbed};
-        $text .= " (crushing)" if $entry->{crushing};
-        $text .= " (glancing)" if $entry->{glancing};
+        $text .= sprintf " (%d resisted)", $event->{resisted} if $event->{resisted};
+        $text .= sprintf " (%d blocked)", $event->{blocked} if $event->{blocked};
+        $text .= sprintf " (%d absorbed)", $event->{absorbed} if $event->{absorbed};
+        $text .= " (crushing)" if $event->{crushing};
+        $text .= " (glancing)" if $event->{glancing};
         
         # WLK log overdamage
-        if( $entry->{extraamount} ) {
-            $text .= sprintf " {%s}", $entry->{extraamount};
+        if( $event->{extraamount} ) {
+            $text .= sprintf " {%s}", $event->{extraamount};
         }
-    } elsif( $entry->{action} == SPELL_MISSED ) {
+    } elsif( $event->{action} == SPELL_MISSED ) {
         $text = sprintf "[%s] %s [%s] %s",
             $actor,
             $spell,
             $target,
-            lc( $entry->{misstype} );
-    } elsif( $entry->{action} == SPELL_HEAL ) {
+            lc( $event->{misstype} );
+    } elsif( $event->{action} == SPELL_HEAL ) {
         $text = sprintf "[%s] %s %s [%s] %d",
             $actor,
             $spell,
-            $entry->{critical} ? "crit heal" : "heal",
+            $event->{critical} ? "crit heal" : "heal",
             $target,
-            $entry->{amount};
+            $event->{amount};
         
         # WLK log overhealing
-        if( $entry->{extraamount} ) {
-            $text .= sprintf " {%s}", $entry->{extraamount};
+        if( $event->{extraamount} ) {
+            $text .= sprintf " {%s}", $event->{extraamount};
         }
-    } elsif( $entry->{action} == SPELL_ENERGIZE ) {
+    } elsif( $event->{action} == SPELL_ENERGIZE ) {
         $text = sprintf "[%s] %s energize [%s] %d %s",
             $actor,
             $spell,
             $target,
-            $entry->{amount},
-            $self->_powerName( $entry->{powertype} );
-    } elsif( $entry->{action} == SPELL_PERIODIC_MISSED ) {
+            $event->{amount},
+            $self->_powerName( $event->{powertype} );
+    } elsif( $event->{action} == SPELL_PERIODIC_MISSED ) {
         $text = sprintf "[%s] %s [%s] %s",
             $actor,
             $spell,
             $target,
-            lc( $entry->{misstype} );
-    } elsif( $entry->{action} == SPELL_PERIODIC_DAMAGE ) {
+            lc( $event->{misstype} );
+    } elsif( $event->{action} == SPELL_PERIODIC_DAMAGE ) {
         $text = sprintf "[%s] %s dot [%s] %d",
             $actor,
             $spell,
             $target,
-            lc( $entry->{amount} );
+            lc( $event->{amount} );
         
-        $text .= sprintf " (%d resisted)", $entry->{resisted} if $entry->{resisted};
-        $text .= sprintf " (%d blocked)", $entry->{blocked} if $entry->{blocked};
-        $text .= sprintf " (%d absorbed)", $entry->{absorbed} if $entry->{absorbed};
-        $text .= " (crushing)" if $entry->{crushing};
-        $text .= " (glancing)" if $entry->{glancing};
+        $text .= sprintf " (%d resisted)", $event->{resisted} if $event->{resisted};
+        $text .= sprintf " (%d blocked)", $event->{blocked} if $event->{blocked};
+        $text .= sprintf " (%d absorbed)", $event->{absorbed} if $event->{absorbed};
+        $text .= " (crushing)" if $event->{crushing};
+        $text .= " (glancing)" if $event->{glancing};
         
         # WLK log overdamage
-        if( $entry->{extraamount} ) {
-            $text .= sprintf " {%s}", $entry->{extraamount};
+        if( $event->{extraamount} ) {
+            $text .= sprintf " {%s}", $event->{extraamount};
         }
-    } elsif( $entry->{action} == SPELL_PERIODIC_HEAL ) {
+    } elsif( $event->{action} == SPELL_PERIODIC_HEAL ) {
         $text = sprintf "[%s] %s hot [%s] %d",
             $actor,
             $spell,
             $target,
-            $entry->{amount};
+            $event->{amount};
         
         # WLK log overhealing
-        if( $entry->{extraamount} ) {
-            $text .= sprintf " {%s}", $entry->{extraamount};
+        if( $event->{extraamount} ) {
+            $text .= sprintf " {%s}", $event->{extraamount};
         }
-    } elsif( $entry->{action} == SPELL_PERIODIC_DRAIN ) {
+    } elsif( $event->{action} == SPELL_PERIODIC_DRAIN ) {
         $text = sprintf "[%s] %s drain [%s] %d %s",
             $actor,
             $spell,
             $target,
-            $entry->{amount},
-            $self->_powerName( $entry->{powertype} );
-    } elsif( $entry->{action} == SPELL_PERIODIC_LEECH ) {
+            $event->{amount},
+            $self->_powerName( $event->{powertype} );
+    } elsif( $event->{action} == SPELL_PERIODIC_LEECH ) {
         $text = sprintf "[%s] %s leech [%s] %d %s",
             $actor,
             $spell,
             $target,
-            $entry->{amount},
-            $self->_powerName( $entry->{powertype} );
-    } elsif( $entry->{action} == SPELL_PERIODIC_ENERGIZE ) {
+            $event->{amount},
+            $self->_powerName( $event->{powertype} );
+    } elsif( $event->{action} == SPELL_PERIODIC_ENERGIZE ) {
         $text = sprintf "[%s] %s energize [%s] %d %s",
             $actor,
             $spell,
             $target,
-            $entry->{amount},
-            $self->_powerName( $entry->{powertype} );
-    } elsif( $entry->{action} == SPELL_DRAIN ) {
+            $event->{amount},
+            $self->_powerName( $event->{powertype} );
+    } elsif( $event->{action} == SPELL_DRAIN ) {
         $text = sprintf "[%s] %s drain [%s] %d %s",
             $actor,
             $spell,
             $target,
-            $entry->{amount},
-            $self->_powerName( $entry->{powertype} );
-    } elsif( $entry->{action} == SPELL_LEECH ) {
+            $event->{amount},
+            $self->_powerName( $event->{powertype} );
+    } elsif( $event->{action} == SPELL_LEECH ) {
         $text = sprintf "[%s] %s leech [%s] %d %s",
             $actor,
             $spell,
             $target,
-            $entry->{amount},
-            $self->_powerName( $entry->{powertype} );
-    } elsif( $entry->{action} == SPELL_INTERRUPT ) {
+            $event->{amount},
+            $self->_powerName( $event->{powertype} );
+    } elsif( $event->{action} == SPELL_INTERRUPT ) {
         $text = sprintf "[%s] %sinterrupt [%s] %s",
             $actor,
             $spell ? $spell . " " : "",
             $target,
             $extraspell,
-    } elsif( $entry->{action} == SPELL_EXTRA_ATTACKS ) {
+    } elsif( $event->{action} == SPELL_EXTRA_ATTACKS ) {
         $text = sprintf "[%s] %s +%d attack%s",
             $actor,
             $spell,
-            $entry->{amount},
-            $entry->{amount} > 1 ? "s" : "",
-    } elsif( $entry->{action} == SPELL_INSTAKILL ) {
+            $event->{amount},
+            $event->{amount} > 1 ? "s" : "",
+    } elsif( $event->{action} == SPELL_INSTAKILL ) {
         $text = sprintf "[%s] instakill [%s]",
             $actor,
             $target,
-    } elsif( $entry->{action} == SPELL_DURABILITY_DAMAGE ) {
+    } elsif( $event->{action} == SPELL_DURABILITY_DAMAGE ) {
 
-    } elsif( $entry->{action} == SPELL_DURABILITY_DAMAGE_ALL ) {
+    } elsif( $event->{action} == SPELL_DURABILITY_DAMAGE_ALL ) {
 
-    } elsif( $entry->{action} == SPELL_DISPEL_FAILED ) {
+    } elsif( $event->{action} == SPELL_DISPEL_FAILED ) {
 
-    } elsif( $entry->{action} == SPELL_AURA_DISPELLED ) {
+    } elsif( $event->{action} == SPELL_AURA_DISPELLED ) {
 
-    } elsif( $entry->{action} == SPELL_AURA_STOLEN ) {
+    } elsif( $event->{action} == SPELL_AURA_STOLEN ) {
         
-    } elsif( $entry->{action} == SPELL_AURA_APPLIED ) {
-        $text = sprintf "[%s] %s %s",
+    } elsif( $event->{action} == SPELL_AURA_APPLIED ) {
+        $text = sprintf "[%s] %s [%s] %s",
             $target,
-            $entry->{auratype} eq "DEBUFF" ? "afflicted by" : "gain",
+            $event->{auratype} eq "DEBUFF" ? "afflicted by" : "gain",
+            $actor,
             $spell;
-    } elsif( $entry->{action} == SPELL_AURA_REMOVED ) {
+    } elsif( $event->{action} == SPELL_AURA_REMOVED ) {
         $text = sprintf "[%s] fade %s",
             $target,
             $spell;
-    } elsif( $entry->{action} == SPELL_AURA_APPLIED_DOSE ) {
+    } elsif( $event->{action} == SPELL_AURA_APPLIED_DOSE ) {
         $text = sprintf "[%s] %s %s (%d)",
             $target,
-            $entry->{auratype} eq "DEBUFF" ? "afflicted by" : "gain",
+            $event->{auratype} eq "DEBUFF" ? "afflicted by" : "gain",
             $spell,
-            $entry->{amount};
-    } elsif( $entry->{action} == SPELL_AURA_REMOVED_DOSE ) {
+            $event->{amount};
+    } elsif( $event->{action} == SPELL_AURA_REMOVED_DOSE ) {
         $text = sprintf "[%s] decrease dose %s (%d)",
             $target,
             $spell,
-            $entry->{amount};
-    } elsif( $entry->{action} == SPELL_CAST_START ) {
-
-    } elsif( $entry->{action} == SPELL_CAST_SUCCESS ) {
+            $event->{amount};
+    } elsif( $event->{action} == SPELL_CAST_START ) {
+        $text = sprintf "[%s] start casting %s",
+            $actor,
+            $spell;
+    } elsif( $event->{action} == SPELL_CAST_SUCCESS ) {
         $text = sprintf "[%s] cast %s [%s]",
             $actor,
             $spell,
             $target;
-    } elsif( $entry->{action} == SPELL_CAST_FAILED ) {
-
-    } elsif( $entry->{action} == DAMAGE_SHIELD ) {
+    } elsif( $event->{action} == SPELL_CAST_FAILED ) {
+        $text = sprintf "[%s] fail to cast %s (%s)",
+            $actor,
+            $spell,
+            $event->{misstype};
+    } elsif( $event->{action} == DAMAGE_SHIELD ) {
         $text = sprintf "[%s] %s reflect %s[%s] %d",
             $actor,
             $spell,
-            $entry->{critical} ? "crit " : "",
+            $event->{critical} ? "crit " : "",
             $target,
-            $entry->{amount};
+            $event->{amount};
         
-        $text .= sprintf " (%d resisted)", $entry->{resisted} if $entry->{resisted};
-        $text .= sprintf " (%d blocked)", $entry->{blocked} if $entry->{blocked};
-        $text .= sprintf " (%d absorbed)", $entry->{absorbed} if $entry->{absorbed};
-        $text .= " (crushing)" if $entry->{crushing};
-        $text .= " (glancing)" if $entry->{glancing};
-    } elsif( $entry->{action} == DAMAGE_SHIELD_MISSED ) {
+        $text .= sprintf " (%d resisted)", $event->{resisted} if $event->{resisted};
+        $text .= sprintf " (%d blocked)", $event->{blocked} if $event->{blocked};
+        $text .= sprintf " (%d absorbed)", $event->{absorbed} if $event->{absorbed};
+        $text .= " (crushing)" if $event->{crushing};
+        $text .= " (glancing)" if $event->{glancing};
+    } elsif( $event->{action} == DAMAGE_SHIELD_MISSED ) {
         $text = sprintf "[%s] %s [%s] %s",
             $actor,
             $spell,
             $target,
-            lc( $entry->{misstype} );
-    } elsif( $entry->{action} == ENCHANT_APPLIED ) {
+            lc( $event->{misstype} );
+    } elsif( $event->{action} == ENCHANT_APPLIED ) {
 
-    } elsif( $entry->{action} == ENCHANT_REMOVED ) {
+    } elsif( $event->{action} == ENCHANT_REMOVED ) {
 
-    } elsif( $entry->{action} == ENVIRONMENTAL_DAMAGE ) {
+    } elsif( $event->{action} == ENVIRONMENTAL_DAMAGE ) {
 
-    } elsif( $entry->{action} == DAMAGE_SPLIT ) {
+    } elsif( $event->{action} == DAMAGE_SPLIT ) {
         $text = sprintf "[%s] %s %s [%s] %d (split)",
             $actor,
             $spell,
-            $entry->{critical} ? "crit" : "hit",
+            $event->{critical} ? "crit" : "hit",
             $target,
-            $entry->{amount};
+            $event->{amount};
         
-        $text .= sprintf " (%d resisted)", $entry->{resisted} if $entry->{resisted};
-        $text .= sprintf " (%d blocked)", $entry->{blocked} if $entry->{blocked};
-        $text .= sprintf " (%d absorbed)", $entry->{absorbed} if $entry->{absorbed};
-        $text .= " (crushing)" if $entry->{crushing};
-        $text .= " (glancing)" if $entry->{glancing};
-    } elsif( $entry->{action} == UNIT_DIED ) {
+        $text .= sprintf " (%d resisted)", $event->{resisted} if $event->{resisted};
+        $text .= sprintf " (%d blocked)", $event->{blocked} if $event->{blocked};
+        $text .= sprintf " (%d absorbed)", $event->{absorbed} if $event->{absorbed};
+        $text .= " (crushing)" if $event->{crushing};
+        $text .= " (glancing)" if $event->{glancing};
+    } elsif( $event->{action} == UNIT_DIED ) {
         $text = sprintf "[%s] dies",
             $target;
-    } elsif( $entry->{action} == SPELL_RESURRECT ) {
+    } elsif( $event->{action} == SPELL_RESURRECT ) {
         $text = sprintf "[%s] %s resurrect [%s]",
             $actor,
             $spell,
