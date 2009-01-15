@@ -161,6 +161,7 @@ my $opt_collapse;
 my $opt_tail;
 my $opt_nav;
 my $opt_filter;
+my $opt_throttle;
 
 ## SUBS ##
 
@@ -437,7 +438,11 @@ my $rc = GetOptions(
     "tail"          => \$opt_tail,
     "navigation"    => \$opt_nav,
     "filter=s@"     => \$opt_filter,
+    "throttle=i"    => \$opt_throttle,
 );
+
+# fix throttle
+$opt_throttle = int($opt_throttle) if $opt_throttle;
 
 status "Warning! Ignoring extra arguments: " . join( " ", @ARGV ) . "\n" if @ARGV;
 
@@ -465,6 +470,8 @@ if( $action eq "print" ) {
     my ($fh, $db) = _getsource();
     
     while( defined( $_ = $opt_file ? <$fh> : $db->line() ) ) {
+        select(undef, undef, undef, $opt_throttle/1000) if $opt_throttle;
+        
         # Because File::Tail screws up Unicode
         utf8::decode($_) if $opt_tail;
         
@@ -599,6 +606,8 @@ if( $action eq "print" ) {
     $ed->add( $splitter );
     
     while( defined( $_ = $opt_file ? <$fh> : $db->line() ) ) {
+        select(undef, undef, undef, $opt_throttle/1000) if $opt_throttle;
+        
         # Because File::Tail screws up Unicode
         utf8::decode($_) if $opt_tail;
         
@@ -746,6 +755,8 @@ if( $action eq "print" ) {
     my $first = 0;
     
     while( defined( $_ = $opt_file ? <$fh> : $db->line() ) ) {
+        select(undef, undef, undef, $opt_throttle/1000) if $opt_throttle;
+        
         # Because File::Tail screws up Unicode
         utf8::decode($_) if $opt_tail;
         
@@ -979,6 +990,8 @@ if( $action eq "print" ) {
         # Import log entries.
         my $nlog = -1;
         while( <$fh> ) {
+            select(undef, undef, undef, $opt_throttle/1000) if $opt_throttle;
+            
             $nlog++;
             my $event = $parser->parse($_);
             $db->addLine( $nlog, $event );
