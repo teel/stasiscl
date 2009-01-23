@@ -250,7 +250,15 @@ sub page {
     }
     
     # Presence
-    push @summaryRows, "Presence" => sprintf( "%02d:%02d", $ptime/60, $ptime%60 );
+    push @summaryRows, "Presence" => sprintf(
+        "%02d:%02d (%02d:%02d &ndash; %02d:%02d)",
+        $ptime / 60,
+        $ptime % 60,
+        ($pstart-$raidStart) / 60,
+        ($pstart-$raidStart) % 60,
+        ($pend - $raidStart) / 60,
+        ($pend - $raidStart) % 60
+    );
     
     # Owner info
     if( $self->{raid}{$MOB} && $self->{raid}{$MOB}{class} && $self->{raid}{$MOB}{class} eq "Pet" ) {
