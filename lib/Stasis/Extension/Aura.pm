@@ -25,8 +25,8 @@ package Stasis::Extension::Aura;
 
 use strict;
 use warnings;
+
 use Stasis::Extension;
-use Stasis::Extension::Activity;
 
 our @ISA = "Stasis::Extension";
 
@@ -42,31 +42,31 @@ sub actions {
     
     # Events that don't have a source in WLK go here. This helps catch auras that are applied before an
     # encounter starts and then kept up.
-    map( { $_ => \&process_refresh } qw(SPELL_AURA_REFRESH SPELL_AURA_APPLIED_DOSE SPELL_AURA_REMOVED_DOSE) ),
+    map( { $_ => \&process_refresh } qw/SPELL_AURA_REFRESH SPELL_AURA_APPLIED_DOSE SPELL_AURA_REMOVED_DOSE/ ),
     
     UNIT_DIED => \&process_death,
 }
 
 sub key {
-    qw(actor spell target);
+    qw/actor spell target/;
 }
 
 sub value {
-    qw(type spans);
+    qw/type spans/;
 }
 
 sub process_death {
-    my ($self, $entry) = @_;
+    my ($self, $event) = @_;
     
     # Forcibly fade all auras when a unit dies.
-    if( exists $self->{targets}{ $entry->{target} } ) {
-        foreach my $vaura (values %{ $self->{targets}{ $entry->{target} } } ) {
+    if( exists $self->{targets}{ $event->{target} } ) {
+        foreach my $vaura (values %{ $self->{targets}{ $event->{target} } } ) {
             foreach my $vactor (values %$vaura) {
                 if( @{ $vactor->{spans} } ) {
                     my ($start, $end) = unpack "dd", $vactor->{spans}[-1];
 
                     if( !$end ) {
-                        $vactor->{spans}[-1] = pack "dd", $start, $entry->{t};
+                        $vactor->{spans}[-1] = pack "dd", $start, $event->{t};
                     }
                 }
             }
@@ -75,11 +75,11 @@ sub process_death {
 }
 
 sub process_applied {
-    my ($self, $entry) = @_;
+    my ($self, $event) = @_;
 
     # Create a blank entry if none exists.
     # Stored "backwards", the person the aura is applied to (the target) is first.
-    my $sdata = $self->{targets}{ $entry->{target} }{ $entry->{spellid} }{ $entry->{actor} || 0 } ||= {
+    my $sdata = $self->{targets}{ $event->{target} }{ $event->{spellid} }{ $event->{actor} || 0 } ||= {
         gains => 0,
         fades => 0,
         type => undef,
@@ -92,7 +92,7 @@ sub process_applied {
     # An aura was gained, update the timeline.
     if( $send || !defined $sstart ) {
         # Either this is the first span, or the previous one has ended. We should make a new one.
-        push @{$sdata->{spans}}, pack "dd", $entry->{t}, 0;
+        push @{$sdata->{spans}}, pack "dd", $event->{t}, 0;
         
         # In other cases, this means that we probably missed the fade message or this
         # is a dose application.
@@ -105,14 +105,14 @@ sub process_applied {
     $sdata->{gains} ++;
     
     # Update the type of this aura.
-    $sdata->{type} ||= $entry->{auratype};
+    $sdata->{type} ||= $event->{auratype};
 }
 
 sub process_removed {
-    my ($self, $entry) = @_;
+    my ($self, $event) = @_;
     
     # Create a blank entry if none exists.
-    my $sdata = $self->{targets}{ $entry->{target} }{ $entry->{spellid} }{ $entry->{actor} || 0 } ||= {
+    my $sdata = $self->{targets}{ $event->{target} }{ $event->{spellid} }{ $event->{actor} || 0 } ||= {
         gains => 0,
         fades => 0,
         type => undef,
@@ -125,7 +125,7 @@ sub process_removed {
     # An aura faded, update the timeline.
     if( defined $sstart && !$send ) {
         # We should end the most recent span.
-        $sdata->{spans}->[-1] = pack "dd", $sstart, $entry->{t};
+        $sdata->{spans}->[-1] = pack "dd", $sstart, $event->{t};
     } else {
         # There is no span in progress, we probably missed the gain message.
         
@@ -137,12 +137,12 @@ sub process_removed {
             # only have been created if no auras were on the target, so odds are this remove event corresponds to that
             # aura.
             
-            if( exists $self->{targets}{ $entry->{target} }{ $entry->{spellid} }{0} && @{$self->{targets}{ $entry->{target} }{ $entry->{spellid} }{0}{spans}} == 1 ) {
-                my ($envstart, $envend) = unpack "dd", $self->{targets}{ $entry->{target} }{ $entry->{spellid} }{0}{spans}[0];
-                delete $self->{targets}{ $entry->{target} }{ $entry->{spellid} }{0} if $envstart == 0 && $envend == 0;
+            if( exists $self->{targets}{ $event->{target} }{ $event->{spellid} }{0} && @{$self->{targets}{ $event->{target} }{ $event->{spellid} }{0}{spans}} == 1 ) {
+                my ($envstart, $envend) = unpack "dd", $self->{targets}{ $event->{target} }{ $event->{spellid} }{0}{spans}[0];
+                delete $self->{targets}{ $event->{target} }{ $event->{spellid} }{0} if $envstart == 0 && $envend == 0;
             }
             
-            push @{$sdata->{spans}}, pack "dd", 0, $entry->{t};
+            push @{$sdata->{spans}}, pack "dd", 0, $event->{t};
         }
     }
     
@@ -150,24 +150,24 @@ sub process_removed {
     $sdata->{fades} ++;
     
     # Update the type of this aura.
-    $sdata->{type} ||= $entry->{auratype};
+    $sdata->{type} ||= $event->{auratype};
 }
 
 sub process_refresh {
-    my ($self, $entry) = @_;
+    my ($self, $event) = @_;
     
     # For refreshes, what we do is create an aura with "environment" as the source if and only if
     # this aura has not been seen on this target before.
     
     # As such, first check for pre-existing auras.
-    return if exists $self->{targets}{ $entry->{target} }{ $entry->{spellid} };
+    return if exists $self->{targets}{ $event->{target} }{ $event->{spellid} };
     
     # OK, none exist. Create a new entry for the environment.
     # Stored "backwards", the person the aura is applied to (the target) is first.
-    my $sdata = $self->{targets}{ $entry->{target} }{ $entry->{spellid} }{ 0 } = {
+    my $sdata = $self->{targets}{ $event->{target} }{ $event->{spellid} }{ 0 } = {
         gains => 0,
         fades => 0,
-        type => $entry->{auratype},
+        type => $event->{auratype},
         spans => [
             pack "dd", 0, 0
         ],

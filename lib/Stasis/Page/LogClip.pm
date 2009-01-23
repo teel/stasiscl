@@ -21,7 +21,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package Stasis::LogClip;
+package Stasis::Page::LogClip;
 
 use strict;
 use warnings;
@@ -38,8 +38,7 @@ sub add {
     
     $params{t} = $line->{t};
     push @{$self->{lines}}, [
-        Stasis::Parser->toString( 
-            $line, 
+        $line->toString( 
             sub { $self->{pm}->actorLink( $_[0], 1 ) }, 
             sub { $self->{pm}->spellLink( $_[0] ) } 
         ),

@@ -26,7 +26,6 @@ package Stasis::ExtensionRunner;
 use strict;
 use warnings;
 use Stasis::Extension;
-use Stasis::Parser;
 
 sub new {
     my $class = shift;
@@ -44,21 +43,21 @@ sub start {
     my ($self, $ed) = @_;
     foreach my $ext (values %$self) {
         $ext->start;
-        $ed->add($ext);
+        $ext->register( $ed );
     }
 }
 
 sub suspend {
     my ($self, $ed) = @_;
     foreach my $ext (values %$self) {
-        $ed->remove($ext);
+        $ext->unregister( $ed );
     }
 }
 
 sub resume {
     my ($self, $ed) = @_;
     foreach my $ext (values %$self) {
-        $ed->add($ext);
+    $ext->register( $ed );
     }
 }
 
@@ -66,7 +65,7 @@ sub finish {
     my ($self, $ed) = @_;
     foreach my $ext (values %$self) {
         $ext->finish;
-        $ed->remove($ext);
+        $ext->unregister( $ed );
     }
 }
 

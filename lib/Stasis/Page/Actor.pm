@@ -21,7 +21,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package Stasis::ActorPage;
+package Stasis::Page::Actor;
 
 use strict;
 use warnings;
@@ -31,8 +31,8 @@ use Stasis::Parser;
 use Stasis::Page;
 use Stasis::PageMaker;
 use Stasis::ActorGroup;
-use Stasis::Extension qw(span_sum);
-use Stasis::MobUtil qw(splitguid);
+use Stasis::Extension qw/span_sum/;
+use Stasis::MobUtil qw/splitguid/;
 
 our @ISA = "Stasis::Page";
 
@@ -56,10 +56,13 @@ sub page {
     # Player and pets
     my @playpet = ( @PLAYER );
     foreach my $player (@PLAYER) {
-        # Add pets that have presence in this set of extensions.
+        # Add pets.
         push @playpet, @{$self->{raid}{$player}{pets}} 
             if( exists $self->{raid}{$player} && exists $self->{raid}{$player}{pets} );
     }
+    
+    # Are we a raider?
+    my $is_raider = exists $self->{raid}{$MOB} && $self->{raid}{$MOB}{class};
     
     ################
     # INFO WE NEED #
@@ -94,7 +97,8 @@ sub page {
         keyActor => $keyActor,
     );
     
-    my $dpsTime = span_sum( [ map { $_->{spans} ? @{$_->{spans}} : () } values %$actOut ], $pstart, $pend );
+    # For raiders, dpsTime is against enemies!
+    my $dpsTime = span_sum( [ map { $actOut->{$_}{spans} ? @{$actOut->{$_}{spans}} : () } grep { !$is_raider || ( !exists $self->{raid}{$_} || !$self->{raid}{$_}{class} ) } keys %$actOut ], $pstart, $pend );
     
     my $deOut = $self->{ext}{Damage}->sum( 
         actor => \@playpet, 
@@ -281,7 +285,7 @@ sub page {
     }
     
     # DPS Info
-    if( $ptime && $dmg_to_mobs && $dpsTime ) {
+    if( $ptime && $dpsTime ) {
         push @summaryRows, (
             "DPS activity" => sprintf
             (
@@ -302,10 +306,10 @@ sub page {
         # Group information
         my $group_text = "<div align=\"left\">This is a group composed of " . @{$MOB_GROUP->{members}} . " mobs.<br />";
         
-        $group_text .= "<br /><b>Group Link</b></br />";
+        $group_text .= "<br /><b>Group Link</b><br />";
         $group_text .= sprintf "%s%s<br />", $pm->actorLink($MOB), ( $do_group ? " (currently viewing)" : "" );
         
-        $group_text .= "<br /><b>Member Links</b></br />";
+        $group_text .= "<br /><b>Member Links</b><br />";
 
         if( $self->{collapse} ) {
             $group_text .= "Member links are disabled for this group."
@@ -563,7 +567,7 @@ sub page {
             sort => sub ($$) { $_[1]->{amount} <=> $_[0]->{amount} },
             master => sub {
                 return {
-                    "Name" => $pm->spellLink( $_[0], "Casts and Power" ) . " (" . Stasis::Parser->_powerName( $_[1]->{type} ) . ")",
+                    "Name" => $pm->spellLink( $_[0], "Casts and Power" ) . " (" . Stasis::Event->powerName( $_[1]->{type} ) . ")",
                     "R-Sources" => scalar keys %{$powerIn->{$_[0]}},
                     "R-Gained" => $_[1]->{amount},
                     "R-Ticks" => $_[1]->{count},
@@ -619,7 +623,7 @@ sub page {
             sort => sub ($$) { $_[1]->{amount} <=> $_[0]->{amount} },
             master => sub {
                 return {
-                    "Name" => $pm->spellLink( $_[0], "Casts and Power" ) . " (" . Stasis::Parser->_powerName( $_[1]->{type} ) . ")",
+                    "Name" => $pm->spellLink( $_[0], "Casts and Power" ) . " (" . Stasis::Event->powerName( $_[1]->{type} ) . ")",
                     "R-Targets" => scalar keys %{$powerOut->{$_[0]}},
                     "R-Given" => $_[1]->{amount},
                     "R-Ticks" => $_[1]->{count},
@@ -890,8 +894,7 @@ sub page {
                 
                 # Get the last line of the autopsy.
                 my $lastline = $death->{autopsy}->[-1];
-                my $text = Stasis::Parser->toString( 
-                    $lastline->{entry}, 
+                my $text = $lastline->{event}->toString( 
                     sub { $self->{pm}->actorLink( $_[0], 1 ) }, 
                     sub { $self->{pm}->spellLink( $_[0] ) } 
                 );
@@ -925,7 +928,7 @@ sub page {
         }
     }
     
-    $PAGE .= $pm->jsTab( $eff_on_others && $eff_on_others > 2 * ($dmg_to_mobs||0) ? "Healing" : $tabs[0]) if @tabs;
+    $PAGE .= $pm->jsTab( $is_raider && $eff_on_others && $eff_on_others > 2 * ($dmg_to_mobs||0) ? "Healing" : $tabs[0]) if @tabs;
     $PAGE .= $pm->tabBarEnd;
     
     ##########

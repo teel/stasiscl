@@ -21,7 +21,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package Stasis::SpellPage;
+package Stasis::Page::Spell;
 
 use strict;
 use warnings;
@@ -30,7 +30,7 @@ use HTML::Entities;
 use Stasis::Page;
 use Stasis::PageMaker;
 use Stasis::ActorGroup;
-use Stasis::Extension qw(span_sum);
+use Stasis::Extension qw/span_sum/;
 
 our @ISA = "Stasis::Page";
 

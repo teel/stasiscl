@@ -25,7 +25,9 @@ package Stasis::Extension::Dispel;
 
 use strict;
 use warnings;
+
 use Stasis::Extension;
+use Stasis::Event qw/:constants/;
 
 our @ISA = "Stasis::Extension";
 
@@ -35,24 +37,24 @@ sub start {
 }
 
 sub actions {
-    map { $_ => \&process } qw(SPELL_AURA_DISPELLED SPELL_AURA_STOLEN SPELL_STOLEN SPELL_DISPEL_FAILED SPELL_DISPEL);
+    map { $_ => \&process } qw/SPELL_AURA_DISPELLED SPELL_AURA_STOLEN SPELL_STOLEN SPELL_DISPEL_FAILED SPELL_DISPEL/;
 }
 
 sub key {
-    qw(actor spell target extraspell)
+    qw/actor spell target extraspell/
 }
 
 sub value {
-    qw(count resist);
+    qw/count resist/;
 }
 
 sub process {
-    my ($self, $entry) = @_;
+    my ($self, $event) = @_;
     
-    $self->{actors}{ $entry->{actor} }{ $entry->{spellid} }{ $entry->{target} }{ $entry->{extraspellid} }{count} += 1;
+    $self->{actors}{ $event->{actor} }{ $event->{spellid} }{ $event->{target} }{ $event->{extraspellid} }{count} += 1;
     
-    if( $entry->{action} == Stasis::Parser::SPELL_DISPEL_FAILED ) {
-        $self->{actors}{ $entry->{actor} }{ $entry->{spellid} }{ $entry->{target} }{ $entry->{extraspellid} }{resist} += 1;
+    if( $event->{action} == SPELL_DISPEL_FAILED ) {
+        $self->{actors}{ $event->{actor} }{ $event->{spellid} }{ $event->{target} }{ $event->{extraspellid} }{resist} += 1;
     }
 }
 

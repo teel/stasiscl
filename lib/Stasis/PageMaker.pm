@@ -27,7 +27,7 @@ use strict;
 use warnings;
 use POSIX;
 use HTML::Entities qw();
-use Stasis::Extension qw(ext_sum);
+use Stasis::Extension qw/ext_sum/;
 use Stasis::Page;
 use Carp;
 
@@ -362,9 +362,6 @@ sub statHeader {
                         <div id="raid" class="yuimenu">
                             <div class="bd">
                                 <ul>
-                                    $raid_text
-                                </ul>
-                                <ul>
                                     <li class="yuimenuitem">
                                         <a class="yuimenuitemlabel" href="index.html#raid__amp__mobs" onClick="toggleTab('raid__amp__mobs',1)">Mobs</a>
                                         <div id="mobs" class="yuimenu">
@@ -375,6 +372,9 @@ sub statHeader {
                                             </div>
                                         </div>
                                     </li>
+                                </ul>
+                                <ul>
+                                    $raid_text
                                 </ul>
                             </div>
                         </div>

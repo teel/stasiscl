@@ -26,11 +26,9 @@ package Stasis::Extension;
 use strict;
 use warnings;
 use Carp;
-use Stasis::EventListener;
-use Exporter "import";
 
-our @EXPORT_OK = qw(ext_sum span_sum);
-our @ISA = "Stasis::EventListener";
+use Exporter "import";
+our @EXPORT_OK = qw/ext_sum span_sum/;
 
 # Meant to be called statically like:
 # Stasis::Extension->factory "Aura" 
@@ -51,11 +49,33 @@ sub factory {
 # Standard constructor.
 sub new {
     my $class = shift;
-    my %params = @_;
     
-    bless {
-        params => \%params
-    }, $class;
+    my $self = bless {}, $class;
+    
+    # Create a set of listeners. We'll use these to register and unregister from EventDispatchers.
+    my %actions = $self->actions;
+    foreach my $action (keys %actions) {
+        my $f = $actions{$action};
+        $self->{_handlers}{ $action } = sub { $self->$f(@_) };
+    }
+    
+    return $self;
+}
+
+sub register {
+    my ( $self, $ed ) = @_;
+    
+    while( my ($action, $f) = each ( %{$self->{_handlers}} ) ) {
+        $ed->add( $action, $f );
+    }
+}
+
+sub unregister {
+    my ( $self, $ed ) = @_;
+    
+    while( my ($action, $f) = each ( %{$self->{_handlers}} ) ) {
+        $ed->remove( $f );
+    }
 }
 
 # Subclasses may implement this function, which will be called once at
@@ -72,12 +92,13 @@ sub finish {
 
 # This should be the order of keys in the {actors} hash.
 sub key {
-    qw(actor spell target);
+    qw/actor spell target/;
 }
 
 # This should be the names of possible values (like count, effective, hitMin, spans, etc).
 sub value {}
 
+# This function is a general-purpose tool to get information out of an extension.
 sub sum {
     my $self = shift;
     my %params = @_;

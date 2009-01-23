@@ -25,6 +25,8 @@ package Stasis::Extension::Power;
 
 use strict;
 use warnings;
+
+use Stasis::Event qw/:constants/;
 use Stasis::Extension;
 
 our @ISA = "Stasis::Extension";
@@ -35,43 +37,43 @@ sub start {
 }
 
 sub actions {
-    map { $_ => \&process } qw(SPELL_LEECH SPELL_PERIODIC_LEECH SPELL_DRAIN SPELL_PERIODIC_DRAIN SPELL_ENERGIZE SPELL_PERIODIC_ENERGIZE);
+    map { $_ => \&process } qw/SPELL_LEECH SPELL_PERIODIC_LEECH SPELL_DRAIN SPELL_PERIODIC_DRAIN SPELL_ENERGIZE SPELL_PERIODIC_ENERGIZE/;
 }
 
 sub key {
-    qw(actor spell target)
+    qw/actor spell target/
 }
 
 sub value {
-    qw(count type amount);
+    qw/count type amount/;
 }
 
 sub process {
-    my ($self, $entry) = @_;
+    my ($self, $event) = @_;
     
     if( 
-        $entry->{action} == Stasis::Parser::SPELL_LEECH ||
-        $entry->{action} == Stasis::Parser::SPELL_PERIODIC_LEECH ||
-        $entry->{action} == Stasis::Parser::SPELL_DRAIN ||
-        $entry->{action} == Stasis::Parser::SPELL_PERIODIC_DRAIN
+        $event->{action} == SPELL_LEECH ||
+        $event->{action} == SPELL_PERIODIC_LEECH ||
+        $event->{action} == SPELL_DRAIN ||
+        $event->{action} == SPELL_PERIODIC_DRAIN
       ) 
     {
         # For leech and drain effects, store the amount of power gained.
-        $self->{targets}{ $entry->{actor} }{ $entry->{spellid} }{ $entry->{target} }{type} = $entry->{powertype};
-        $self->{targets}{ $entry->{actor} }{ $entry->{spellid} }{ $entry->{target} }{amount} += $entry->{amount};
-        $self->{targets}{ $entry->{actor} }{ $entry->{spellid} }{ $entry->{target} }{count} += 1;
+        $self->{targets}{ $event->{actor} }{ $event->{spellid} }{ $event->{target} }{type} = $event->{powertype};
+        $self->{targets}{ $event->{actor} }{ $event->{spellid} }{ $event->{target} }{amount} += $event->{amount};
+        $self->{targets}{ $event->{actor} }{ $event->{spellid} }{ $event->{target} }{count} += 1;
     }
     
     elsif( 
-        $entry->{action} == Stasis::Parser::SPELL_ENERGIZE || 
-        $entry->{action} == Stasis::Parser::SPELL_PERIODIC_ENERGIZE
+        $event->{action} == SPELL_ENERGIZE || 
+        $event->{action} == SPELL_PERIODIC_ENERGIZE
       ) 
     {
         # "Energize" effects are done backwards because for each actor, we want to store what power
         # they gained, and not what power they gave to other people.
-        $self->{targets}{ $entry->{target} }{ $entry->{spellid} }{ $entry->{actor} }{type} = $entry->{powertype};
-        $self->{targets}{ $entry->{target} }{ $entry->{spellid} }{ $entry->{actor} }{amount} += $entry->{amount};
-        $self->{targets}{ $entry->{target} }{ $entry->{spellid} }{ $entry->{actor} }{count} += 1;
+        $self->{targets}{ $event->{target} }{ $event->{spellid} }{ $event->{actor} }{type} = $event->{powertype};
+        $self->{targets}{ $event->{target} }{ $event->{spellid} }{ $event->{actor} }{amount} += $event->{amount};
+        $self->{targets}{ $event->{target} }{ $event->{spellid} }{ $event->{actor} }{count} += 1;
     }
 }
 

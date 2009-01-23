@@ -28,7 +28,7 @@ use warnings;
 use Carp;
 use Exporter "import";
 
-our @EXPORT_OK = qw(splitguid joinguid);
+our @EXPORT_OK = qw/splitguid joinguid/;
 
 # returns (type, npc, spawncount)
 sub splitguid($) {
@@ -40,8 +40,9 @@ sub splitguid($) {
 }
 
 sub joinguid(@) {
-    if( @_ == 3 && defined $_[2] ) {
-        return sprintf "0x%04X%06X%06X", $_[0] & 0xFFFF, $_[1] & 0xFFFFFF, $_[2] & 0xFFFFFF;
+    my ($type, $npc, $spawn) = @_;
+    if( @_ == 3 && defined $spawn ) {
+        return sprintf "0x%04X%06X%06X", $type & 0xFFFF, $npc & 0xFFFFFF, $spawn & 0xFFFFFF;
     } else {
         return 0;
     }
