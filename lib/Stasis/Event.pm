@@ -457,6 +457,8 @@ sub powerName {
         return "happiness";
     } elsif( $code == 5 ) {
         return "runes";
+    } elsif( $code == 6 ) {
+        return "runic power";
     } elsif( $code == -2 ) {
         return "health";
     } else {
