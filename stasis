@@ -372,7 +372,8 @@ sub _getsource {
             }
             
             # Can't do trash, combine, overall, or navigation with -tail
-            if( $opt_trash || $opt_combine || $opt_overall || $opt_nav ) {
+            $opt_nav = 0;
+            if( $opt_trash || $opt_combine || $opt_overall ) {
                 bomb "-trash, -combine, -overall, and -navigation are not supported with -tail";
             }
             
@@ -442,6 +443,9 @@ my $rc = GetOptions(
     "throttle=i"    => \$opt_throttle,
     "debug"         => \$opt_debug,
 );
+
+# nav always on
+$opt_nav = 1;
 
 # fix throttle
 $opt_throttle = int($opt_throttle) if $opt_throttle;
@@ -631,9 +635,6 @@ if( $action eq "print" ) {
 } elsif( $action eq "add" ) {
     # Figure out what input to use.
     my ($fh, $db) = _getsource();
-    
-    # Display a warning for nav mode.
-    status "WARNING: -nav is an experimental option, and forwards compatibility is not guaranteed!" if $opt_nav;
     
     # Going to output in $opt_dir
     bomb "not a directory: $opt_dir" unless $opt_dir && -d $opt_dir;
