@@ -351,6 +351,7 @@ sub finish {
     # It's probably okay to assign pets based on mob name alone if:
     # a) Everything with that name is either unidentified, or the pet of the same player
     # b) All actors with that name have the same NPC type and ID.
+    # c) Not a generic pet type like doomguards or army of the dead or something.
     
     foreach my $kowner (keys %raid) {
         my $vowner = $raid{$kowner};
@@ -376,6 +377,10 @@ sub finish {
                 } else {
                     next PETNAME if $npcid != $_npc;
                 }
+                
+                # Condition C
+                next PETNAME if $_npc == 11859; # doomguard
+                next PETNAME if $_npc == 24207; # army of the dead
             }
             
             # Conditions passed, assign these actors as pets.
