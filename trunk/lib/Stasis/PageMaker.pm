@@ -44,6 +44,9 @@ sub new {
     # Header ID
     $params{headid} = 0;
     
+    # Current Tab ID
+    $params{tabid} = 0;
+    
     # Row ID (for odd/even coloring)
     $params{rowid} = 0;
     
@@ -77,12 +80,18 @@ sub tabStart {
     my $self = shift;
     my $name = shift;
     
-    $self->{headid} = 0;
     my $id = $self->tameText($name);
+    
+    $self->{headid} = 0;
+    $self->{tabid} = $id;
+    
     return "<div class=\"tab\" id=\"tab_$id\">";
 }
 
 sub tabEnd {
+    my $self = shift;
+    
+    undef $self->{tabid};
     return "</div>";
 }
 
@@ -108,7 +117,9 @@ sub tableTitle {
         $style_text .= " titlenoclear";
     }
     
-    return sprintf "<tr><th class=\"title${style_text}\" colspan=\"%d\"><a name=\"t%d\" href=\"#t%d\">%s</a></th></tr>", scalar @_, $self->{headid}, $self->{headid}, $title;
+    my $aname = $self->{tabid} ? $self->{tabid} . "_t" . $self->{headid} : "t" . $self->{headid};
+    
+    return sprintf "<tr><th class=\"title${style_text}\" colspan=\"%d\"><a name=\"%s\" href=\"#%s\">%s</a></th></tr>", scalar @_, $aname, $aname, $title;
 }
 
 # tableHeader( @header_rows )

@@ -175,7 +175,13 @@ function hashTab() {
     /* Figure out what tab we're on. */
     var t = location.hash.substring(1);
     if( t.length > 0 ) {
-        toggleTab(t);
+        var x = t.indexOf('_');
+        if( x ) {
+            toggleTab( t.substring( 0, x ) );
+            document.location.href = "#" + t;
+        } else {
+            toggleTab(t);
+        }
     }
     
     /* Add yui-skin-sam to the body's class. */
