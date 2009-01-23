@@ -802,7 +802,7 @@ my @fingerprints = (
     mobStart => [ 28859 ],
     mobContinue => [ 28859, 30161, 30249 ],
     mobEnd => [ 28859 ],
-    timeout => 30,
+    timeout => 50,
 },
 
 ##################
