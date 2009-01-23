@@ -116,9 +116,9 @@ sub finish {
 sub addLine {
     my $self = shift;
     my $seq = shift;
-    my $entry = shift;
+    my $event = shift;
     
-    if( $seq =~ /^[0-9]+$/ && $entry ) {
+    if( $seq =~ /^[0-9]+$/ && $event ) {
         my $dbh = $self->_dbh();
         eval {
             my $sth;
@@ -126,17 +126,17 @@ sub addLine {
             # Prepare the list of columns.
             my %col = (
                 line_id => $seq + 1,
-                t => $entry->{t},
-                action => $entry->{action},
-                actor_id => $self->_actor_need( $entry->{actor}, $entry->{actor_name} ),
-                actor_relationship => $entry->{actor_relationship},
-                target_id => $self->_actor_need( $entry->{target}, $entry->{target_name} ),
-                target_relationship => $entry->{target_relationship},
+                t => $event->{t},
+                action => $event->{action},
+                actor_id => $self->_actor_need( $event->{actor}, $event->{actor_name} ),
+                actor_relationship => $event->{actor_relationship},
+                target_id => $self->_actor_need( $event->{target}, $event->{target_name} ),
+                target_relationship => $event->{target_relationship},
             );
             
             # Add extra columns.
             foreach (@extra_fields) {
-                $col{$_} = defined $entry->{$_} ? $entry->{$_} : 0;
+                $col{$_} = defined $event->{$_} ? $event->{$_} : 0;
             }
             
             # Insert the line itself

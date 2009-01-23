@@ -25,8 +25,9 @@ package Stasis::Extension::Healing;
 
 use strict;
 use warnings;
+
 use Stasis::Extension;
-use Stasis::Extension::Damage;
+use Stasis::Event qw/:constants/;
 
 our @ISA = "Stasis::Extension";
 
@@ -40,49 +41,49 @@ sub start {
 }
 
 sub actions {
-    map( { $_ => \&process_healing } qw(SPELL_HEAL SPELL_PERIODIC_HEAL) ),
+    map( { $_ => \&process_healing } qw/SPELL_HEAL SPELL_PERIODIC_HEAL/ ),
     
-    map( { $_ => \&process_damage } qw(ENVIRONMENTAL_DAMAGE SWING_DAMAGE RANGE_DAMAGE SPELL_DAMAGE DAMAGE_SPLIT SPELL_PERIODIC_DAMAGE DAMAGE_SHIELD) )
+    map( { $_ => \&process_damage } qw/ENVIRONMENTAL_DAMAGE SWING_DAMAGE RANGE_DAMAGE SPELL_DAMAGE DAMAGE_SPLIT SPELL_PERIODIC_DAMAGE DAMAGE_SHIELD/ )
 }
 
 sub value {
-    qw(hitCount hitTotal hitEffective hitMin hitMax critCount critTotal critEffective critMin critMax tickCount tickTotal tickEffective tickMin tickMax);
+    qw/hitCount hitTotal hitEffective hitMin hitMax critCount critTotal critEffective critMin critMax tickCount tickTotal tickEffective tickMin tickMax/;
 }
 
 sub process_healing {
-    my ($self, $entry) = @_;
+    my ($self, $event) = @_;
     
     # This was a heal. Create an empty hash if it does not exist yet.
-    my $hdata = ($self->{actors}{ $entry->{actor} }{ $entry->{spellid} }{ $entry->{target} } ||= {});
+    my $hdata = ($self->{actors}{ $event->{actor} }{ $event->{spellid} }{ $event->{target} } ||= {});
     
     # Add to targets.
-    $self->{targets}{ $entry->{target} }{ $entry->{spellid} }{ $entry->{actor} } ||= $hdata;
+    $self->{targets}{ $event->{target} }{ $event->{spellid} }{ $event->{actor} } ||= $hdata;
     
     # Add the HP to the target for overheal-tracking purposes.
-    $self->{ohtrack}{ $entry->{target} } += $entry->{amount};
+    $self->{ohtrack}{ $event->{target} } += $event->{amount};
     
     # Figure out how much effective healing there was.
     my $effective;
-    if( exists $entry->{extraamount} ) {
+    if( exists $event->{extraamount} ) {
         # WLK-style. Overhealing is included.
-        $effective = $entry->{amount} - $entry->{extraamount};
+        $effective = $event->{amount} - $event->{extraamount};
     } else {
         # TBC-style. Overhealing is not included.
-        if( $self->{ohtrack}{ $entry->{target} } > 0 ) {
-            $effective = $entry->{amount} - $self->{ohtrack}{ $entry->{target} };
+        if( $self->{ohtrack}{ $event->{target} } > 0 ) {
+            $effective = $event->{amount} - $self->{ohtrack}{ $event->{target} };
 
             # Reset HP to zero (meaning full).
-            $self->{ohtrack}{ $entry->{target} } = 0;
+            $self->{ohtrack}{ $event->{target} } = 0;
         } else {
-            $effective = $entry->{amount};
+            $effective = $event->{amount};
         }
     }
 
     # Add this as the appropriate kind of healing: tick, hit, or crit.
     my $type;
-    if( $entry->{action} == Stasis::Parser::SPELL_PERIODIC_HEAL ) {
+    if( $event->{action} == SPELL_PERIODIC_HEAL ) {
         $type = "tick";
-    } elsif( $entry->{critical} ) {
+    } elsif( $event->{critical} ) {
         $type = "crit";
     } else {
         $type = "hit";
@@ -90,28 +91,28 @@ sub process_healing {
     
     # Add total healing to the healer.
     $hdata->{"${type}Count"} += 1;
-    $hdata->{"${type}Total"} += $entry->{amount};
+    $hdata->{"${type}Total"} += $event->{amount};
     $hdata->{"${type}Effective"} += $effective;
     
     # Update min/max hit size.
-    $hdata->{"${type}Min"} = $entry->{amount}
+    $hdata->{"${type}Min"} = $event->{amount}
         if( 
             !$hdata->{"${type}Min"} ||
-            $entry->{amount} < $hdata->{"${type}Min"}
+            $event->{amount} < $hdata->{"${type}Min"}
         );
 
-    $hdata->{"${type}Max"} = $entry->{amount}
+    $hdata->{"${type}Max"} = $event->{amount}
         if( 
             !$hdata->{"${type}Max"} ||
-            $entry->{amount} > $hdata->{"${type}Max"}
+            $event->{amount} > $hdata->{"${type}Max"}
         );
 }
 
 sub process_damage {
-    my ($self, $entry) = @_;
+    my ($self, $event) = @_;
     
     # If someone is taking damage we need to debit it for overheal tracking.
-    $self->{ohtrack}{ $entry->{target} } -= $entry->{amount};
+    $self->{ohtrack}{ $event->{target} } -= $event->{amount};
 }
 
 1;

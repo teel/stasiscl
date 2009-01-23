@@ -43,33 +43,35 @@ sub actions {
 }
 
 sub key {
-    qw(actor);
+    qw/actor/;
 }
 
 sub value {
-    qw(start end);
+    qw/start end/;
 }
 
 sub process {
+    my ( $self, $event ) = @_;
+    
     my $guid;
-    if( $guid = $_[1]->{actor} ) {
-        $_[0]->{start}{ $guid } ||= $_[1]->{t};
-        $_[0]->{end}{ $guid } = $_[1]->{t};
+    if( my $guid = $event->{actor} ) {
+        $self->{start}{ $guid } ||= $event->{t};
+        $self->{end}{ $guid } = $event->{t};
     }
     
-    if( $guid = $_[1]->{target} ) {
-        $_[0]->{start}{ $guid } ||= $_[1]->{t};
-        $_[0]->{end}{ $guid } = $_[1]->{t};
+    if( my $guid = $event->{target} ) {
+        $self->{start}{ $guid } ||= $event->{t};
+        $self->{end}{ $guid } = $event->{t};
     }
 }
 
 sub finish {
     my ($self) = @_;
     
-    foreach (keys %{$self->{start}}) {
-        $self->{actors}{$_} = {
-            start => $self->{start}{$_},
-            end => $self->{end}{$_},
+    foreach my $actor (keys %{$self->{start}}) {
+        $self->{actors}{$actor} = {
+            start => $self->{start}{$actor},
+            end => $self->{end}{$actor},
         };
     }
     
@@ -83,16 +85,16 @@ sub sum {
 
 # Returns (start, end, total) for the raid or for an actor
 sub presence {
-    my $self = shift;
+    my ( $self, @actors ) = @_;
 
-    if( @_ && ( @_ > 1 || $_[0] ) ) {
+    if( @actors && ( @actors > 1 || $actors[0] ) ) {
         # Actor set other than the environment
         my $start = undef;
         my $end = undef;
 
-        foreach (@_) {
-            if( $_ && $self->{actors}{$_} ) {
-                my ($istart, $iend) = ( $self->{actors}{$_}{start}, $self->{actors}{$_}{end} );
+        foreach my $actor (@actors) {
+            if( $actor && $self->{actors}{$actor} ) {
+                my ($istart, $iend) = ( $self->{actors}{$actor}{start}, $self->{actors}{$actor}{end} );
                 if( !defined $start || $start > $istart ) {
                     $start = $istart;
                 }
@@ -107,7 +109,7 @@ sub presence {
     } else {
         # Raid
         if( !$self->{total} ) {
-            my ($start, $end);
+            my ($start, $end) = (0, 0);
             foreach my $h (values %{ $self->{actors} }) {
                 my ($istart, $iend) = ( $h->{start}, $h->{end} );
                 $start = $istart if( !$start || $start > $istart );

@@ -25,6 +25,8 @@ package Stasis::Extension::Interrupt;
 
 use strict;
 use warnings;
+
+use Stasis::Event qw/:constants/;
 use Stasis::Extension;
 
 our @ISA = "Stasis::Extension";
@@ -35,22 +37,22 @@ sub start {
 }
 
 sub actions {
-    map { $_ => \&process } qw(SPELL_INTERRUPT);
+    map { $_ => \&process } qw/SPELL_INTERRUPT/;
 }
 
 sub key {
-    qw(actor spell target extraspell)
+    qw/actor spell target extraspell/
 }
 
 sub value {
-    qw(count);
+    qw/count/;
 }
 
 sub process {
-    my ($self, $entry) = @_;
+    my ($self, $event) = @_;
     
-    if( $entry->{action} == Stasis::Parser::SPELL_INTERRUPT ) {
-        $self->{actors}{ $entry->{actor} }{ $entry->{spellid} }{ $entry->{target} }{ $entry->{extraspellid} }{count} += 1;
+    if( $event->{action} == SPELL_INTERRUPT ) {
+        $self->{actors}{ $event->{actor} }{ $event->{spellid} }{ $event->{target} }{ $event->{extraspellid} }{count} += 1;
     }
 }
 

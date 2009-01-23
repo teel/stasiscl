@@ -39,65 +39,65 @@ sub start {
 }
 
 sub actions {
-    map( { $_ => \&process_heal } qw(SPELL_HEAL SPELL_PERIODIC_HEAL) ),
-    map( { $_ => \&process_damage } qw(ENVIRONMENTAL_DAMAGE SWING_DAMAGE RANGE_DAMAGE SPELL_DAMAGE DAMAGE_SPLIT SPELL_PERIODIC_DAMAGE DAMAGE_SHIELD) ),
-    map( { $_ => \&process_death } qw(UNIT_DIED) ),
-    map( { $_ => \&process_common } qw(SWING_MISSED RANGE_MISSED SPELL_MISSED SPELL_PERIODIC_MISSED DAMAGE_SHIELD_MISSED SPELL_AURA_APPLIED SPELL_AURA_APPLIED_DOSE SPELL_AURA_REMOVED) ),
+    map( { $_ => \&process_heal } qw/SPELL_HEAL SPELL_PERIODIC_HEAL/ ),
+    map( { $_ => \&process_damage } qw/ENVIRONMENTAL_DAMAGE SWING_DAMAGE RANGE_DAMAGE SPELL_DAMAGE DAMAGE_SPLIT SPELL_PERIODIC_DAMAGE DAMAGE_SHIELD/ ),
+    map( { $_ => \&process_death } qw/UNIT_DIED/ ),
+    map( { $_ => \&process_common } qw/SWING_MISSED RANGE_MISSED SPELL_MISSED SPELL_PERIODIC_MISSED DAMAGE_SHIELD_MISSED SPELL_AURA_APPLIED SPELL_AURA_APPLIED_DOSE SPELL_AURA_REMOVED/ ),
 }
 
 sub process_heal {
-    my ($self, $entry) = @_;
+    my ($self, $event) = @_;
     
     # This was a heal. Add the HP to the target.
-    $self->{ohtrack}{ $entry->{target} } += $entry->{amount};
+    $self->{ohtrack}{ $event->{target} } += $event->{amount};
 
     # Account for overhealing, if it happened, by removing the excess.
-    $self->{ohtrack}{ $entry->{target} } = 0 if( $self->{ohtrack}{ $entry->{target} } > 0 );
+    $self->{ohtrack}{ $event->{target} } = 0 if( $self->{ohtrack}{ $event->{target} } > 0 );
     
     goto &process_common;
 }
 
 sub process_damage {
-    my ($self, $entry) = @_;
+    my ($self, $event) = @_;
     
     # If someone is taking damage we need to debit the HP.
-    $self->{ohtrack}{ $entry->{target} } -= $entry->{amount};
+    $self->{ohtrack}{ $event->{target} } -= $event->{amount};
     
     goto &process_common;
 }
 
 sub process_death {
-    my ($self, $entry) = @_;
+    my ($self, $event) = @_;
     
     # Make a deaths array if it doesn't exist already.
-    if( $self->{dtrack}{ $entry->{target} } ) {
-        $self->{actors}{ $entry->{target} } ||= [];
+    if( $self->{dtrack}{ $event->{target} } ) {
+        $self->{actors}{ $event->{target} } ||= [];
 
         # Push this death onto it.
-        push @{$self->{actors}{ $entry->{target} }}, {
-            "t" => $entry->{t},
-            "actor" => $entry->{target},
-            "autopsy" => $self->{dtrack}{ $entry->{target} } || [],
+        push @{$self->{actors}{ $event->{target} }}, {
+            "t" => $event->{t},
+            "actor" => $event->{target},
+            "autopsy" => $self->{dtrack}{ $event->{target} } || [],
         };
     }
     
     # Delete the death tracker log.
-    delete $self->{dtrack}{ $entry->{target} };
+    delete $self->{dtrack}{ $event->{target} };
 }
 
 sub process_common {
-    my ($self, $entry) = @_;
+    my ($self, $event) = @_;
     
     # Add a combat event to the death tracker log.
-    $self->{dtrack}{ $entry->{target} } ||= [];
-    push @{ $self->{dtrack}{ $entry->{target} } }, {
-        "t" => $entry->{t},
-        "hp" => $self->{ohtrack}{ $entry->{target} },
-        "entry" => $entry,
+    $self->{dtrack}{ $event->{target} } ||= [];
+    push @{ $self->{dtrack}{ $event->{target} } }, {
+        "t" => $event->{t},
+        "hp" => $self->{ohtrack}{ $event->{target} },
+        "event" => $event,
     };
     
     # Shorten the list if it got too long.
-    shift @{ $self->{dtrack}{ $entry->{target} } } if @{ $self->{dtrack}{ $entry->{target} } } > $self->{_autopsylen};
+    shift @{ $self->{dtrack}{ $event->{target} } } if @{ $self->{dtrack}{ $event->{target} } } > $self->{_autopsylen};
 }
 
 sub sum {

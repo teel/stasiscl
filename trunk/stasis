@@ -128,17 +128,17 @@ use Stasis::Extension;
 use Stasis::ExtensionRunner;
 use Stasis::EventDispatcher;
 use Stasis::Page;
-use Stasis::ChartPage;
-use Stasis::ActorPage;
-use Stasis::SpellPage;
+use Stasis::Page::Chart;
+use Stasis::Page::Actor;
+use Stasis::Page::Spell;
+use Stasis::Page::LogClip;
 use Stasis::ActorGroup;
 use Stasis::PageMaker;
-use Stasis::LogClip;
 use Stasis::DB;
 use File::Find ();
 use File::Path ();
 use File::Spec ();
-use File::Copy qw(copy);
+use File::Copy qw/copy/;
 use POSIX;
 use HTML::Entities;
 use Getopt::Long;
@@ -162,6 +162,7 @@ my $opt_tail;
 my $opt_nav;
 my $opt_filter;
 my $opt_throttle;
+my $opt_debug;
 
 ## SUBS ##
 
@@ -205,7 +206,7 @@ sub status($) {
 }
 
 sub makeext() {
-    Stasis::ExtensionRunner->new(qw(Activity Aura Cast Damage Death Dispel ExtraAttack Healing Index Interrupt Power Presence));
+    Stasis::ExtensionRunner->new(qw/Activity Aura Cast Damage Death Dispel ExtraAttack Healing Index Interrupt Power Presence/);
 }
 
 sub writedir($$$$$$$) {
@@ -239,7 +240,7 @@ sub writedir($$$$$$$) {
     );
 
     # Write the index.
-    my $charter = Stasis::ChartPage->new( %page_init );
+    my $charter = Stasis::Page::Chart->new( %page_init );
     
     my ($chart_xml, $chart_html) = $charter->page;
     open CHARTPAGE, ">$dname/index.html" or die;
@@ -247,7 +248,7 @@ sub writedir($$$$$$$) {
     close CHARTPAGE;
     
     # Write the actor files.
-    my $ap = Stasis::ActorPage->new( %page_init );
+    my $ap = Stasis::Page::Actor->new( %page_init );
     
     foreach my $actor (keys %{$exts->{Presence}{actors}}) {
         # Respect $collapse.
@@ -277,7 +278,7 @@ sub writedir($$$$$$$) {
     close ENVPAGE;
     
     # Write the spell files.
-    my $sp = Stasis::SpellPage->new( %page_init );
+    my $sp = Stasis::Page::Spell->new( %page_init );
     
     foreach my $spell (keys %{$exts->{Index}{spells}}) {
         my $id = lc $spell;
@@ -289,7 +290,7 @@ sub writedir($$$$$$$) {
     }
     
     # Write death clips.
-    my $lc = Stasis::LogClip->new( %page_init );
+    my $lc = Stasis::Page::LogClip->new( %page_init );
     
     while( my ($kactor, $vactor) = each(%{$exts->{Death}{actors}}) ) {
         my $id = lc $kactor;
@@ -299,7 +300,7 @@ sub writedir($$$$$$$) {
         foreach my $death (@$vactor) {
             $lc->clear;
             foreach my $event (@{$death->{autopsy}}) {
-                $lc->add( $event->{entry}, hp => $event->{hp}, t => $event->{t} );
+                $lc->add( $event->{event}, hp => $event->{hp}, t => $event->{t} );
             }
             
             open DEATHPAGE, sprintf ">$dname/death_%s_%d.json", $id, ++$dn or die;
@@ -439,12 +440,13 @@ my $rc = GetOptions(
     "navigation"    => \$opt_nav,
     "filter=s@"     => \$opt_filter,
     "throttle=i"    => \$opt_throttle,
+    "debug"         => \$opt_debug,
 );
 
 # fix throttle
 $opt_throttle = int($opt_throttle) if $opt_throttle;
 
-status "Warning! Ignoring extra arguments: " . join( " ", @ARGV ) . "\n" if @ARGV;
+bomb "Too many extra arguments: " . join( " ", @ARGV ) . "\n" if @ARGV;
 
 # Clean up opt_dir
 if( $opt_dir ) {
@@ -520,10 +522,8 @@ if( $action eq "print" ) {
                 next unless $match;
             }
             
-            if( my $text = $parser->toString( $event, undef, sub { "$_[1] ($_[0])" } ) ) {
-                $event->{t} =~ /^(\d+)(\.(\d+)|)$/;
-                my @t = localtime $1;
-                printf "%d/%d %02d:%02d:%02d\.%03d  %s\n", $t[4]+1, $t[3], $t[2], $t[1], $t[0], $2?$2*1000:0, $text;
+            if( my $text = $event->toString( undef, sub { "$_[1] ($_[0])" } ) ) {
+                printf "%s  %s\n", $event->timeString(), $text;
             } else {
                 # If we're not in SQLite mode, we can print out the un-stringified line.
                 # TODO: support for sqlite mode.
@@ -554,7 +554,7 @@ if( $action eq "print" ) {
     # Set up the log splitter.
     my $ed = Stasis::EventDispatcher->new;
     
-    my $splitter = Stasis::LogSplit->new( version => $opt_version, callback =>
+    my $splitter = Stasis::LogSplit->new( debug => $opt_debug, version => $opt_version, callback =>
         # LogSplit callback
         sub {
             my ($short, $start, $long, $kill, $end) = @_;
@@ -661,8 +661,8 @@ if( $action eq "print" ) {
     # Keep track of directories we've written out.
     my @dirs_written;
     
-    my $classer = Stasis::ClassGuess->new( version => $opt_version );
-    my $splitter = Stasis::LogSplit->new( version => $opt_version, callback =>
+    my $classer = Stasis::ClassGuess->new( debug => $opt_debug );
+    my $splitter = Stasis::LogSplit->new( debug => $opt_debug, callback =>
         # LogSplit callback
         sub {
             my ($short, $start, $long, $kill, $end) = @_;
@@ -744,8 +744,8 @@ if( $action eq "print" ) {
     );
     
     # Add LogSplit and ClassGuess to the event dispatcher.
-    $ed->add( $classer );
-    $ed_splitter->add( $splitter );
+    $classer->register( $ed );
+    $splitter->register( $ed_splitter );
     
     # Start overall and trash if requested.
     $overall_exts->start($ed) if $opt_overall;

@@ -21,7 +21,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package Stasis::ChartPage;
+package Stasis::Page::Chart;
 
 use strict;
 use warnings;
@@ -29,7 +29,7 @@ use POSIX;
 use Stasis::Page;
 use Stasis::PageMaker;
 use Stasis::ActorGroup;
-use Stasis::Extension qw(span_sum);
+use Stasis::Extension qw/span_sum/;
 
 our @ISA = "Stasis::Page";
 
@@ -75,6 +75,7 @@ sub page {
     # DPS activity per raider
     my $actOut = $self->{ext}{Activity}->sum(
         actor => \@raiders,
+        -target => \@raiders,
         expand => [ "actor" ],
     );
     
@@ -87,7 +88,7 @@ sub page {
         actor => \@raiders, 
         -target => \@raiders, 
         expand => [ "actor" ], 
-        fields => [ qw(hitTotal critTotal tickTotal) ]
+        fields => [ qw/hitTotal critTotal tickTotal/ ]
     );
     
     $_->{total} = $self->_addHCT( $_, "Total" ) foreach ( values %$deOut );
@@ -113,7 +114,7 @@ sub page {
     my $deInAll = $self->{ext}{Damage}->sum( 
         target => \@raiders, 
         expand => [ "target" ], 
-        fields => [ qw(hitTotal critTotal tickTotal) ]
+        fields => [ qw/hitTotal critTotal tickTotal/ ]
     );
     
     $_->{total} = $self->_addHCT( $_, "Total" ) foreach ( values %$deInAll );
@@ -148,7 +149,7 @@ sub page {
         actor => \@raiders, 
         target => \@raiders, 
         expand => [ "actor" ], 
-        fields => [ qw(hitEffective critEffective tickEffective hitTotal critTotal tickTotal) ]
+        fields => [ qw/hitEffective critEffective tickEffective hitTotal critTotal tickTotal/ ]
     );
     
     $_->{total} = $self->_addHCT( $_, "Total" ) foreach ( values %$heOutFriendly );
@@ -469,8 +470,7 @@ sub page {
             
             # Get the last line of the autopsy.
             my $lastline = $death->{autopsy}->[-1];
-            my $text = Stasis::Parser->toString( 
-                $lastline->{entry}, 
+            my $text = $lastline->{event}->toString( 
                 sub { $self->{pm}->actorLink( $_[0], 1 ) }, 
                 sub { $self->{pm}->spellLink( $_[0] ) } 
             );

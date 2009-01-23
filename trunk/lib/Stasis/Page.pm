@@ -45,7 +45,7 @@ sub new {
     };
     
     $self->{pm} = $params{pm} || Stasis::PageMaker->new;
-    $self->{pm}{$_} = $self->{$_} foreach qw(raid ext grouper collapse);
+    $self->{pm}{$_} = $self->{$_} foreach qw/raid ext grouper collapse/;
     
     bless $self, $class;
 }
@@ -102,7 +102,7 @@ sub _cricruglaText {
     $pct &&= "$pct%";
     
     my @text;
-    my @atype = qw(crushing glancing);
+    my @atype = qw/crushing glancing/;
     foreach my $type (@atype) {
         push @text, _tidypct( $sdata->{$type} / $swings * 100 ) . "% $type" if $sdata->{$type};
     }
@@ -124,19 +124,19 @@ sub _avoidanceText {
     $pct &&= "$pct%";
     
     my @text;
-    my @atype = qw(miss dodge parry block absorb resist immune);
+    my @atype = qw/miss dodge parry block absorb resist immune/;
     
     foreach my $type (@atype) {
         push @text, _tidypct( $sdata->{$type . "Count"} / $swings * 100 ) . "% total $type" if $sdata->{$type . "Count"};
     }
     
     my $f = 1;
-    my @ptype = qw(block resist absorb);
+    my @ptype = qw/block resist absorb/;
     foreach (@ptype) {
         my $type = $_;
         $type =~ s/^(\w)/"partial" . uc $1/e;
         push @text, "" if $sdata->{$type . "Count"} && @text && $f++ == 1;
-        push @text, _tidypct( $sdata->{$type . "Count"} / $sdata->{count} * 100 ) . "% partial ${_} (avg " . int($sdata->{$type . "Total"}/$sdata->{$type . "Count"}) . ")" if $sdata->{$type . "Count"};
+        push @text, _tidypct( $sdata->{$type . "Count"} / $sdata->{count} * 100 ) . "% partial ${_} (avg " . int($sdata->{$type . "Total"}/$sdata->{$type . "Count"}) . ")" if $sdata->{count} && $sdata->{$type . "Count"};
     }
     
     if( @text ) {
@@ -163,7 +163,7 @@ sub _rowDamage {
         "R-%" => $sdata->{total} && $mnum && _tidypct( $sdata->{total} / $mnum * 100 ),
         "R-DPS" => $sdata->{total} && $time && sprintf( "%d", $sdata->{total}/$time ),
         "R-Time" => $time && sprintf( "%02d:%02d", $time/60, $time%60 ),
-        "R-Direct" => (($sdata->{hitCount}||0) + ($sdata->{critCount}||0)) && $self->{pm}->tip( sprintf( "%d", ($sdata->{hitCount}||0) + ($sdata->{critCount}||0) ), join( "<br />", map { $sdata->{$_ . "Count"} ? $sdata->{$_ . "Count"} . " ${_}s" : () } qw(hit crit) ) ),
+        "R-Direct" => (($sdata->{hitCount}||0) + ($sdata->{critCount}||0)) && $self->{pm}->tip( sprintf( "%d", ($sdata->{hitCount}||0) + ($sdata->{critCount}||0) ), join( "<br />", map { $sdata->{$_ . "Count"} ? $sdata->{$_ . "Count"} . " ${_}s" : () } qw/hit crit/ ) ),
         "R-Hits" => $sdata->{hitCount} && sprintf( "%d", $sdata->{hitCount} ),
         "R-AvHit" => $sdata->{hitCount} && $sdata->{hitTotal} && $self->{pm}->tip( int($sdata->{hitTotal} / $sdata->{hitCount}), sprintf( "Range: %d&ndash;%d", $sdata->{hitMin}, $sdata->{hitMax} ) ),
         "R-Ticks" => $sdata->{tickCount} && sprintf( "%d", $sdata->{tickCount} ),
@@ -185,7 +185,7 @@ sub _rowHealing {
         "R-%" => $sdata->{effective} && $mnum && _tidypct( $sdata->{effective} / $mnum * 100 ),
         "R-Overheal" => $sdata->{total} && sprintf( "%0.1f%%", ($sdata->{total} - ($sdata->{effective}||0) ) / $sdata->{total} * 100 ),
         "R-Count" => $sdata->{count}||0,
-        "R-Direct" => (($sdata->{hitCount}||0) + ($sdata->{critCount}||0)) && $self->{pm}->tip( sprintf( "%d", ($sdata->{hitCount}||0) + ($sdata->{critCount}||0) ), join( "<br />", map { $sdata->{$_ . "Count"} ? $sdata->{$_ . "Count"} . " ${_}s" : () } qw(hit crit) ) ),
+        "R-Direct" => (($sdata->{hitCount}||0) + ($sdata->{critCount}||0)) && $self->{pm}->tip( sprintf( "%d", ($sdata->{hitCount}||0) + ($sdata->{critCount}||0) ), join( "<br />", map { $sdata->{$_ . "Count"} ? $sdata->{$_ . "Count"} . " ${_}s" : () } qw/hit crit/ ) ),
         "R-Hits" => $sdata->{hitCount} && sprintf( "%d", $sdata->{hitCount} ),
         "R-AvHit" => $sdata->{hitCount} && $sdata->{hitTotal} && $self->{pm}->tip( int($sdata->{hitTotal} / $sdata->{hitCount}), sprintf( "Range: %d&ndash;%d", $sdata->{hitMin}, $sdata->{hitMax} ) ),
         "R-Ticks" => $sdata->{tickCount} && sprintf( "%d", $sdata->{tickCount} ),

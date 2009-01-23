@@ -25,7 +25,9 @@ package Stasis::Extension::Activity;
 
 use strict;
 use warnings;
-use Stasis::Extension qw(span_sum);
+
+use Stasis::Event qw/:constants/;
+use Stasis::Extension qw/span_sum/;
 
 our @ISA = "Stasis::Extension";
 
@@ -39,19 +41,19 @@ sub start {
 }
 
 sub actions {
-    map { $_ => \&process } qw(ENVIRONMENTAL_DAMAGE SWING_DAMAGE SWING_MISSED RANGE_DAMAGE RANGE_MISSED SPELL_DAMAGE DAMAGE_SPLIT SPELL_MISSED SPELL_PERIODIC_DAMAGE SPELL_PERIODIC_MISSED DAMAGE_SHIELD DAMAGE_SHIELD_MISSED);
+    map { $_ => \&process } qw/ENVIRONMENTAL_DAMAGE SWING_DAMAGE SWING_MISSED RANGE_DAMAGE RANGE_MISSED SPELL_DAMAGE DAMAGE_SPLIT SPELL_MISSED SPELL_PERIODIC_DAMAGE SPELL_PERIODIC_MISSED DAMAGE_SHIELD DAMAGE_SHIELD_MISSED/;
 }
 
 sub key {
-    qw(actor target);
+    qw/actor target/;
 }
 
 sub value {
-    qw(spans);
+    qw/spans/;
 }
 
 sub process {
-    my ($self, $entry) = @_;
+    my ($self, $event) = @_;
     
     # This was a damage event, or an attempted damage event.
     
@@ -61,18 +63,18 @@ sub process {
     # will both fail to look up in Index, but that's okay.
     my $actor;
     my $spell;
-    if( $entry->{action} == Stasis::Parser::ENVIRONMENTAL_DAMAGE ) {
+    if( $event->{action} == ENVIRONMENTAL_DAMAGE ) {
         $actor = 0;
         $spell = 0;
-    } elsif( $entry->{action} == Stasis::Parser::SWING_DAMAGE || $entry->{action} == Stasis::Parser::SWING_MISSED ) {
-        $actor = $entry->{actor};
+    } elsif( $event->{action} == SWING_DAMAGE || $event->{action} == SWING_MISSED ) {
+        $actor = $event->{actor};
         $spell = 0;
     } else {
-        $actor = $entry->{actor};
-        $spell = $entry->{spellid};
+        $actor = $event->{actor};
+        $spell = $event->{spellid};
     }
     
-    my $target = $entry->{target};
+    my $target = $event->{target};
     
     # Create a scratch hash for this actor/target pair if it does not exist already.
     $self->{span_scratch}{ $actor }{ $target } ||= pack "dd", 0, 0;
@@ -81,9 +83,9 @@ sub process {
     my ($astart, $aend) = unpack "dd", $self->{span_scratch}{ $actor }{ $target };
     if( !$astart ) {
         # This is the first DPS action, so mark the start of a span.
-        $astart = $entry->{t};
-        $aend = $entry->{t};
-    } elsif( $aend + $self->{_dpstimeout} < $entry->{t} ) {
+        $astart = $event->{t};
+        $aend = $event->{t};
+    } elsif( $aend + $self->{_dpstimeout} < $event->{t} ) {
         # The last span ended, add it.
         $self->{actors}{ $actor }{ $target }{spans} ||= [];
         
@@ -95,11 +97,11 @@ sub process {
         push @{$self->{actors}{ $actor }{ $target }{spans}}, $span;
         
         # Reset the start and end times to the current time.
-        $astart = $entry->{t};
-        $aend = $entry->{t};
+        $astart = $event->{t};
+        $aend = $event->{t};
     } else {
         # The last span is continuing.
-        $aend = $entry->{t};
+        $aend = $event->{t};
     }
     
     # Store what we came up with.

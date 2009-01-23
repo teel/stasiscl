@@ -25,7 +25,9 @@ package Stasis::Extension::Cast;
 
 use strict;
 use warnings;
+
 use Stasis::Extension;
+use Stasis::Event qw/:constants/;
 
 our @ISA = "Stasis::Extension";
 
@@ -35,19 +37,19 @@ sub start {
 }
 
 sub actions {
-    map { $_ => \&process } qw(SPELL_CAST_SUCCESS);
+    map { $_ => \&process } qw/SPELL_CAST_SUCCESS/;
 }
 
 sub process {
-    my ($self, $entry) = @_;
+    my ($self, $event) = @_;
     
-    if( $entry->{action} == Stasis::Parser::SPELL_CAST_SUCCESS ) {
-        $self->{actors}{ $entry->{actor} }{ $entry->{spellid} }{ $entry->{target} }{count} += 1;
+    if( $event->{action} == SPELL_CAST_SUCCESS ) {
+        $self->{actors}{ $event->{actor} }{ $event->{spellid} }{ $event->{target} }{count} += 1;
     }
 }
 
 sub value {
-    qw(count);
+    qw/count/;
 }
 
 1;

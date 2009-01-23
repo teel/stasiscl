@@ -4059,13 +4059,22 @@ my %spells_wlk = (
 
 # Get spell info by ID
 sub spell {
-    my $self = shift;
-    my $spell = shift;
+    my ($self, $spell) = @_;
+    
     if( $spell && $spell =~ /^[0-9]+$/ ) {
         return $spells_wlk{$spell} || $spells_tbc{$spell};
     } else {
         return undef;
     }
+}
+
+sub spells_class {
+    my ($self, $class) = @_;
+    
+    my @filter_tbc = grep { $_->{class} eq $class } keys %spells_tbc;
+    my @filter_wlk = grep { $_->{class} eq $class } keys %spells_wlk;
+    
+    return { @spells_tbc{@filter_tbc}, @spells_wlk{@filter_wlk} };
 }
 
 1;

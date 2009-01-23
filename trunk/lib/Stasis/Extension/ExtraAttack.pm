@@ -25,7 +25,9 @@ package Stasis::Extension::ExtraAttack;
 
 use strict;
 use warnings;
+
 use Stasis::Extension;
+use Stasis::Event qw/:constants/;
 
 our @ISA = "Stasis::Extension";
 
@@ -35,25 +37,25 @@ sub start {
 }
 
 sub actions {
-    map { $_ => \&process } qw(SPELL_EXTRA_ATTACKS);
+    map { $_ => \&process } qw/SPELL_EXTRA_ATTACKS/;
 }
 
 sub key {
-    qw(actor spell target)
+    qw/actor spell target/
 }
 
 sub value {
-    qw(amount count);
+    qw/amount count/;
 }
 
 sub process {
-    my ($self, $entry) = @_;
+    my ($self, $event) = @_;
     
-    if( $entry->{action} == Stasis::Parser::SPELL_EXTRA_ATTACKS ) {
+    if( $event->{action} == SPELL_EXTRA_ATTACKS ) {
         # Store this in the same format as power gains (Power.pm)
         # Except there will be no "type" key
-        $self->{targets}{ $entry->{target} }{ $entry->{spellid} }{ $entry->{actor} }{amount} += $entry->{amount};
-        $self->{targets}{ $entry->{target} }{ $entry->{spellid} }{ $entry->{actor} }{count} += 1;
+        $self->{targets}{ $event->{target} }{ $event->{spellid} }{ $event->{actor} }{amount} += $event->{amount};
+        $self->{targets}{ $event->{target} }{ $event->{spellid} }{ $event->{actor} }{count} += 1;
     }
 }
 

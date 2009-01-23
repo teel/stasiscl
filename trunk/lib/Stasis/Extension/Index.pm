@@ -42,28 +42,28 @@ sub actions {
 }
 
 sub process {
-    my ($self, $entry) = @_;
+    my ($self, $event) = @_;
     
     # The purpose of this index is to associate IDs with names.
     
     # ACTOR INDEX: check actor
-    if( $entry->{actor} ) {
-        $self->{actors}{ $entry->{actor} } = $entry->{actor_name};
+    if( $event->{actor} ) {
+        $self->{actors}{ $event->{actor} } ||= $event->{actor_name};
     }
     
     # ACTOR INDEX: check target
-    if( $entry->{target} ) {
-        $self->{actors}{ $entry->{target} } = $entry->{target_name};
+    if( $event->{target} ) {
+        $self->{actors}{ $event->{target} } ||= $event->{target_name};
     }
     
     # SPELL INDEX: check for spellid
-    if( $entry->{spellid} ) {
-        $self->{spells}{ $entry->{spellid} } = $entry->{spellname};
+    if( $event->{spellid} ) {
+        $self->{spells}{ $event->{spellid} } ||= $event->{spellname};
     }
     
     # SPELL INDEX: check for extraspellid
-    if( $entry->{extraspellid} ) {
-        $self->{spells}{ $entry->{extraspellid} } = $entry->{extraspellname};
+    if( $event->{extraspellid} ) {
+        $self->{spells}{ $event->{extraspellid} } ||= $event->{extraspellname};
     }
 }
 

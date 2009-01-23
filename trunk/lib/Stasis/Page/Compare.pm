@@ -21,7 +21,7 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package Stasis::ComparePage;
+package Stasis::Page::Compare;
 
 use strict;
 use warnings;
@@ -31,8 +31,8 @@ use Stasis::Parser;
 use Stasis::Page;
 use Stasis::PageMaker;
 use Stasis::ActorGroup;
-use Stasis::Extension qw(span_sum);
-use Stasis::MobUtil qw(splitguid);
+use Stasis::Extension qw/span_sum/;
+use Stasis::MobUtil qw/splitguid/;
 
 our @ISA = "Stasis::Page";
 

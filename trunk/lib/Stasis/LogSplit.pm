@@ -27,10 +27,9 @@ use strict;
 use warnings;
 use POSIX;
 use Carp;
-use Stasis::MobUtil;
-use Stasis::EventListener;
 
-our @ISA = "Stasis::EventListener";
+use Stasis::MobUtil;
+use Stasis::Event qw/:constants/;
 
 use constant {
     # After a boss is killed, don't allow another one of the same type to 
@@ -38,167 +37,16 @@ use constant {
     LOCKOUT_TIME => 900,
 };
 
-# Zone names
-my %zones = (
-
-"karazhan" => {
-	long => "Karazhan",
-	bosses => [
-	    "attumen",
-	    "moroes",
-	    "maiden",
-	    "crone",
-	    "romulo",
-	    "bbw",
-	    "nightbane",
-	    "curator",
-	    "shade",
-	    "illhoof",
-	    "netherspite",
-	    "prince",
-	    "tenris",
-	],
-},
-
-"zulaman" => {
-	long => "Zul'Aman",
-	bosses => [
-		"nalorakk",
-		"janalai",
-		"akilzon",
-		"halazzi",
-		"hexlord",
-		"zuljin",
-	],
-},
-
-"gruul" => {
-	long => "Gruul's Lair",
-	bosses => [
-		"maulgar",
-		"gruul",
-	],
-},
-
-"magtheridon" => {
-	long => "Magtheridon's Lair",
-	bosses => [
-	    "magtheridon",
-	]
-},
-
-"serpentshrine" => {
-	long => "Serpentshrine Cavern",
-	bosses => [
-		"hydross",
-		"lurker",
-		"leotheras",
-		"flk",
-		"tidewalker",
-		"vashj",
-	],
-},
-
-"tempestkeep" => {
-	long => "Tempest Keep",
-	bosses => [
-		"alar",
-		"vr",
-		"solarian",
-		"kaelthas",
-	],
-},
-
-"hyjal" => {
-	long => "Hyjal Summit",
-	bosses => [
-		"rage",
-		"anetheron",
-		"kazrogal",
-		"azgalor",
-		"archimonde",
-	],
-},
-
-"blacktemple" => {
-	long => "Black Temple",
-	bosses => [
-		"najentus",
-		"supremus",
-		"akama",
-		"teron",
-		"ros",
-		"bloodboil",
-		"shahraz",
-		"council",
-		"illidan",
-	],
-},
-
-"sunwell" => {
-	long => "Sunwell Plateau",
-	bosses => [
-		"kalecgos",
-		"brutallus",
-		"felmyst",
-		"twins",
-		"muru",
-		"kiljaeden",
-	],
-},
-
-"naxxramas" => {
-	long => "Naxxramas",
-	bosses => [
-		"anubrekhan",
-		"faerlina",
-		"maexxna",
-		"patchwerk",
-		"grobbulus",
-		"gluth",
-		"thaddius",
-		"razuvious",
-		"gothik",
-		"horsemen",
-		"noth",
-		"heigan",
-		"loatheb",
-		"sapphiron",
-		"kelthuzad",
-	],
-},
-
-"obsidiansanctum" => {
-	long => "Obsidian Sanctum",
-	bosses => [
-	    "sartharion",
-	]
-},
-
-"archavon" => {
-    long => "Vault of Archavon",
-    bosses => [
-        "archavon",
-    ]
-},
-
-"eyeofeternity" => {
-    long => "The Eye of Eternity",
-    bosses => [
-        "malygos",
-    ]
-},
-
-);
-
 # Fingerprints of various boss encounters.
-my %fingerprints = (
+my @fingerprints = (
 
 ############
 # KARAZHAN #
 ############
 
-"attumen" => {
+{
+    short => "attumen",
+    zone => "karazhan",
     long => "Attumen the Huntsman",
     mobStart => [ 16151, "Midnight" ],
     mobContinue => [ 15550, 16151, 16152, "Attumen the Huntsman", "Midnight" ],
@@ -206,7 +54,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"moroes" => {
+{
+    short => "moroes",
+    zone => "karazhan",
     long => "Moroes",
     mobStart => [ 15687, "Moroes" ],
     mobContinue => [ 15687, "Moroes" ],
@@ -214,7 +64,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"maiden" => {
+{
+    short => "maiden",
+    zone => "karazhan",
     long => "Maiden of Virtue",
     mobStart => [ 16457, "Maiden of Virtue" ],
     mobContinue => [ 16457, "Maiden of Virtue" ],
@@ -222,7 +74,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"crone" => {
+{
+    short => "crone",
+    zone => "karazhan",
     long => "Opera (Wizard of Oz)",
     mobStart => [ 17535, 17548, 17543, 17547, 17546, "Dorothee", "Tito", "Strawman", "Tinhead", "Roar" ],
     mobContinue => [ 17535, 17548, 17543, 17547, 17546, 18168, "Dorothee", "Tito", "Strawman", "Tinhead", "Roar", "The Crone" ],
@@ -230,7 +84,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"romulo" => {
+{
+    short => "romulo",
+    zone => "karazhan",
     long => "Opera (Romulo and Julianne)",
     mobStart => [ 17534, "Julianne" ],
     mobContinue => [ 17533, 17534, "Romulo", "Julianne" ],
@@ -239,7 +95,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"bbw" => {
+{
+    short => "bbw",
+    zone => "karazhan",
     long => "Opera (Red Riding Hood)",
     mobStart => [ 17521, "The Big Bad Wolf" ],
     mobContinue => [ 17521, "The Big Bad Wolf" ],
@@ -247,7 +105,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"nightbane" => {
+{
+    short => "nightbane",
+    zone => "karazhan",
     long => "Nightbane",
     mobStart => [ 17225, "Nightbane" ],
     mobContinue => [ 17225, 17261, "Nightbane", "Restless Skeleton" ],
@@ -255,7 +115,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"curator" => {
+{
+    short => "curator",
+    zone => "karazhan",
     long => "The Curator",
     mobStart => [ 15691, "The Curator" ],
     mobContinue => [ 15691, "The Curator" ],
@@ -263,7 +125,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"shade" => {
+{
+    short => "shade",
+    zone => "karazhan",
     long => "Shade of Aran",
     mobStart => [ 16524, "Shade of Aran" ],
     mobContinue => [ 16524, "Shade of Aran" ],
@@ -271,7 +135,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"illhoof" => {
+{
+    short => "illhoof",
+    zone => "karazhan",
     long => "Terestian Illhoof",
     mobStart => [ 15688, "Terestian Illhoof" ],
     mobContinue => [ 15688, "Terestian Illhoof" ],
@@ -279,7 +145,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"netherspite" => {
+{
+    short => "netherspite",
+    zone => "karazhan",
     long => "Netherspite",
     mobStart => [ 15689, "Netherspite" ],
     mobContinue => [ 15689, "Netherspite" ],
@@ -287,7 +155,9 @@ my %fingerprints = (
     timeout => 45,
 },
 
-"prince" => {
+{
+    short => "prince",
+    zone => "karazhan",
     long => "Prince Malchezaar",
     mobStart => [ 15690, "Prince Malchezaar" ],
     mobContinue => [ 15690, "Prince Malchezaar" ],
@@ -295,7 +165,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"tenris" => {
+{
+    short => "tenris",
+    zone => "karazhan",
     long => "Tenris Mirkblood",
     mobStart => [ 28194 ],
     mobContinue => [ 28194 ],
@@ -307,7 +179,9 @@ my %fingerprints = (
 # ZUL'AMAN #
 ############
 
-"nalorakk" => {
+{
+    short => "nalorakk",
+    zone => "zulaman",
     long => "Nalorakk",
     mobStart => [ 23576, "Nalorakk" ],
     mobContinue => [ 23576, "Nalorakk" ],
@@ -315,7 +189,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"janalai" => {
+{
+    short => "janalai",
+    zone => "zulaman",
     long => "Jan'alai",
     mobStart => [ 23578, "Jan'alai" ],
     mobContinue => [ 23578, "Jan'alai" ],
@@ -323,7 +199,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"akilzon" => {
+{
+    short => "akilzon",
+    zone => "zulaman",
     long => "Akil'zon",
     mobStart => [ 23574, "Akil'zon" ],
     mobContinue => [ 23574, "Akil'zon" ],
@@ -331,7 +209,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"halazzi" => {
+{
+    short => "halazzi",
+    zone => "zulaman",
     long => "Halazzi",
     mobStart => [ 23577, "Halazzi" ],
     mobContinue => [ 23577, "Halazzi" ],
@@ -339,7 +219,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"hexlord" => {
+{
+    short => "hexlord",
+    zone => "zulaman",
     long => "Hex Lord Malacrass",
     mobStart => [ 24239, "Hex Lord Malacrass" ],
     mobContinue => [ 24239, "Hex Lord Malacrass" ],
@@ -347,7 +229,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"zuljin" => {
+{
+    short => "zuljin",
+    zone => "zulaman",
     long => "Zul'jin",
     mobStart => [ 23863, "Zul'jin" ],
     mobContinue => [ 23863, "Zul'jin" ],
@@ -359,7 +243,9 @@ my %fingerprints = (
 # GRUUL AND MAG #
 #################
 
-"maulgar" => {
+{
+    short => "maulgar",
+    zone => "gruul",
     long => "High King Maulgar",
     mobStart => [ 18831, "High King Maulgar", "Kiggler the Crazed", "Krosh Firehand", "Olm the Summoner", "Blindeye the Seer" ],
     mobContinue => [ 18831, "High King Maulgar", "Kiggler the Crazed", "Krosh Firehand", "Olm the Summoner", "Blindeye the Seer" ],
@@ -367,7 +253,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"gruul" => {
+{
+    short => "gruul",
+    zone => "gruul",
     long => "Gruul the Dragonkiller",
     mobStart => [ 19044, "Gruul the Dragonkiller" ],
     mobContinue => [ 19044, "Gruul the Dragonkiller" ],
@@ -375,7 +263,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"magtheridon" => {
+{
+    short => "magtheridon",
+    zone => "magtheridon",
     long => "Magtheridon",
     mobStart => [ 17256, "Hellfire Channeler" ],
     mobContinue => [ 17256, 17257, "Magtheridon", "Hellfire Channeler" ],
@@ -387,7 +277,9 @@ my %fingerprints = (
 # SERPENTSHRINE CAVERN #
 ########################
 
-"hydross" => {
+{
+    short => "hydross",
+    zone => "serpentshrine",
     long => "Hydross the Unstable",
     mobStart => [ 21216, "Hydross the Unstable" ],
     mobContinue => [ 21216, "Hydross the Unstable" ],
@@ -395,7 +287,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"lurker" => {
+{
+    short => "lurker",
+    zone => "serpentshrine",
     long => "The Lurker Below",
     mobStart => [ 21217, "The Lurker Below" ],
     mobContinue => [ 21217, 21865, 21873, "The Lurker Below", "Coilfang Ambusher", "Coilfang Guardian" ],
@@ -403,7 +297,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"leotheras" => {
+{
+    short => "leotheras",
+    zone => "serpentshrine",
     long => "Leotheras the Blind",
     mobStart => [ 21806, "Greyheart Spellbinder" ],
     mobContinue => [ 21806, 21215, "Greyheart Spellbinder", "Leotheras the Blind" ],
@@ -411,7 +307,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"flk" => {
+{
+    short => "flk",
+    zone => "serpentshrine",
     long => "Fathom-Lord Karathress",
     mobStart => [ 21214, "Fathom-Lord Karathress", "Fathom-Guard Caribdis", "Fathom-Guard Sharkkis", "Fathom-Guard Tidalvess" ],
     mobContinue => [ 21214, "Fathom-Lord Karathress", "Fathom-Guard Caribdis", "Fathom-Guard Sharkkis", "Fathom-Guard Tidalvess" ],
@@ -419,7 +317,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"tidewalker" => {
+{
+    short => "tidewalker",
+    zone => "serpentshrine",
     long => "Morogrim Tidewalker",
     mobStart => [ 21213, "Morogrim Tidewalker" ],
     mobContinue => [ 21213, "Morogrim Tidewalker" ],
@@ -427,7 +327,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"vashj" => {
+{
+    short => "vashj",
+    zone => "serpentshrine",
     long => "Lady Vashj",
     mobStart => [ 21212, "Lady Vashj" ],
     mobContinue => [ 21212, 21958, 22056, 22055, 22009, "Lady Vashj", "Enchanted Elemental", "Tainted Elemental", "Coilfang Strider", "Coilfang Elite" ],
@@ -439,7 +341,9 @@ my %fingerprints = (
 # TEMPEST KEEP #
 ################
 
-"alar" => {
+{
+    short => "alar",
+    zone => "tempestkeep",
     long => "Al'ar",
     mobStart => [ 19514, "Al'ar" ],
     mobContinue => [ 19514, "Al'ar" ],
@@ -447,7 +351,9 @@ my %fingerprints = (
     timeout => 45,
 },
 
-"vr" => {
+{
+    short => "vr",
+    zone => "tempestkeep",
     long => "Void Reaver",
     mobStart => [ 19516, "Void Reaver" ],
     mobContinue => [ 19516, "Void Reaver" ],
@@ -455,7 +361,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"solarian" => {
+{
+    short => "solarian",
+    zone => "tempestkeep",
     long => "High Astromancer Solarian",
     mobStart => [ 18805, "High Astromancer Solarian" ],
     mobContinue => [ 18805, 18806, 18925, "High Astromancer Solarian", "Solarium Priest", "Solarium Agent" ],
@@ -463,7 +371,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"kaelthas" => {
+{
+    short => "kaelthas",
+    zone => "tempestkeep",
     long => "Kael'thas Sunstrider",
     mobStart => [ 21272, 21273, 21269, 21268, 21274, 21271, 21270, "Warp Slicer", "Phaseshift Bulwark", "Devastation", "Netherstrand Longbow", "Staff of Disintegration", "Infinity Blades", "Cosmic Infuser" ],
     mobContinue => [ 19622, 21272, 21273, 21269, 21268, 21274, 21271, 21270, 20063, 20062, 20064, 20060, "Warp Slicer", "Phaseshift Bulwark", "Devastation", "Netherstrand Longbow", "Staff of Disintegration", "Infinity Blades", "Cosmic Infuser", "Kael'thas Sunstrider", "Phoenix", "Phoenix Egg", "Master Engineer Telonicus", "Grand Astromancer Capernian", "Thaladred the Darkener", "Lord Sanguinar" ],
@@ -475,7 +385,9 @@ my %fingerprints = (
 # HYJAL #
 #########
 
-"rage" => {
+{
+    short => "rage",
+    zone => "tempestkeep",
     long => "Rage Winterchill",
     mobStart => [ 17767, "Rage Winterchill" ],
     mobContinue => [ 17767, "Rage Winterchill" ],
@@ -483,7 +395,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"anetheron" => {
+{
+    short => "anetheron",
+    zone => "tempestkeep",
     long => "Anetheron",
     mobStart => [ 17808, "Anetheron" ],
     mobContinue => [ 17808, "Anetheron" ],
@@ -491,7 +405,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"kazrogal" => {
+{
+    short => "kazrogal",
+    zone => "tempestkeep",
     long => "Kaz'rogal",
     mobStart => [ 17888, "Kaz'rogal" ],
     mobContinue => [ 17888, "Kaz'rogal" ],
@@ -499,7 +415,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"azgalor" => {
+{
+    short => "azgalor",
+    zone => "tempestkeep",
     long => "Azgalor",
     mobStart => [ 17842, "Azgalor" ],
     mobContinue => [ 17842, "Azgalor" ],
@@ -507,7 +425,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"archimonde" => {
+{
+    short => "archimonde",
+    zone => "tempestkeep",
     long => "Archimonde",
     mobStart => [ 17968, "Archimonde" ],
     mobContinue => [ 17968, "Archimonde" ],
@@ -519,7 +439,9 @@ my %fingerprints = (
 # BLACK TEMPLE #
 ################
 
-"najentus" => {
+{
+    short => "najentus",
+    zone => "blacktemple",
     long => "High Warlord Naj'entus",
     mobStart => [ 22887, "High Warlord Naj'entus" ],
     mobContinue => [ 22887, "High Warlord Naj'entus" ],
@@ -527,7 +449,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"supremus" => {
+{
+    short => "supremus",
+    zone => "blacktemple",
     long => "Supremus",
     mobStart => [ 22898, "Supremus" ],
     mobContinue => [ 22898, "Supremus" ],
@@ -535,7 +459,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"akama" => {
+{
+    short => "akama",
+    zone => "blacktemple",
     long => "Shade of Akama",
     mobStart => [ 23421, 23524, 23523, 23318, "Ashtongue Channeler", "Ashtongue Spiritbinder", "Ashtongue Elementalist", "Ashtongue Rogue" ],
     mobContinue => [ 23421, 23524, 23523, 23318, 22841, "Ashtongue Channeler", "Ashtongue Defender", "Ashtongue Spiritbinder", "Ashtongue Elementalist", "Ashtongue Rogue", "Shade of Akama" ],
@@ -543,7 +469,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"teron" => {
+{
+    short => "teron",
+    zone => "blacktemple",
     long => "Teron Gorefiend",
     mobStart => [ 22871, "Teron Gorefiend" ],
     mobContinue => [ 22871, "Teron Gorefiend" ],
@@ -551,7 +479,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"bloodboil" => {
+{
+    short => "bloodboil",
+    zone => "blacktemple",
     long => "Gurtogg Bloodboil",
     mobStart => [ 22948, "Gurtogg Bloodboil" ],
     mobContinue => [ 22948, "Gurtogg Bloodboil" ],
@@ -559,7 +489,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"ros" => {
+{
+    short => "ros",
+    zone => "blacktemple",
     long => "Reliquary of Souls",
     mobStart => [ 23418, "Essence of Suffering" ],
     mobContinue => [ 23418, 23419, 23420, 23469, "Essence of Suffering", "Essence of Desire", "Essence of Anger", "Enslaved Soul" ],
@@ -567,7 +499,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"shahraz" => {
+{
+    short => "shahraz",
+    zone => "blacktemple",
     long => "Mother Shahraz",
     mobStart => [ 22947, "Mother Shahraz" ],
     mobContinue => [ 22947, "Mother Shahraz" ],
@@ -575,7 +509,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"council" => {
+{
+    short => "council",
+    zone => "blacktemple",
     long => "Illidari Council",
     mobStart => [ 22950, 22952, 22951, 22949, "High Nethermancer Zerevor", "Veras Darkshadow", "Lady Malande", "Gathios the Shatterer" ],
     mobContinue => [ 22950, 22952, 22951, 22949, "High Nethermancer Zerevor", "Veras Darkshadow", "Lady Malande", "Gathios the Shatterer" ],
@@ -583,7 +519,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"illidan" => {
+{
+    short => "illidan",
+    zone => "blacktemple",
     long => "Illidan Stormrage",
     mobStart => [ 22917, "Illidan Stormrage" ],
     mobContinue => [ 22917, 22997, "Illidan Stormrage", "Flame of Azzinoth" ],
@@ -595,7 +533,9 @@ my %fingerprints = (
 # SUNWELL #
 ###########
 
-"kalecgos" => {
+{
+    short => "kalecgos",
+    zone => "sunwell",
     long => "Kalecgos",
     mobStart => [ 24850 ],
     mobContinue => [ 24850, 24892 ],
@@ -603,7 +543,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"brutallus" => {
+{
+    short => "brutallus",
+    zone => "sunwell",
     long => "Brutallus",
     mobStart => [ 24882 ],
     mobContinue => [ 24882 ],
@@ -611,7 +553,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"felmyst" => {
+{
+    short => "felmyst",
+    zone => "sunwell",
     long => "Felmyst",
     mobStart => [ 25038 ],
     mobContinue => [ 25038, 25268 ],
@@ -619,7 +563,9 @@ my %fingerprints = (
     timeout => 45,
 },
 
-"twins" => {
+{
+    short => "twins",
+    zone => "sunwell",
     long => "Eredar Twins",
     mobStart => [ 25166, 25165 ],
     mobContinue => [ 25166, 25165 ],
@@ -628,7 +574,9 @@ my %fingerprints = (
     endAll => 1,
 },
 
-"muru" => {
+{
+    short => "muru",
+    zone => "sunwell",
     long => "M'uru",
     mobStart => [ 25741 ],
     mobContinue => [ 25741, 25840, 25798, 25799 ],
@@ -636,7 +584,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"kiljaeden" => {
+{
+    short => "kiljaeden",
+    zone => "sunwell",
     long => "Kil'jaeden",
     mobStart => [ 25315 ],
     mobContinue => [ 25315 ],
@@ -648,7 +598,9 @@ my %fingerprints = (
 # NAXXRAMAS #
 #############
 
-"anubrekhan" => {
+{
+    short => "anubrekhan",
+    zone => "naxxramas",
     long => "Anub'Rekhan",
     mobStart => [ 15956 ],
     mobContinue => [ 15956 ],
@@ -656,7 +608,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"faerlina" => {
+{
+    short => "faerlina",
+    zone => "naxxramas",
     long => "Grand Widow Faerlina",
     mobStart => [ 15953 ],
     mobContinue => [ 15953 ],
@@ -664,7 +618,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"maexxna" => {
+{
+    short => "maexxna",
+    zone => "naxxramas",
     long => "Maexxna",
     mobStart => [ 15952 ],
     mobContinue => [ 15952, 17055 ],
@@ -672,7 +628,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"patchwerk" => {
+{
+    short => "patchwerk",
+    zone => "naxxramas",
     long => "Patchwerk",
     mobStart => [ 16028 ],
     mobContinue => [ 16028 ],
@@ -680,7 +638,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"grobbulus" => {
+{
+    short => "grobbulus",
+    zone => "naxxramas",
     long => "Grobbulus",
     mobStart => [ 15931 ],
     mobContinue => [ 15931 ],
@@ -688,7 +648,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"gluth" => {
+{
+    short => "gluth",
+    zone => "naxxramas",
     long => "Gluth",
     mobStart => [ 15932 ],
     mobContinue => [ 15932, 16360 ],
@@ -696,7 +658,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"thaddius" => {
+{
+    short => "thaddius",
+    zone => "naxxramas",
     long => "Thaddius",
     mobStart => [ 15928, 15929, 15930 ],
     mobContinue => [ 15928, 15929, 15930 ],
@@ -704,7 +668,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"razuvious" => {
+{
+    short => "razuvious",
+    zone => "naxxramas",
     long => "Instructor Razuvious",
     mobStart => [ 16061 ],
     mobContinue => [ 16061, 16803 ],
@@ -712,7 +678,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"gothik" => {
+{
+    short => "gothik",
+    zone => "naxxramas",
     long => "Gothik the Harvester",
     mobStart => [ 16124, 16125, 16126, 16127, 16148, 16150, 16149 ],
     mobContinue => [ 16060, 16124, 16125, 16126, 16127, 16148, 16150, 16149 ],
@@ -720,7 +688,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"horsemen" => {
+{
+    short => "horsemen",
+    zone => "naxxramas",
     long => "Four Horsemen",
     mobStart => [ 16064, 16065, 30549, 16063 ],
     mobContinue => [ 16064, 16065, 30549, 16063 ],
@@ -729,7 +699,9 @@ my %fingerprints = (
     endAll => 1,
 },
 
-"noth" => {
+{
+    short => "noth",
+    zone => "naxxramas",
     long => "Noth the Plaguebringer",
     mobStart => [ 15954 ],
     mobContinue => [ 15954, 16983, 16981 ],
@@ -737,7 +709,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"heigan" => {
+{
+    short => "heigan",
+    zone => "naxxramas",
     long => "Heigan the Unclean",
     mobStart => [ 15936 ],
     mobContinue => [ 15936, 16236 ],
@@ -745,7 +719,9 @@ my %fingerprints = (
     timeout => 60,
 },
 
-"loatheb" => {
+{
+    short => "loatheb",
+    zone => "naxxramas",
     long => "Loatheb",
     mobStart => [ 16011 ],
     mobContinue => [ 16011 ],
@@ -753,7 +729,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"sapphiron" => {
+{
+    short => "sapphiron",
+    zone => "naxxramas",
     long => "Sapphiron",
     mobStart => [ 15989 ],
     mobContinue => [ 15989, 16474 ],
@@ -761,7 +739,9 @@ my %fingerprints = (
     timeout => 60,
 },
 
-"kelthuzad" => {
+{
+    short => "kelthuzad",
+    zone => "naxxramas",
     long => "Kel'thuzad",
     mobStart => [ 15990, 16427, 16428, 16429 ],
     mobContinue => [ 15990, 16427, 16428, 16429, 16441 ],
@@ -773,7 +753,8 @@ my %fingerprints = (
 # OUTDOOR BOSSES #
 ##################
 
-"kazzak" => {
+{
+    short => "kazzak",
     long => "Doom Lord Kazzak",
     mobStart => [ 18728 ],
     mobContinue => [ 18728 ],
@@ -781,7 +762,8 @@ my %fingerprints = (
     timeout => 15,
 },
 
-"doomwalker" => {
+{
+    short => "doomwalker",
     long => "Doomwalker",
     mobStart => [ 17711 ],
     mobContinue => [ 17711 ],
@@ -793,7 +775,9 @@ my %fingerprints = (
 # SINGLE BOSS ENCOUNTERS #
 ##########################
 
-"sartharion" => {
+{
+    short => "sartharion",
+    zone => "obsidiansanctum",
     long => "Sartharion",
     mobStart => [ 28860 ],
     mobContinue => [ 28860, 31218, 31219 ],
@@ -801,7 +785,9 @@ my %fingerprints = (
     timeout => 45,
 },
 
-"archavon" => {
+{
+    short => "archavon",
+    zone => "archavon",
     long => "Archavon",
     mobStart => [ 31125 ],
     mobContinue => [ 31125 ],
@@ -809,7 +795,9 @@ my %fingerprints = (
     timeout => 30,
 },
 
-"malygos" => {
+{
+    short => "malygos",
+    zone => "eyeofeternity",
     long => "Malygos",
     mobStart => [ 28859 ],
     mobContinue => [ 28859, 30161, 30249 ],
@@ -821,7 +809,8 @@ my %fingerprints = (
 # TARGET DUMMIES #
 ##################
 
-"dummy" => {
+{
+    short => "dummy",
     long => "Target Dummy",
     mobStart => [ 31146, 30527, 31144 ],
     mobContinue => [ 31146, 30527, 31144 ],
@@ -831,12 +820,15 @@ my %fingerprints = (
 
 );
 
-# Invert the %fingerprints hash.
+# Create and invert the %hfingerprints hash.
+my %hfingerprints;
+$hfingerprints{ $_->{short} } = $_ foreach @fingerprints;
+
 my %fstart;
 my %fcontinue;
 my %fend;
 
-while( my ($kprint, $vprint) = each %fingerprints ) {
+while( my ($kprint, $vprint) = each %hfingerprints ) {
     foreach (@{$vprint->{mobStart}}) {
         $fstart{$_} = $kprint;
     }
@@ -847,15 +839,6 @@ while( my ($kprint, $vprint) = each %fingerprints ) {
     
     foreach (@{$vprint->{mobEnd}}) {
         $fend{$_} = $kprint;
-    }
-}
-
-# Invert the %zones hash.
-my %bzones;
-
-while( my ($kzone, $vzone) = each %zones ) {
-    foreach my $boss (@{$vzone->{bosses}}) {
-        $bzones{$boss} = $kzone;
     }
 }
 
@@ -877,24 +860,35 @@ sub new {
     bless \%params, $class;
 }
 
-sub actions {
-    map( { $_ => \&process } qw(SWING_DAMAGE SWING_MISSED RANGE_DAMAGE RANGE_MISSED SPELL_PERIODIC_DAMAGE SPELL_DAMAGE SPELL_MISSED UNIT_DIED) ),
-    map( { $_ => \&process_timeout_check } qw(SPELL_AURA_APPLIED SPELL_AURA_REMOVED SPELL_CAST_SUCCESS) ),
+sub register {
+    my ( $self, $ed ) = @_;
+    
+    # Looks for when boss encounters begin and when bosses die.
+    $ed->add(
+        qw/SWING_DAMAGE SWING_MISSED RANGE_DAMAGE RANGE_MISSED SPELL_PERIODIC_DAMAGE SPELL_DAMAGE SPELL_MISSED UNIT_DIED/,
+        sub { $self->process( @_ ) }
+    );
+    
+    # Looks for when boss attempts time out (usually because everyone in the raid died)
+    $ed->add(
+        qw/SPELL_AURA_APPLIED SPELL_AURA_REMOVED SPELL_CAST_SUCCESS/,
+        sub { $self->process_timeout_check( @_ ) }
+    );
 }
 
 sub process_timeout_check {
-    my ($self, $entry) = @_;
+    my ($self, $event) = @_;
     
     # Check for timeout.
     my $vboss;
-    if( ( $vboss = $self->{scratch} ) && $entry->{t} > $vboss->{end} + $vboss->{timeout} ) {
+    if( ( $vboss = $self->{scratch} ) && $event->{t} > $vboss->{end} + $vboss->{timeout} ) {
         # This fingerprint timed out without ending.
         # Record it as an attempt.
         
         $self->_bend(
             $vboss->{short},
             $vboss->{start},
-            $fingerprints{ $vboss->{short} }{long},
+            $hfingerprints{ $vboss->{short} }{long},
             0,
             $vboss->{end},
         );
@@ -911,31 +905,31 @@ sub process_timeout_check {
 }
 
 sub process {
-    my ($self, $entry) = @_;
+    my ($self, $event) = @_;
     
     # Figure out what to use for the actor and target identifiers.
     # This will be either the name (version 1) or the NPC part of the ID (version 2)
     
-    my $actor_id = $entry->{actor} ? (Stasis::MobUtil::splitguid( $entry->{actor} ))[1] || $entry->{actor} : 0;
-    my $target_id = $entry->{target} ? (Stasis::MobUtil::splitguid( $entry->{target} ))[1] || $entry->{target} : 0;
+    my $actor_id = $event->{actor} ? (Stasis::MobUtil::splitguid( $event->{actor} ))[1] || $event->{actor} : 0;
+    my $target_id = $event->{target} ? (Stasis::MobUtil::splitguid( $event->{target} ))[1] || $event->{target} : 0;
     
     # See if we should end, or continue, an encounter currently in progress.
     if( my $vboss = $self->{scratch} ) {
         my $kboss = $vboss->{short};
         
-        if( ! $self->process_timeout_check( $entry ) && ( ($fcontinue{$actor_id} && $fcontinue{$actor_id} eq $kboss) || ($fcontinue{$target_id} && $fcontinue{$target_id} eq $kboss) ) ) {
+        if( ! $self->process_timeout_check( $event ) && ( ($fcontinue{$actor_id} && $fcontinue{$actor_id} eq $kboss) || ($fcontinue{$target_id} && $fcontinue{$target_id} eq $kboss) ) ) {
             # We should continue this encounter.
-            $vboss->{end} = $entry->{t};
+            $vboss->{end} = $event->{t};
             
             # Also possibly end it.
-            if( $entry->{action} == Stasis::Parser::UNIT_DIED && $fend{$target_id} && $fend{$target_id} eq $kboss ) {
+            if( $event->{action} == UNIT_DIED && $fend{$target_id} && $fend{$target_id} eq $kboss ) {
                 $vboss->{dead}{$target_id} = 1;
                 
-                if( !$fingerprints{$kboss}{endAll} || ( scalar keys %{$vboss->{dead}} == scalar @{$fingerprints{$kboss}{mobEnd}} ) ) {
+                if( !$hfingerprints{$kboss}{endAll} || ( scalar keys %{$vboss->{dead}} == scalar @{$hfingerprints{$kboss}{mobEnd}} ) ) {
                     $self->_bend(
                         $kboss,
                         $vboss->{start},
-                        $fingerprints{$kboss}{long},
+                        $hfingerprints{$kboss}{long},
                         1,
                         $vboss->{end},
                     );
@@ -947,26 +941,26 @@ sub process {
         }
     } else {
         # See if we should start a new encounter.
-        if( $fstart{$actor_id} && ( !$self->{lockout}{ $fstart{$actor_id} } || $self->{lockout}{ $fstart{$actor_id} } < $entry->{t} - 300 ) ) {
+        if( $fstart{$actor_id} && ( !$self->{lockout}{ $fstart{$actor_id} } || $self->{lockout}{ $fstart{$actor_id} } < $event->{t} - 300 ) ) {
             # The actor should start a new encounter.
             $self->{scratch} = {
                 short => $fstart{$actor_id},
-                timeout => $fingerprints{$fstart{$actor_id}}{timeout},
-                start => $entry->{t},
-                end => $entry->{t},
+                timeout => $hfingerprints{$fstart{$actor_id}}{timeout},
+                start => $event->{t},
+                end => $event->{t},
             };
             
-            $self->_bstart( $fstart{$actor_id}, $entry->{t} );
-        } if( $fstart{$target_id} && ( !$self->{lockout}{ $fstart{$target_id} } || $self->{lockout}{ $fstart{$target_id} } < $entry->{t} - LOCKOUT_TIME ) ) {
+            $self->_bstart( $fstart{$actor_id}, $event->{t} );
+        } if( $fstart{$target_id} && ( !$self->{lockout}{ $fstart{$target_id} } || $self->{lockout}{ $fstart{$target_id} } < $event->{t} - LOCKOUT_TIME ) ) {
             # The target should start a new encounter.
             $self->{scratch} = {
                 short => $fstart{$target_id},
-                timeout => $fingerprints{$fstart{$target_id}}{timeout},
-                start => $entry->{t},
-                end => $entry->{t},
+                timeout => $hfingerprints{$fstart{$target_id}}{timeout},
+                start => $event->{t},
+                end => $event->{t},
             };
             
-            $self->_bstart( $fstart{$target_id}, $entry->{t} );
+            $self->_bstart( $fstart{$target_id}, $event->{t} );
         }
     }
 }
@@ -1007,17 +1001,12 @@ sub _bend {
 
 sub name {
     my $boss = pop;
-    return $boss && $fingerprints{$boss} && $fingerprints{$boss}{long};
+    return $boss && $hfingerprints{$boss} && $hfingerprints{$boss}{long};
 }
 
 sub zone {
     my $boss = pop;
-    
-    if( $boss && $bzones{$boss} ) {
-        return ( $bzones{$boss}, $zones{$bzones{$boss}}{long} );
-    } else {
-        return ();
-    }
+    return $boss && $hfingerprints{$boss} && $hfingerprints{$boss}{zone};
 }
 
 sub finish {
@@ -1028,7 +1017,7 @@ sub finish {
         $self->_bend(
             $vboss->{short},
             $vboss->{start},
-            $fingerprints{$vboss->{short}}{long},
+            $hfingerprints{$vboss->{short}}{long},
             0,
             $vboss->{end},
         );
