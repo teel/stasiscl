@@ -176,7 +176,7 @@ function hashTab() {
     var t = location.hash.substring(1);
     if( t.length > 0 ) {
         var x = t.indexOf('_');
-        if( x ) {
+        if( x > 0 ) {
             toggleTab( t.substring( 0, x ) );
             document.location.href = "#" + t;
         } else {
