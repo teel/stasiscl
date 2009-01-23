@@ -108,7 +108,7 @@ sub tableTitle {
         $style_text .= " titlenoclear";
     }
     
-    return sprintf "<tr><th class=\"title${style_text}\" colspan=\"%d\">%s</th></tr>", scalar @_, $title;
+    return sprintf "<tr><th class=\"title${style_text}\" colspan=\"%d\"><a name=\"t%d\" href=\"#t%d\">%s</a></th></tr>", scalar @_, $self->{headid}, $self->{headid}, $title;
 }
 
 # tableHeader( @header_rows )
