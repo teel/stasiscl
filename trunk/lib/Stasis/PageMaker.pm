@@ -306,7 +306,7 @@ sub statHeader {
     
     if( $start && $start =~ /^\d+(?:\.\d+|)$/ ) {
         # Header with time
-        my $starttxt = $start ? ": " . strftime( "%a %B %d, %Y %H:%M", localtime($start) ) : "";
+        my $starttxt = $start ? ": " . strftime( "%a %B %d, %Y %H:%M:%S", localtime($start) ) : "";
         $PAGE .= "<h2>${title}${starttxt}</h2>" if $title;
         
         # Raid & Mobs menu
