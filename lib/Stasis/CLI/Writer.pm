@@ -26,6 +26,7 @@ package Stasis::CLI::Writer;
 use strict;
 use warnings;
 
+use open ':encoding(utf8)';
 use File::Path ();
 use POSIX qw/floor/;
 
