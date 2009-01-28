@@ -25,7 +25,10 @@ package Stasis::Page::Chart;
 
 use strict;
 use warnings;
+
 use POSIX;
+use HTML::Entities qw();
+
 use Stasis::Page;
 use Stasis::PageMaker;
 use Stasis::ActorGroup;
@@ -561,7 +564,7 @@ sub page {
             }
 
             my %xml_keys = (
-                name => $self->{index}->actorname($actor) || "Unknown",
+                name => HTML::Entities::encode_entities_numeric( $self->{index}->actorname($actor) ) || "Unknown",
                 classe => $xml_classmap{ $self->{raid}{$actor}{class} } || "war",
                 dps => $dpsTime && ceil( $raiderDamage{$actor} / $dpsTime ) || 0,
                 dpstime => $dpsTime && $ptime && $dpsTime / $ptime * 100 || 0,
