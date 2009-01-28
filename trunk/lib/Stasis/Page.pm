@@ -43,6 +43,7 @@ sub new {
         name => $params{name} || "Untitled",
         server => $params{server} || "",
         dirname => $params{dirname} || "",
+        short => $params{short} || "",
     };
     
     $self->{pm} = $params{pm} || Stasis::PageMaker->new;
