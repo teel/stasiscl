@@ -135,6 +135,8 @@ use Stasis::Page::LogClip;
 use Stasis::ActorGroup;
 use Stasis::PageMaker;
 use Stasis::DB;
+use Stasis::NameIndex;
+use Stasis::CLI::Writer;
 use File::Find ();
 use File::Path ();
 use File::Spec ();
@@ -148,6 +150,7 @@ my $opt_version = 2;
 my $opt_minlength;
 my $opt_sfile;
 my $opt_dir = ".";
+my $opt_template;
 my $opt_nowrite;
 my $opt_logger;
 my $opt_file;
@@ -206,154 +209,7 @@ sub status($) {
 }
 
 sub makeext() {
-    Stasis::ExtensionRunner->new(qw/Activity Aura Cast Damage Death Dispel ExtraAttack Healing Index Interrupt Power Presence/);
-}
-
-sub writedir($$$$$$$) {
-    my ($dname, $dname_old, $long, $short, $raid, $exts, $collapse) = @_;
-    
-    # Remove the directory if it exists.
-    File::Path::rmtree($dname) if -d $dname;
-    File::Path::rmtree($dname_old) if -d $dname_old;
-
-    # Create the directory.
-    mkdir $dname or die $!;
-    
-    # Get the suffix of the directory.
-    my $dname_suffix = $dname;
-    $dname_suffix = $1 if $dname_suffix =~ /[\/\\:]([^\/\\:]+)$/;
-    
-    # Group actors.
-    my $grouper = Stasis::ActorGroup->new;
-    $grouper->run( $raid, $exts );
-    
-    # Initialize Pages with these parameters.
-    my %page_init = (
-        server => $opt_server, 
-        dirname => $dname_suffix, 
-        name => $long, 
-        short => $short, 
-        raid => $raid, 
-        ext => $exts, 
-        collapse => $collapse,
-        grouper => $grouper,
-    );
-
-    # Write the index.
-    my $charter = Stasis::Page::Chart->new( %page_init );
-    
-    my ($chart_xml, $chart_html) = $charter->page;
-    open CHARTPAGE, ">$dname/index.html" or die;
-    print CHARTPAGE $chart_html;
-    close CHARTPAGE;
-    
-    # Write the actor files.
-    my $ap = Stasis::Page::Actor->new( %page_init );
-    
-    foreach my $actor (keys %{$exts->{Presence}{actors}}) {
-        # Respect $collapse.
-        next if $collapse && $grouper->group($actor);
-        
-        my $id = lc $actor;
-        $id = Stasis::PageMaker->tameText($id);
-
-        open ACTORPAGE, sprintf ">$dname/actor_%s.html", $id or die;
-        print ACTORPAGE $ap->page($actor);
-        close ACTORPAGE;
-    }
-    
-    # Write the group files.
-    foreach my $group (@{$grouper->{groups}}) {
-        my $id = lc $grouper->captain($group);
-        $id = Stasis::PageMaker->tameText($id);
-        
-        open GROUPPAGE, sprintf ">$dname/group_%s.html", $id or die;
-        print GROUPPAGE $ap->page($grouper->captain($group), 1);
-        close GROUPPAGE;
-    }
-    
-    # Write the environment file.
-    open ENVPAGE, ">$dname/actor_0.html" or die;
-    print ENVPAGE $ap->page(0);
-    close ENVPAGE;
-    
-    # Write the spell files.
-    my $sp = Stasis::Page::Spell->new( %page_init );
-    
-    foreach my $spell (keys %{$exts->{Index}{spells}}) {
-        my $id = lc $spell;
-        $id = Stasis::PageMaker->tameText($id);
-
-        open SPELLPAGE, sprintf ">$dname/spell_%s.html", $id or die;
-        print SPELLPAGE $sp->page($spell);
-        close SPELLPAGE;
-    }
-    
-    # Write death clips.
-    my $lc = Stasis::Page::LogClip->new( %page_init );
-    
-    while( my ($kactor, $vactor) = each(%{$exts->{Death}{actors}}) ) {
-        my $id = lc $kactor;
-        $id = Stasis::PageMaker->tameText($id);
-        
-        my $dn = 0;
-        foreach my $death (@$vactor) {
-            $lc->clear;
-            foreach my $event (@{$death->{autopsy}}) {
-                $lc->add( $event->{event}, hp => $event->{hp}, t => $event->{t} );
-            }
-            
-            open DEATHPAGE, sprintf ">$dname/death_%s_%d.json", $id, ++$dn or die;
-            print DEATHPAGE $lc->json;
-            close DEATHPAGE;
-        }
-    }
-
-    # Write the data.xml file.
-    open DATAXML, ">$dname/data.xml" or die;
-    print DATAXML $chart_xml;
-    close DATAXML;
-    
-    # Return a hash describing what we just wrote.
-    my ($rdamage, $rstart, $rend) = (0, $exts->{Presence}->presence);
-    $rdamage = $1 if( $chart_xml =~ /<raid[^>]+dmg="(\d+)"/ );
-    
-    return {
-        dname => $dname_suffix,
-        short => $short,
-        long => $long,
-        damage => $rdamage,
-        start => $rstart,
-        end => $rend,
-    };
-}
-
-sub lagstring($) {
-    my $lag = shift;
-    
-    my $lagstring;
-    if( $lag < 0 ) {
-		$lagstring = " in the future";
-		$lag *= -1;
-	} else {
-		$lagstring = " ago";
-	}
-    
-	if( $lag < 60 ) {
-		$lagstring = sprintf "%d second%s%s", $lag, $lag == 1 ? '' : 's', $lagstring;
-	} elsif( $lag < 60*60 ) {
-		$lagstring = sprintf "%d minute%s%s", int($lag/60), int($lag/60) == 1 ? '' : 's', $lagstring;
-	} elsif( $lag < 60*60*5 ) {
-		$lagstring = sprintf "%d hour%s and %d minute%s%s", int($lag/60/60), int($lag/60/60) == 1 ? '' : 's', ($lag/60%60), $lag/60%60 == 1 ? '' : 's', $lagstring;
-	} elsif( $lag < 60*60*24 ) {
-		$lagstring = sprintf "%d hour%s%s", int($lag/60/60), int($lag/60/60) == 1 ? '' : 's', $lagstring;
-	} elsif( $lag < 60*60*24*3 ) {
-		$lagstring = sprintf "%d day%s and %d hour%s%s", int($lag/60/60/24), int($lag/60/60/24) == 1 ? '' : 's', $lag/60/60%24, $lag/60/60%24 == 1 ? '' : 's', $lagstring;
-	} else {
-		$lagstring = sprintf "%d day%s%s", int($lag/60/60/24), int($lag/60/60/24) == 1 ? '' : 's', $lagstring;
-	}
-	
-	return $lagstring;
+    Stasis::ExtensionRunner->new(qw/Activity Aura Cast Damage Death Dispel ExtraAttack Healing Interrupt Power Presence/);
 }
 
 sub _getsource {
@@ -427,6 +283,7 @@ my $rc = GetOptions(
     "logger=s"      => \$opt_logger,
     "file=s"        => \$opt_file,
     "dir=s"         => \$opt_dir,
+    "template=s"    => \$opt_template,
     "minlength=i"   => \$opt_minlength,
     "attempts"      => \$opt_attempts,
     "nowrite"       => \$opt_nowrite,
@@ -458,11 +315,10 @@ if( $opt_dir ) {
 }
 
 # Create a parser.
-my $parser = Stasis::Parser->new( 
-    compact => 1,
-    version => $opt_version, 
-    logger => $opt_logger, 
-    year => $opt_year
+my $parser = Stasis::Parser->new(
+    version => $opt_version,
+    logger  => $opt_logger,
+    year    => $opt_year,
 );
 
 # Set encoding of STDOUT to UTF-8 (which Blizzard uses for combat logs)
@@ -537,101 +393,6 @@ if( $action eq "print" ) {
             warn "bad line: " . $_;
         }
     }
-} elsif( $action eq "split" ) {
-    # Not supported with db mode yet, mostly because we don't have an event => log line reverse map.
-    bomb "Splitting SQLite files is not yet supported" if $opt_sfile;
-    
-    # Figure out what input to use.
-    my ($fh, $db) = _getsource();
-    
-    # Going to output in $opt_dir
-    bomb "not a directory: $opt_dir" unless $opt_dir && -d $opt_dir;
-    status "Using directory: $opt_dir";
-    
-    # Keep track of number of tries per boss.
-    my %boss_tries;
-    
-    # We'll write to this handle.
-    my $fhout;
-    my $please_close;
-    
-    # Set up the log splitter.
-    my $ed = Stasis::EventDispatcher->new;
-    
-    my $splitter = Stasis::LogSplit->new( debug => $opt_debug, version => $opt_version, callback =>
-        # LogSplit callback
-        sub {
-            my ($short, $start, $long, $kill, $end) = @_;
-            if( ! defined $kill ) {
-                # Let the user know we saw a boss start.
-                $start =~ /^(\d+)(\.(\d+)|)$/;
-                my @t = localtime $1;
-                status sprintf(
-                    "Encounter start: %s at %d/%d %02d:%02d:%02d\.%03d%s .. ",
-                    $short,
-                    $t[4]+1,
-                    $t[3],
-                    $t[2],
-                    $t[1],
-                    $t[0],
-                    $2?$3:0,
-                    $opt_tail ? " (" . lagstring(time-int($start)) . ")" : "",
-                );
-                
-                # Open the file
-                my $fname = sprintf ">%s/sws-%s-%d.txt", $opt_dir, $short, floor($start);
-                open $fhout, $fname;
-            } else {
-                # Closing a split.
-                $boss_tries{ $short } ++;
-                $long .= " try " . $boss_tries{ $short } if !$kill;
-                
-                # We don't want to close right away, since we want the last line to get written.
-                $please_close = 1;
-                
-                # If we're in no-attempt mode, and this was not a kill, unlink the file.
-                my $fname = sprintf "%s/sws-%s-%d.txt", $opt_dir, $short, floor($start);
-                
-                if( $opt_minlength && $end - $start < $opt_minlength ) {
-                    # Check minlength option.
-                    status "skipping (too short).";
-                    unlink $fname;
-                } elsif( !$opt_attempts && !$kill ) {
-                    # Check attempts option.
-                    status "skipping (not a kill).";
-                    unlink $fname;
-                } else {
-                    status sprintf "wrote %s (sws-%s-%d.txt).", $long, $short, floor($start);
-                }
-            }
-        }
-    );
-    
-    $ed->add( $splitter );
-    
-    while( defined( $_ = $opt_file ? <$fh> : $db->line() ) ) {
-        select(undef, undef, undef, $opt_throttle/1000) if $opt_throttle;
-        
-        # Because File::Tail screws up Unicode
-        utf8::decode($_) if $opt_tail;
-        
-        # Get the line.
-        my $event = $opt_file ? $parser->parse($_) : $_;
-        
-        # Dispatch this action.
-        if( $event->{action} ) {
-            $ed->process($event);
-            print $fhout $_ if $fhout;
-            
-            if( $please_close ) {
-                close $fhout;
-                undef $fhout;
-                undef $please_close;
-            }
-        } else {
-            warn "bad line: " . $_;
-        }
-    }
 } elsif( $action eq "add" ) {
     # Figure out what input to use.
     my ($fh, $db) = _getsource();
@@ -640,6 +401,9 @@ if( $action eq "print" ) {
     bomb "not a directory: $opt_dir" unless $opt_dir && -d $opt_dir;
     status "Using directory: $opt_dir";
     
+    # Warn if the user tried to use template
+    status "WARNING: -template is an experimental option, please report any strange behavior" if $opt_template;
+    
     # Set up the event dispatchers.
     my $ed_splitter = Stasis::EventDispatcher->new;
     my $ed = Stasis::EventDispatcher->new;
@@ -647,37 +411,38 @@ if( $action eq "print" ) {
     # Assign classes to %raid and splits to @splits
     my %boss_tries;
     
-    # Holds "-trash" extensions.
-    my $trash_exts = makeext;
-    
-    # Holds "-overall" extensions.
-    my $overall_exts = makeext;
-    
-    # Holds extensions for the current boss.
+    # Extension holders for normal splits, "-trash", "-overall", and "-combine".
     my $split_exts = makeext;
+    my $trash_exts = makeext;
+    my $overall_exts = makeext;
+    my %combine_exts; # indexed by boss short name
     
-    # Holds "-combine" extensions.
-    my %combine_exts;
+    # a NameIndex for doing that sort of thing
+    my $index = Stasis::NameIndex->new;
     
     # Keep track of directories we've written out.
     my @dirs_written;
+    
+    # Use this to write stuff out.
+    my $writer = Stasis::CLI::Writer->new( base => $opt_dir, server => $opt_server, template => $opt_template );
     
     my $classer = Stasis::ClassGuess->new( debug => $opt_debug );
     my $splitter = Stasis::LogSplit->new( debug => $opt_debug, callback =>
         # LogSplit callback
         sub {
-            my ($short, $start, $long, $kill, $end) = @_;
-            if( ! defined $kill ) {
+            my ( $boss ) = @_;
+            
+            if( ! defined $boss->{kill} ) {
                 # Starting a new split.
                 $split_exts->start($ed);
                 
                 # Start up the combined extensions.
                 if( $opt_combine ) {
-                    if( !$combine_exts{ $short } ) {
-                        $combine_exts{ $short } = makeext;
-                        $combine_exts{ $short }->start($ed);
+                    if( !$combine_exts{ $boss->{short} } ) {
+                        $combine_exts{ $boss->{short} } = makeext;
+                        $combine_exts{ $boss->{short} }->start($ed);
                     } else {
-                        $combine_exts{ $short }->resume($ed);
+                        $combine_exts{ $boss->{short} }->resume($ed);
                     }
                 }
                 
@@ -685,54 +450,56 @@ if( $action eq "print" ) {
                 $trash_exts->suspend($ed) if $opt_trash;
                 
                 # Let the user know we saw a boss start.
+                my $start = $boss->{start};
                 $start =~ /^(\d+)(\.(\d+)|)$/;
                 my @t = localtime $1;
                 status sprintf(
-                    "Encounter start: %s at %d/%d %02d:%02d:%02d\.%03d%s .. ",
-                    $short,
+                    "Encounter start: %s at %d/%d %02d:%02d:%02d\.%03d .. ",
+                    $boss->{short},
                     $t[4]+1,
                     $t[3],
                     $t[2],
                     $t[1],
                     $t[0],
                     $2?$3:0,
-                    $opt_tail ? " (" . lagstring(time-int($start)) . ")" : "",
                 );
             } else {
                 # Closing a split.
                 $split_exts->finish($ed);
-                $boss_tries{ $short } ++;
+                $boss_tries{ $boss->{short} } ++;
                 
                 # Suspend the combined extensions.
-                $combine_exts{ $short }->suspend($ed) if $opt_combine;
+                $combine_exts{ $boss->{short} }->suspend($ed) if $opt_combine;
                 
                 # Resume trash.
                 $trash_exts->resume($ed) if $opt_trash;
                 
                 # Possibly add an attempt number
-                $long .= " try " . $boss_tries{ $short } if !$kill;
+                $boss->{long} .= " try " . $boss_tries{ $boss->{short} } if !$boss->{kill};
                 
-                if( $opt_minlength && $end - $start < $opt_minlength ) {
+                if( $opt_minlength && $boss->{end} - $boss->{start} < $opt_minlength ) {
                     # Check minlength option.
                     status "skipping (too short).";
-                } elsif( !$opt_attempts && !$kill ) {
+                } elsif( !$opt_attempts && !$boss->{kill} ) {
                     # Check attempts option.
                     status "skipping (not a kill).";
                 } else {
                     # If we got this far, we should write this encounter.
-                    # Get whatever the class guesser has figured out by now.
-                    my %raid = $classer->finish;
-                    
-                    status sprintf "writing %s (sws-%s-%d) .. ", $long, $short, floor($start);
+                    $writer->set(
+                        boss     => $boss,
+                        raid     => { $classer->finish },
+                        exts     => $split_exts,
+                        collapse => $opt_collapse,
+                        index    => $index,
+                    );
 
                     # Find the directory name.
-                    my $dname = sprintf "%s/sws-%s-%d", $opt_dir, $short, floor($start);
-                    my $dname_old = sprintf "%s/sws-%d", $opt_dir, floor($start);
+                    status sprintf "writing %s (%s) .. ", $boss->{long}, $writer->fill_template;
 
                     # Write the files for this split.
                     unless( $opt_nowrite ) {
                         eval {
-                            push @dirs_written, writedir( $dname, $dname_old, $long, $short, \%raid, $split_exts, $opt_collapse );
+                            push @dirs_written, $writer->write_dir;
                         }; if( $@ ) {
                             bomb $@;
                         }
@@ -744,8 +511,9 @@ if( $action eq "print" ) {
         }
     );
     
-    # Add LogSplit and ClassGuess to the event dispatcher.
+    # Add LogSplit, ClassGuess, and NameIndex to the event dispatcher.
     $classer->register( $ed );
+    $index->register( $ed );
     $splitter->register( $ed_splitter );
     
     # Start overall and trash if requested.
@@ -786,21 +554,12 @@ if( $action eq "print" ) {
         }
     }
     
-    if( $opt_trash ) {
-        $trash_exts->finish($ed);
-    }
-    
-    if( $opt_overall ) {
-        $overall_exts->finish($ed);
-    }
+    $trash_exts->finish($ed) if $opt_trash;
+    $overall_exts->finish($ed) if $opt_overall;
     
     my %raid = $classer->finish;
     my @splits = $splitter->finish;
-    
-    # Remove these tools.
-    undef $classer;
-    undef $splitter;
-    
+
     # Close the file.
     if( $opt_file ) {
         close $fh;
@@ -826,12 +585,13 @@ if( $action eq "print" ) {
     
     # Write trash
     if( $opt_trash && !$opt_nowrite ) {
-        my $dname = sprintf "%s/sws-trash-%d", $opt_dir, floor($first);
-        my $dname_old = $dname;
-        status sprintf "Writing Trash Mobs (sws-trash-%d) .. ", floor($first);
-        
+        my $boss = { short => "trash", long => "Trash Mobs", start => $first, kill => 0 };
+
         eval {
-            push @dirs_written, writedir( $dname, $dname_old, "Trash Mobs", "trash", \%raid, $trash_exts, 1 );
+            $writer->set( boss => $boss, raid => \%raid, exts => $trash_exts, index => $index, collapse => 1 );
+            
+            status sprintf "Writing %s (%s) .. ", $boss->{long}, $writer->fill_template;
+            push @dirs_written, $writer->write_dir;
             status "done.";
         }; if( $@ ) {
             bomb $@;
@@ -848,27 +608,31 @@ if( $action eq "print" ) {
             if( $boss_tries{$kboss} > 1 ) {
                 # Boss name.
                 my $bname = Stasis::LogSplit->name( $kboss );
-            
-                status sprintf "Writing $bname (combined) (sws-%s-combine-%d) .. ", $kboss, floor($first);
+                my $boss = { short => "${kboss}-combine", long => "$bname (combined)", start => $first, kill => 0 };
+
                 eval {
-                    push @dirs_written, writedir( $dname, $dname_old, "$bname (combined)", $kboss . "-combine", \%raid, $exts, $opt_collapse );
+                    $writer->set( boss => $boss, raid => \%raid, exts => $exts, index => $index, collapse => $opt_collapse );
+
+                    status sprintf "Writing %s (%s) .. ", $boss->{long}, $writer->fill_template;
+                    push @dirs_written, $writer->write_dir;
+                    status "done.";
                 }; if( $@ ) {
                     bomb $@;
                 }
-                
-                status "done.";
             }
         }
     }
     
     # Write overall
     if( $opt_overall && !$opt_nowrite ) {
-        my $dname = sprintf "%s/sws-overall-%d", $opt_dir, floor($first);
-        my $dname_old = $dname;
-        status sprintf "Writing Overall (sws-overall-%d) .. ", floor($first);
-        
+        my $boss = { short => "overall", long => "Overall", start => $first, kill => 0 };
+
         eval {
-            push @dirs_written, writedir( $dname, $dname_old, "Overall", "overall", \%raid, $overall_exts, 1 );
+            $writer->set( boss => $boss, raid => \%raid, exts => $overall_exts, index => $index, collapse => 1 );
+
+            status sprintf "Writing %s (%s) .. ", $boss->{long}, $writer->fill_template;
+            push @dirs_written, $writer->write_dir;
+            status "done.";
         }; if( $@ ) {
             bomb $@;
         }
@@ -878,9 +642,24 @@ if( $action eq "print" ) {
     
     # Write navigation
     if( $opt_nav && !$opt_nowrite && @dirs_written ) {
-        $_->{dname} &&= "../" . $_->{dname} . "/index.html" foreach (@dirs_written);
+        # save dnames
+        $_->{_dname} = $_->{dname} foreach (@dirs_written);
+        
+        foreach my $d (@dirs_written) {
+            next if !$d->{dname};
+            
+            # count path separators, this code kinda blows. not sure how to do it portably
+            my $seps = 0;
+            while( $d->{dname} =~ /[\/\\]/g ) { $seps ++ }
+            
+            $d->{dname} = "../" . $d->{dname} . "/index.html";
+            $d->{dname} = ( "../" x $seps ) . $d->{dname};
+        }
+        
         my $NAV = Stasis::Page->_json( \@dirs_written );
-        $_->{dname} =~ s/^\.\.\/(.*)\/index\.html$/$1/ foreach (@dirs_written);
+        
+        # restore old dnames
+        $_->{dname} = delete $_->{_dname} foreach (@dirs_written);
         
         foreach my $dir (@dirs_written) {
             eval {

@@ -46,6 +46,9 @@ sub new {
 sub add {
     my ( $self, @actions ) = @_;
     my $f = pop @actions;
+    
+    # Listen for all actions if none are provided
+    @actions = keys %Stasis::Event::action_map if ! @actions;
 
     # Check if $listener is an EventListener or a code reference
     if( ref $f eq 'CODE' ) {

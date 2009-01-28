@@ -307,7 +307,7 @@ sub register_armyofthedead {
 
                     if( @aotdks == 1 ) {
                         # exactly one DK cast AotD in the past 20 seconds, assign to that one
-                        $self->assign_pet( "GELEM", $aotdks[0], $event->{actor} );
+                        $self->assign_pet( "AROTD", $aotdks[0], $event->{actor} );
                     }
                 }
             }

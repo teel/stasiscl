@@ -21,54 +21,56 @@
 # OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF 
 # ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-package Stasis::Extension::Index;
+package Stasis::NameIndex;
 
 use strict;
 use warnings;
+
 use Stasis::SpellUtil;
-use Stasis::Extension;
-use Stasis::Parser;
 
-our @ISA = "Stasis::Extension";
-
-sub start {
-    my $self = shift;
+sub new {
+    my $class = shift;
+    
+    my $self = {};
     $self->{actors} = {};
     $self->{spells} = {};
+    
+    bless $self, $class;
 }
 
-sub actions {
-    map { $_ => \&process } keys %Stasis::Parser::action_map;
-}
+sub register {
+    my ( $self, $ed ) = @_;
+    
+    $ed->add(
+        sub {
+            my ( $event ) = @_;
 
-sub process {
-    my ($self, $event) = @_;
-    
-    # The purpose of this index is to associate IDs with names.
-    
-    # ACTOR INDEX: check actor
-    if( $event->{actor} ) {
-        $self->{actors}{ $event->{actor} } ||= $event->{actor_name};
-    }
-    
-    # ACTOR INDEX: check target
-    if( $event->{target} ) {
-        $self->{actors}{ $event->{target} } ||= $event->{target_name};
-    }
-    
-    # SPELL INDEX: check for spellid
-    if( $event->{spellid} ) {
-        $self->{spells}{ $event->{spellid} } ||= $event->{spellname};
-    }
-    
-    # SPELL INDEX: check for extraspellid
-    if( $event->{extraspellid} ) {
-        $self->{spells}{ $event->{extraspellid} } ||= $event->{extraspellname};
-    }
+            # ACTOR INDEX: check actor
+            if( $event->{actor} ) {
+                $self->{actors}{ $event->{actor} } ||= $event->{actor_name};
+            }
+
+            # ACTOR INDEX: check target
+            if( $event->{target} ) {
+                $self->{actors}{ $event->{target} } ||= $event->{target_name};
+            }
+
+            # SPELL INDEX: check for spellid
+            if( $event->{spellid} ) {
+                $self->{spells}{ $event->{spellid} } ||= $event->{spellname};
+            }
+
+            # SPELL INDEX: check for extraspellid
+            if( $event->{extraspellid} ) {
+                $self->{spells}{ $event->{extraspellid} } ||= $event->{extraspellname};
+            }
+        }
+    );
 }
 
 sub spellname {
     my ($self, $spell, $no_rank) = @_;
+    
     if( $spell ) {
         if( $self->{spells}{$spell} ) {
             my $sd = Stasis::SpellUtil->spell($spell);
@@ -92,7 +94,8 @@ sub spellname {
 }
 
 sub actorname {
-    return $_[1] ? $_[0]->{actors}{ $_[1] } || $_[1] : "Environment";
+    my ( $self, $actor ) = @_;
+    return $actor ? $self->{actors}{ $actor } || $actor : "Environment";
 }
 
 sub spellid {

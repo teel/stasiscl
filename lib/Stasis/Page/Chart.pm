@@ -363,7 +363,7 @@ sub page {
     
     {
         my @actorsort = sort {
-            $self->{ext}{Index}->actorname($a) cmp $self->{ext}{Index}->actorname($b)
+            $self->{index}->actorname($a) cmp $self->{index}->actorname($b)
         } keys %{$self->{ext}{Presence}{actors}};
         
         $PAGE .= "";
@@ -479,7 +479,7 @@ sub page {
             $PAGE .= $pm->tableRow(
                 header => \@deathHeader,
                 data => {
-                    "Death" => $pm->actorLink( $death->{actor},  $self->{ext}{Index}->actorname($death->{actor}), $self->{raid}{$death->{actor}}{class} ),
+                    "Death" => $pm->actorLink( $death->{actor},  $self->{index}->actorname($death->{actor}), $self->{raid}{$death->{actor}}{class} ),
                     "Time" => $death->{t} && sprintf( "%02d:%02d.%03d", $t/60, $t%60, ($t-floor($t))*1000 ),
                     "R-Health" => $lastline->{hp} || "",
                     "Event" => $text,
@@ -561,7 +561,7 @@ sub page {
             }
 
             my %xml_keys = (
-                name => $self->{ext}{Index}->actorname($actor) || "Unknown",
+                name => $self->{index}->actorname($actor) || "Unknown",
                 classe => $xml_classmap{ $self->{raid}{$actor}{class} } || "war",
                 dps => $dpsTime && ceil( $raiderDamage{$actor} / $dpsTime ) || 0,
                 dpstime => $dpsTime && $ptime && $dpsTime / $ptime * 100 || 0,

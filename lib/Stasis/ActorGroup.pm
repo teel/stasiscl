@@ -25,8 +25,10 @@ package Stasis::ActorGroup;
 
 use strict;
 use warnings;
+
 use Stasis::MobUtil;
-use Stasis::Extension::Index;
+use Stasis::NameIndex;
+
 use Carp;
 
 sub new {
@@ -42,15 +44,8 @@ sub new {
 }
 
 sub run {
-    my $self = shift;
-    
-    # Hash reference to %raid
-    my $raid = shift;
-    
-    # Hash reference to %ext
-    my $ext = shift;
-    
-    return $self unless defined $raid && defined $ext;
+    my ( $self, $raid, $ext, $index ) = @_;
+    return $self unless defined $raid && defined $ext && defined $index;
     
     # Return value, will be an array of hashes like this:
     
@@ -77,7 +72,7 @@ sub run {
                 next unless $raid->{$pet} && $raid->{$pet}{class} eq "Pet";
                 
                 if( $ext->{Presence}{actors}{$pet} ) {
-                    my $petname = $ext->{Index}->actorname($pet);
+                    my $petname = $index->actorname($pet);
                     $petnames{$petname} ||= [];
                     push @{ $petnames{$petname} }, $pet;
                 }
