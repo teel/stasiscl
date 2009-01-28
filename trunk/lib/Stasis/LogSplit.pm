@@ -852,9 +852,7 @@ sub new {
     # Lockout after kills
     $params{lockout} = {};
     
-    # Callback args:
-    # at split start:   ( $short, $start )
-    # at split end:     ( $short, $start, $long, $kill, $end )
+    # Callback sub
     $params{callback} ||= undef;
     
     bless \%params, $class;
@@ -886,15 +884,14 @@ sub process_timeout_check {
         # Record it as an attempt.
         
         $self->_bend(
-            $vboss->{short},
-            $vboss->{start},
-            $hfingerprints{ $vboss->{short} }{long},
-            0,
-            $vboss->{end},
+            {
+                short => $vboss->{short},
+                long  => $hfingerprints{$vboss->{short}}{long},
+                start => $vboss->{start},
+                end   => $vboss->{end},
+                kill  => 0,
+            }
         );
-        
-        # Reset the fingerprint.
-        delete $self->{scratch};
         
         # 1 means timeout.
         return 1;
@@ -927,15 +924,14 @@ sub process {
                 
                 if( !$hfingerprints{$kboss}{endAll} || ( scalar keys %{$vboss->{dead}} == scalar @{$hfingerprints{$kboss}{mobEnd}} ) ) {
                     $self->_bend(
-                        $kboss,
-                        $vboss->{start},
-                        $hfingerprints{$kboss}{long},
-                        1,
-                        $vboss->{end},
+                        {
+                            short => $kboss,
+                            long  => $hfingerprints{ $kboss }{long},
+                            start => $vboss->{start},
+                            end   => $vboss->{end},
+                            kill  => 1,
+                        }
                     );
-
-                    # Reset this fingerprint.
-                    delete $self->{scratch};
                 }
             }
         }
@@ -943,60 +939,59 @@ sub process {
         # See if we should start a new encounter.
         if( $fstart{$actor_id} && ( !$self->{lockout}{ $fstart{$actor_id} } || $self->{lockout}{ $fstart{$actor_id} } < $event->{t} - 300 ) ) {
             # The actor should start a new encounter.
-            $self->{scratch} = {
-                short => $fstart{$actor_id},
-                timeout => $hfingerprints{$fstart{$actor_id}}{timeout},
-                start => $event->{t},
-                end => $event->{t},
-            };
-            
-            $self->_bstart( $fstart{$actor_id}, $event->{t} );
-        } if( $fstart{$target_id} && ( !$self->{lockout}{ $fstart{$target_id} } || $self->{lockout}{ $fstart{$target_id} } < $event->{t} - LOCKOUT_TIME ) ) {
+            $self->_bstart(
+                {
+                    short => $fstart{$actor_id},
+                    long  => $hfingerprints{ $fstart{$actor_id} }{long},
+                    start => $event->{t},
+                    end   => undef,
+                    kill  => undef,
+                }
+            );
+        } elsif( $fstart{$target_id} && ( !$self->{lockout}{ $fstart{$target_id} } || $self->{lockout}{ $fstart{$target_id} } < $event->{t} - LOCKOUT_TIME ) ) {
             # The target should start a new encounter.
-            $self->{scratch} = {
-                short => $fstart{$target_id},
-                timeout => $hfingerprints{$fstart{$target_id}}{timeout},
-                start => $event->{t},
-                end => $event->{t},
-            };
-            
-            $self->_bstart( $fstart{$target_id}, $event->{t} );
+            $self->_bstart(
+                {
+                    short => $fstart{$target_id},
+                    long  => $hfingerprints{ $fstart{$target_id} }{long},
+                    start => $event->{t},
+                    end   => undef,
+                    kill  => undef,
+                }
+            );
         }
     }
 }
 
 sub _bstart {
-    my ( $self, $short, $start ) = @_;
+    my ( $self, $boss ) = @_;
     
-    # Callback.
-    $self->{callback}->(
-        $short, 
-        $start
-    ) if( $self->{callback} );
-}
-
-sub _bend {
-    my ( $self, $short, $start, $long, $kill, $end ) = @_;
-    
-    # Record lockout time.
-    $self->{lockout}{$short} = $end if $kill;
-    
-    push @{$self->{splits}}, {
-        short => $short,
-        long => $long,
-        start => $start,
-        kill => $kill,
-        end => $end,
+    # Create a scratch boss.
+    $self->{scratch} = {
+        short   => $boss->{short},
+        timeout => $hfingerprints{ $boss->{short} }{timeout},
+        start   => $boss->{start},
+        end     => $boss->{start},
     };
     
     # Callback.
-    $self->{callback}->(
-        $short, 
-        $start,
-        $long,
-        $kill,
-        $end,
-    ) if( $self->{callback} );
+    $self->{callback}->( $boss ) if( $self->{callback} );
+}
+
+sub _bend {
+    my ( $self, $boss ) = @_;
+
+    # Record lockout time.
+    $self->{lockout}{$boss->{short}} = $boss->{end} if $boss->{kill};
+
+    # Delete scratch boss (so we are free to start another)
+    delete $self->{scratch};
+
+    # Record this split as being finished.
+    push @{ $self->{splits} }, $boss;
+
+    # Callback.
+    $self->{callback}->( $boss ) if( $self->{callback} );
 }
 
 sub name {
@@ -1015,16 +1010,15 @@ sub finish {
     # End of the log file -- close up any open bosses.
     if( my $vboss = $self->{scratch} ) {
         $self->_bend(
-            $vboss->{short},
-            $vboss->{start},
-            $hfingerprints{$vboss->{short}}{long},
-            0,
-            $vboss->{end},
+            {
+                short => $vboss->{short},
+                long  => $hfingerprints{$vboss->{short}}{long},
+                start => $vboss->{start},
+                end   => $vboss->{end},
+                kill  => 0,
+            }
         );
     }
-    
-    # Delete scratch.
-    delete $self->{scratch};
     
     # Return.
     return @{$self->{splits}};

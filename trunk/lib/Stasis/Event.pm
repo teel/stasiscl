@@ -441,7 +441,7 @@ sub xf {
 
 sub powerName {
     my ($self, $use_this) = @_;
-    my $code = defined $use_this ? $use_this : $self->{powertype};
+    my $code = @_ > 1 ? $use_this : $self->{powertype};
     
     if( !defined $code ) {
         return "power";

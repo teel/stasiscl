@@ -37,6 +37,7 @@ sub new {
     my $self = {
         raid => $params{raid} || {},
         ext => $params{ext} || {},
+        index => $params{index} || {},
         grouper => $params{grouper} || Stasis::ActorGroup->new->run( $params{raid}, $params{ext} ),
         collapse => $params{collapse},
         name => $params{name} || "Untitled",
@@ -45,7 +46,7 @@ sub new {
     };
     
     $self->{pm} = $params{pm} || Stasis::PageMaker->new;
-    $self->{pm}{$_} = $self->{$_} foreach qw/raid ext grouper collapse/;
+    $self->{pm}{$_} = $self->{$_} foreach qw/index raid ext grouper collapse/;
     
     bless $self, $class;
 }

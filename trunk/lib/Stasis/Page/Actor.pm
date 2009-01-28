@@ -224,7 +224,7 @@ sub page {
     # PAGE HEADER #
     ###############
     
-    my $displayName = sprintf "%s%s", HTML::Entities::encode_entities($self->{ext}{Index}->actorname($MOB)), @PLAYER > 1 ? " (group)" : "";
+    my $displayName = sprintf "%s%s", HTML::Entities::encode_entities($self->{index}->actorname($MOB)), @PLAYER > 1 ? " (group)" : "";
     $displayName ||= "Actor";
     $PAGE .= $pm->pageHeader($self->{name}, $displayName);
     $PAGE .= $pm->statHeader($self->{name}, $displayName, $raidStart);
@@ -238,12 +238,12 @@ sub page {
     # Wowhead link
     if( $MOB && ! $self->{raid}{$MOB}{class} ) {
         my (undef, $npc, undef) = splitguid $MOB;
-        push @summaryRows, "Wowhead Link" => sprintf "<a href=\"http://www.wowhead.com/?npc=%s\" target=\"swswha_%s\">%s (#%s)</a> &#187;", $npc, $npc, HTML::Entities::encode_entities($self->{ext}{Index}->actorname($MOB)), $npc if $npc && $npc < 2**16;
+        push @summaryRows, "Wowhead Link" => sprintf "<a href=\"http://www.wowhead.com/?npc=%s\" target=\"swswha_%s\">%s (#%s)</a> &#187;", $npc, $npc, HTML::Entities::encode_entities($self->{index}->actorname($MOB)), $npc if $npc && $npc < 2**16;
     }
     
     if( $self->{server} && $self->{raid}{$MOB}{class} && $self->{raid}{$MOB}{class} ne "Pet" ) {
         my $r = $self->{server};
-        my $n = $self->{ext}{Index}->actorname($MOB);
+        my $n = $self->{index}->actorname($MOB);
         $r =~ s/([^A-Za-z0-9])/sprintf("%%%02X", ord($1))/seg;
         $n =~ s/([^A-Za-z0-9])/sprintf("%%%02X", ord($1))/seg;
         push @summaryRows, "Armory" => "<a href=\"http://www.wowarmory.com/character-sheet.xml?r=$r&n=$n\" target=\"swsar_$n\">$displayName &#187;</a>";
@@ -280,7 +280,7 @@ sub page {
         }
         
         if( %pets ) {
-            push @summaryRows, "Pets" => join "<br />", map { $pm->actorLink($_) } sort { $self->{ext}{Index}->actorname($a) cmp $self->{ext}{Index}->actorname($b) } keys %pets;
+            push @summaryRows, "Pets" => join "<br />", map { $pm->actorLink($_) } sort { $self->{index}->actorname($a) cmp $self->{index}->actorname($b) } keys %pets;
         }
     }
     

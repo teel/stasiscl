@@ -101,7 +101,7 @@ sub page {
     # PAGE HEADER #
     ###############
     
-    my $displayName = HTML::Entities::encode_entities($self->{ext}{Index}->spellname($SPELL)) || "Spell";
+    my $displayName = HTML::Entities::encode_entities($self->{index}->spellname($SPELL)) || "Spell";
     my ($raidStart, $raidEnd, $raidPresence) = $self->{ext}{Presence}->presence();
     $PAGE .= $pm->pageHeader($self->{name}, $displayName);
     $PAGE .= $pm->statHeader($self->{name}, $displayName, $raidStart);
@@ -116,7 +116,7 @@ sub page {
     
     # Other spells with the same name
     if( $SPELL ) {
-        my @nameShare = $self->{ext}{Index}->spellid( $SPELL );
+        my @nameShare = $self->{index}->spellid( $SPELL );
         if( @nameShare > 1 ) {
             push @summaryRows, "Shares Name With" => join "<br />", map { $pm->spellLink($_) . ( $_ == $SPELL ? " (currently viewing)" : "" ) } @nameShare;
         }

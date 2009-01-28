@@ -62,7 +62,7 @@ sub tabBar {
     
     foreach my $tab (@_) {
         $BAR .= sprintf 
-            "<a href=\"#%s\" onclick=\"toggleTab('%s');return false;\" id=\"tablink_%s\" class=\"tabLink\">%s</a>",
+            "<a href=\"#%s\" onclick=\"toggleTab('%s');\" id=\"tablink_%s\" class=\"tabLink\">%s</a>",
             $self->tameText($tab),
             $self->tameText($tab), 
             $self->tameText($tab), 
@@ -117,7 +117,7 @@ sub tableTitle {
         $style_text .= " titlenoclear";
     }
     
-    my $aname = $self->{tabid} ? $self->{tabid} . "_t" . $self->{headid} : "t" . $self->{headid};
+    my $aname = $self->{tabid} ? $self->{tabid} . "0t" . $self->{headid} : "t" . $self->{headid};
     
     return sprintf "<tr><th class=\"title${style_text}\" colspan=\"%d\"><a name=\"%s\" href=\"#%s\">%s</a></th></tr>", scalar @_, $aname, $aname, $title;
 }
@@ -326,7 +326,7 @@ sub statHeader {
             $link =~ s/class="/class="yuimenuitemlabel /;
             sprintf '<li class="yuimenuitem">%s</li>', $link;
         } sort {
-            ( $self->{raid}{$a}{class} cmp $self->{raid}{$b}{class} ) || ( $self->{ext}{Index}->actorname($a) cmp $self->{ext}{Index}->actorname($b) )
+            ( $self->{raid}{$a}{class} cmp $self->{raid}{$b}{class} ) || ( $self->{index}->actorname($a) cmp $self->{index}->actorname($b) )
         } grep {
             exists $self->{raid}{$_} && $self->{raid}{$_}{class} && $self->{raid}{$_}{class} ne "Pet"
         } keys %{$self->{ext}{Presence}{actors}};
@@ -337,7 +337,7 @@ sub statHeader {
             $link =~ s/class="/class="yuimenuitemlabel /;
             sprintf '<li class="yuimenuitem">%s</li>', $link;
         } sort {
-            $self->{ext}{Index}->actorname($a) cmp $self->{ext}{Index}->actorname($b)
+            $self->{index}->actorname($a) cmp $self->{index}->actorname($b)
         } grep {
             my $group = $self->{grouper}->group($_);
             ! ( $group && $group_seen{$group} ++ );
@@ -478,7 +478,7 @@ sub actorLink {
     my $tab = shift;
     
     $single = 0 if $self->{collapse};
-    my $name = $self->{ext}{Index}->actorname($id);
+    my $name = $self->{index}->actorname($id);
     my $color = $self->{raid}{$id} && $self->{raid}{$id}{class};
     
     #$tab = $tab ? "#" . $self->tameText($tab) : "";
@@ -515,7 +515,7 @@ sub spellLink {
     my $id = shift;
     my $tab = shift;
     
-    my ($name, $rank) = $self->{ext}{Index}->spellname($id);
+    my ($name, $rank) = $self->{index}->spellname($id);
     $tab = $tab ? "#" . $self->tameText($tab) : "";
 
     if( $id && $id =~ /^[0-9]+$/ ) {
