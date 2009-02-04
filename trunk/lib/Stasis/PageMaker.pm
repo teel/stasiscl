@@ -317,7 +317,7 @@ sub statHeader {
     
     if( $start && $start =~ /^\d+(?:\.\d+|)$/ ) {
         # Header with time
-        my $starttxt = $start ? ": " . strftime( "%a %B %d, %Y %H:%M:%S", localtime($start) ) : "";
+        my $starttxt = $start ? ": " . HTML::Entities::encode_entities( strftime( "%a %B %d, %Y %H:%M:%S", localtime($start) ) ) : "";
         $PAGE .= "<h2>${title}${starttxt}</h2>" if $title;
         
         # Raid & Mobs menu
@@ -356,7 +356,7 @@ sub statHeader {
                 <ul class="first-of-type">
                     <li id="bossnav" class="yuimenubaritem first-of-type"><a class="yuimenubaritemlabel first-of-type" href="index.html"><b>$title</b></a></li>
 
-                    <li class="yuimenubaritem"><a class="yuimenubaritemlabel" href="index.html">Charts</a>
+                    <li class="yuimenubaritem"><a class="yuimenubaritemlabel" href="index.html">Encounter</a>
                         <div id="charts" class="yuimenu">
                             <div class="bd">
                                 <ul>
@@ -396,7 +396,7 @@ sub statHeader {
 MENU
     } else {
         $PAGE .= "<h2>${title}</h2>";
-        $PAGE .= "<h4>${start}</h4>" if $start;
+        $PAGE .= "<h4>" . ( $start || "" ) . "</h4>";
     }
     
     $PAGE .= "</div>";
