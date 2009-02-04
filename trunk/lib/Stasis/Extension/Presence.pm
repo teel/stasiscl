@@ -27,6 +27,7 @@ use strict;
 use warnings;
 use Stasis::Extension;
 use Stasis::Parser;
+use Stasis::Event qw/:constants/;
 
 our @ISA = "Stasis::Extension";
 
@@ -54,7 +55,9 @@ sub process {
     my ( $self, $event ) = @_;
     
     my $guid;
-    if( my $guid = $event->{actor} ) {
+    if( ( my $guid = $event->{actor} ) && $event->{action} != SPELL_AURA_REMOVED && $event->{action} != SPELL_AURA_REMOVED_DOSE ) {
+        # AURA_REMOVE actions can be "action at a distance" and are not worth counting as presence.
+
         $self->{start}{ $guid } ||= $event->{t};
         $self->{end}{ $guid } = $event->{t};
     }
