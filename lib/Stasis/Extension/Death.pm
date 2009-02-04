@@ -28,6 +28,8 @@ use warnings;
 use Stasis::Parser;
 use Stasis::Extension;
 
+use Stasis::Event qw/:constants/;
+
 our @ISA = "Stasis::Extension";
 
 sub start {
@@ -74,10 +76,17 @@ sub process_death {
         $self->{actors}{ $event->{target} } ||= [];
 
         # Push this death onto it.
+        my $autopsy = $self->{dtrack}{ $event->{target} };
+        
+        if( $autopsy ) {
+            my $x;
+            $autopsy = [ reverse grep { $x ||= $_->{event}{action} == ENVIRONMENTAL_DAMAGE || $_->{event}{action} == SWING_DAMAGE || $_->{event}{action} == RANGE_DAMAGE || $_->{event}{action} == SPELL_DAMAGE || $_->{event}{action} == DAMAGE_SPLIT || $_->{event}{action} == SPELL_PERIODIC_DAMAGE || $_->{event}{action} == DAMAGE_SHIELD; } reverse @$autopsy ];
+        }
+        
         push @{$self->{actors}{ $event->{target} }}, {
             "t" => $event->{t},
             "actor" => $event->{target},
-            "autopsy" => $self->{dtrack}{ $event->{target} } || [],
+            "autopsy" => $autopsy || [],
         };
     }
     
