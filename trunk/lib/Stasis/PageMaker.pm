@@ -408,7 +408,7 @@ MENU
 # pageFooter()
 sub pageFooter {
     my $self = shift;
-    my $timestr = asctime localtime;
+    my $timestr = HTML::Entities::encode_entities( strftime( "%a %B %d, %Y %H:%M:%S", localtime ) );
     
     return <<END;
 <p class="footer">Generated on $timestr</p>
