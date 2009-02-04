@@ -473,10 +473,11 @@ sub page {
             
             # Get the last line of the autopsy.
             my $lastline = $death->{autopsy}->[-1];
-            my $text = $lastline->{event}->toString( 
-                sub { $self->{pm}->actorLink( $_[0], 1 ) }, 
-                sub { $self->{pm}->spellLink( $_[0] ) } 
-            );
+            my $text =
+                $lastline
+              ? $lastline->{event}
+              ->toString( sub { $self->{pm}->actorLink( $_[0], 1 ) }, sub { $self->{pm}->spellLink( $_[0] ) } )
+              : "";
             
             my $t = $death->{t} - $raidStart;
             $PAGE .= $pm->tableRow(
