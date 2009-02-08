@@ -166,6 +166,7 @@ my $opt_nav;
 my $opt_filter;
 my $opt_throttle;
 my $opt_debug;
+my $opt_locale;
 
 ## SUBS ##
 
@@ -299,7 +300,10 @@ my $rc = GetOptions(
     "filter=s@"     => \$opt_filter,
     "throttle=i"    => \$opt_throttle,
     "debug"         => \$opt_debug,
+    "locale=s"      => \$opt_locale,
 );
+
+setlocale( LC_ALL, $opt_locale ) if $opt_locale;
 
 # nav always on
 $opt_nav = 1;
