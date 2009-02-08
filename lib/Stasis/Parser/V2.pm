@@ -158,6 +158,10 @@ sub parse {
         @{$result}{@fspell} = @col;
     }
     
+    $result->{school} = hex $result->{school} if defined $result->{school};
+    $result->{spellschool} = hex $result->{spellschool} if defined $result->{spellschool};
+    $result->{extraspellschool} = hex $result->{extraspellschool} if defined $result->{extraspellschool};
+    
     bless $result, "Stasis::Event";
 }
 
