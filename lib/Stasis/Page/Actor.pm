@@ -286,14 +286,19 @@ sub page {
     
     # Damage Info
     if( $dmg_to_all ) {
+        my $dmg_to_all_extra = $is_raider ? ( $dmg_to_all - $dmg_to_mobs ? " (" . ($dmg_to_all - $dmg_to_mobs) . " was to players)" : "" ) : "";
+        my $dmg_in_extra = $is_raider ? ( $dmg_from_all - $dmg_from_mobs ? " (" . ($dmg_from_all - $dmg_from_mobs) . " was from players)" : "" ) : "";
+        
         push @summaryRows, (
-            "Damage in" => $dmg_from_all . ( $dmg_from_all - $dmg_from_mobs ? " (" . ($dmg_from_all - $dmg_from_mobs) . " was from players)" : "" ),
-            "Damage out" => $dmg_to_all . ( $dmg_to_all - $dmg_to_mobs ? " (" . ($dmg_to_all - $dmg_to_mobs) . " was to players)" : "" ),
+            "Damage in" => $dmg_from_all . $dmg_in_extra,
+            "Damage out" => $dmg_to_all . $dmg_to_all_extra,
         );
     }
     
     # DPS Info
     if( $ptime && $dpsTime ) {
+        my $dps_damage = $is_raider ? $dmg_to_mobs : $dmg_to_all;
+        
         push @summaryRows, (
             "DPS activity" => sprintf
             (
@@ -302,8 +307,8 @@ sub page {
                 $dpsTime%60, 
                 $dpsTime/$ptime*100, 
             ),
-            "DPS (over presence)" => sprintf( "%d", $dmg_to_mobs/$ptime ),
-            "DPS (over activity)" => sprintf( "%d", $dmg_to_mobs/$dpsTime ),
+            "DPS (over presence)" => sprintf( "%d", $dps_damage/$ptime ),
+            "DPS (over activity)" => sprintf( "%d", $dps_damage/$dpsTime ),
         );
     }
     
