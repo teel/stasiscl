@@ -61,12 +61,9 @@ sub tabBar {
     $BAR .= "<div class=\"tabBar\">";
     
     foreach my $tab (@_) {
-        $BAR .= sprintf 
-            "<a href=\"#%s\" onclick=\"toggleTab('%s');\" id=\"tablink_%s\" class=\"tabLink\">%s</a>",
-            $self->tameText($tab),
-            $self->tameText($tab), 
-            $self->tameText($tab), 
-            $tab;
+        my $tametab = $self->tameText($tab);
+
+        $BAR .= $self->alink( "#$tametab", $tab, { id => "tablink_$tametab", onclick => "toggleTab('$tametab')" } );
     }
     
     $BAR .= "</div>";
@@ -119,7 +116,7 @@ sub tableTitle {
     
     my $aname = $self->{tabid} ? $self->{tabid} . "0t" . $self->{headid} : "t" . $self->{headid};
     
-    return sprintf "<tr><th class=\"title${style_text}\" colspan=\"%d\"><a name=\"%s\" href=\"#%s\">%s</a></th></tr>", scalar @_, $aname, $aname, $title;
+    return sprintf "<tr><th class=\"title%s\" colspan=\"%d\">%s</th></tr>", $style_text, scalar @_, $self->alink( "#$aname", $title, { name => $aname } );
 }
 
 # tableHeader( @header_rows )
@@ -548,6 +545,13 @@ sub tip {
     } else {
         return $short || "";
     }
+}
+
+sub alink {
+    my ($self, $loc, $text, $params) = @_;
+    $params ||= {};
+    
+    return sprintf '<a href="%s" %s>%s</a>', $loc, join( " ", map { "$_=\"$params->{$_}\"" } keys %$params ), $text;
 }
 
 sub _commify {
