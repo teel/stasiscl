@@ -73,8 +73,8 @@ sub parse {
         t                   => $t,
     };
     
-    $result->{target} = 0 unless $result->{target_name};
-    $result->{actor} = 0 unless $result->{actor_name};
+    $result->{target} = 0 if $result->{target} eq "0x0000000000000000";
+    $result->{actor}  = 0 if $result->{actor}  eq "0x0000000000000000";
     
     # _split sometimes puts an extra quote mark in the last column
     $col[$#col] =~ s/"$// if @col;
@@ -161,6 +161,7 @@ sub parse {
     $result->{school} = hex $result->{school} if defined $result->{school};
     $result->{spellschool} = hex $result->{spellschool} if defined $result->{spellschool};
     $result->{extraspellschool} = hex $result->{extraspellschool} if defined $result->{extraspellschool};
+    $result->{powertype} = hex $result->{powertype} if defined $result->{powertype};
     
     bless $result, "Stasis::Event";
 }
