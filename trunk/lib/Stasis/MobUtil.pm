@@ -32,8 +32,9 @@ our @EXPORT_OK = qw/splitguid joinguid/;
 
 # returns (type, npc, spawncount)
 sub splitguid($) {
-    if( length $_[0] == 18 && $_[0] =~ /^0x/ ) {
-        return ( hex( substr $_[0], 2, 4 ), hex( substr $_[0], 6, 6 ), hex( substr $_[0], 12, 6 ) );
+    my ( $guid ) = @_;
+    if( length $guid == 18 && $guid =~ /^0x/ ) {
+        return ( hex( substr $guid, 2, 4 ), hex( substr $guid, 6, 6 ), hex( substr $guid, 12, 6 ) );
     } else {
         return ( 0, 0, 0 );
     }
