@@ -300,7 +300,7 @@ sub register_armyofthedead {
             if( !$self->{class}{ $event->{actor} } ) {
                 my ( undef, $anpc, undef ) = Stasis::MobUtil::splitguid( $event->{actor} );
 
-                if( $anpc == 24207 ) {
+                if( $anpc == 24207 && !$self->{_aotdbl}{ $event->{actor} } ) {
                     my @aotdks =
                       grep { $self->{_aotdk}{$_} <= $event->{t} && $self->{_aotdk}{$_} > ( $event->{t} - 20 ) }
                       keys %{ $self->{_aotdk} };
@@ -308,6 +308,9 @@ sub register_armyofthedead {
                     if( @aotdks == 1 ) {
                         # exactly one DK cast AotD in the past 20 seconds, assign to that one
                         $self->assign_pet( "AROTD", $aotdks[0], $event->{actor} );
+                    } elsif( @aotdks > 1 ) {
+                        # blacklist this ghoul, otherwise it will get stolen when the window expires
+                        $self->{_aotdbl}{ $event->{actor} } = 1;
                     }
                 }
             }
