@@ -57,13 +57,20 @@ sub fill_template {
       grep { $raid->{$_} && $raid->{$_}{class} && $raid->{$_}{class} ne "Pet" } keys %$raid;
     my $players_rounded = $players <= 13 ? 10 : 25; # kind of arbitrary
 
+    my @time = localtime( $boss->{start} || 0 );
     my %tmp = (
         short => $boss->{short},
         start => floor( $boss->{start} || 0 ),
         end   => floor( $boss->{end} || 0 ),
         kill  => $boss->{kill},
         raid  => $players,
-        rraid => $players_rounded
+        rraid => $players_rounded,
+        month => sprintf( "%02d", $time[4] + 1 ),
+        day => sprintf( "%02d", $time[3] ),
+        year => sprintf( "%04d", $time[5] + 1900 ),
+        hour => sprintf( "%02d", $time[2] ),
+        minute => sprintf( "%02d", $time[1] ),
+        second => sprintf( "%02d", $time[0] ),
     );
     
     my $template = $self->{template};
