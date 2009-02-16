@@ -47,6 +47,8 @@ sub DESTROY {
     my ( $self ) = @_;
     return unless $self->{fork};
     
+    # perlfork says that when using fork emulation, this can be dangerous because the threads don't have
+    # a chance to clean up. It shouldn't be a problem if written_dirs is called before the object is DESTROYed.
     kill TERM => $_ foreach keys %{ $self->{workers} };
 }
 
@@ -117,30 +119,28 @@ sub write_dir {
     my ( $self ) = @_;
     
     if( $self->{fork} ) {
-        my $cpid = open my $cfh, "-|";
+        pipe my $pfh, my $cfh or die "could not open connected pipes: $!";
+        
+        my $cpid = fork;
+
         if( !defined $cpid ) {
             die "could not fork: $!";
         } elsif( $cpid ) {
             # parent
-            $self->{workers}{$cpid} = $cfh;
+            close $cfh;
+            $self->{workers}{$cpid} = $pfh;
             return;
         } else {
             # child
+            close $pfh;
             
             # so we don't end up killing our siblings via DESTROY
             $self->{fork} = 0;
             
-            # don't want to run simultaneously with others, only look at ones before us
-            # is this code reliable?
-            # while( my @waiting_for = grep { kill 0 => $_ } keys %{ $self->{workers} } ) {
-            #     print STDERR "sleeping, waiting on " . join(", ", @waiting_for) . "\n";
-            #     sleep 2;
-            # }
-            
             eval {
                 my $h = $self->_write_dir(@_);
-                print join "\n", map { $_ . ":" . $h->{$_} } keys %$h;
-                print "\n";
+                print $cfh join "\n", map { $_ . ":" . $h->{$_} } keys %$h;
+                print $cfh "\n";
             }; if( $@ ) {
                 exit 1;
             } else {
