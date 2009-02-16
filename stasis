@@ -167,6 +167,7 @@ my $opt_filter;
 my $opt_throttle;
 my $opt_debug;
 my $opt_locale;
+my $opt_fork;
 
 ## SUBS ##
 
@@ -249,7 +250,6 @@ sub _getsource {
             );
             
             $fh = \*TAILFH;
-            status "WARNING: -tail is an experimental option, please report any strange behavior";
         } else {
             open $fh, $opt_file or bomb "could not open file: $opt_file";
         }
@@ -301,6 +301,7 @@ my $rc = GetOptions(
     "throttle=i"    => \$opt_throttle,
     "debug"         => \$opt_debug,
     "locale=s"      => \$opt_locale,
+    "fork"          => \$opt_fork,
 );
 
 setlocale( LC_ALL, $opt_locale ) if $opt_locale;
@@ -405,8 +406,9 @@ if( $action eq "print" ) {
     bomb "not a directory: $opt_dir" unless $opt_dir && -d $opt_dir;
     status "Using directory: $opt_dir";
     
-    # Warn if the user tried to use template
+    # Warn if the user tried to use template or fork
     status "WARNING: -template is an experimental option, please report any strange behavior" if $opt_template;
+    status "WARNING: -fork is an experimental option, please report any strange behavior" if $opt_fork;
     
     # Set up the event dispatchers.
     my $ed_splitter = Stasis::EventDispatcher->new;
@@ -424,11 +426,14 @@ if( $action eq "print" ) {
     # a NameIndex for doing that sort of thing
     my $index = Stasis::NameIndex->new;
     
-    # Keep track of directories we've written out.
-    my @dirs_written;
-    
     # Use this to write stuff out.
-    my $writer = Stasis::CLI::Writer->new( base => $opt_dir, server => $opt_server, template => $opt_template );
+    my $writer = Stasis::CLI::Writer->new(
+        base     => $opt_dir,
+        server   => $opt_server,
+        template => $opt_template,
+        debug    => $opt_debug,
+        fork     => $opt_fork
+    );
     
     my $classer = Stasis::ClassGuess->new( debug => $opt_debug );
     my $splitter = Stasis::LogSplit->new( debug => $opt_debug, callback =>
@@ -503,7 +508,7 @@ if( $action eq "print" ) {
                     # Write the files for this split.
                     unless( $opt_nowrite ) {
                         eval {
-                            push @dirs_written, $writer->write_dir;
+                            $writer->write_dir;
                         }; if( $@ ) {
                             bomb $@;
                         }
@@ -563,13 +568,6 @@ if( $action eq "print" ) {
     
     my %raid = $classer->finish;
     my @splits = $splitter->finish;
-
-    # Close the file.
-    if( $opt_file ) {
-        close $fh;
-    } else {
-        $db->disconnect();
-    }
     
     # Count the results so the user can see what's up.
     my $n_players = 0;
@@ -595,7 +593,7 @@ if( $action eq "print" ) {
             $writer->set( boss => $boss, raid => \%raid, exts => $trash_exts, index => $index, collapse => 1 );
             
             status sprintf "Writing %s (%s) .. ", $boss->{long}, $writer->fill_template;
-            push @dirs_written, $writer->write_dir;
+            $writer->write_dir;
             status "done.";
         }; if( $@ ) {
             bomb $@;
@@ -618,7 +616,7 @@ if( $action eq "print" ) {
                     $writer->set( boss => $boss, raid => \%raid, exts => $exts, index => $index, collapse => $opt_collapse );
 
                     status sprintf "Writing %s (%s) .. ", $boss->{long}, $writer->fill_template;
-                    push @dirs_written, $writer->write_dir;
+                    $writer->write_dir;
                     status "done.";
                 }; if( $@ ) {
                     bomb $@;
@@ -635,7 +633,7 @@ if( $action eq "print" ) {
             $writer->set( boss => $boss, raid => \%raid, exts => $overall_exts, index => $index, collapse => 1 );
 
             status sprintf "Writing %s (%s) .. ", $boss->{long}, $writer->fill_template;
-            push @dirs_written, $writer->write_dir;
+            $writer->write_dir;
             status "done.";
         }; if( $@ ) {
             bomb $@;
@@ -645,6 +643,7 @@ if( $action eq "print" ) {
     }
     
     # Write navigation
+    my @dirs_written = $writer->written_dirs;
     if( $opt_nav && !$opt_nowrite && @dirs_written ) {
         # save dnames
         $_->{_dname} = $_->{dname} foreach (@dirs_written);
