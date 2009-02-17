@@ -15,6 +15,15 @@ One thing that is important to note is that the 2.3 parser is not localized and 
 
 There will be more keys that correspond to action-specific fields. For example, a SPELL_DAMAGE event will have keys such as `spellid`, `spellname`, `amount`, among others.
 
+==Event methods==
+
+`Stasis::Parser` will return an object when you ask it to parse a line. You can call these methods on it:
+
+  * *toString*: return a string representation of the event, or an empty string if the parser isn't sure how to convert this event into one.
+  * *timeString*: return a string representation of the event time, formatted the same way it would be in the original combat log.
+  * *actionName*: return the action name, as it was written in the original combat log. Something like `SWING_DAMAGE`, `SPELL_DRAIN`, etc.
+  * *powerName*: for events with power types (e.g. `SPELL_ENERGIZE`), returns the name of the power. Something like "mana", "rage", etc.
+
 ==Sample code==
 
 {{{
