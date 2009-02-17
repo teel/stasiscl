@@ -86,22 +86,23 @@ sub fill_template {
 
 sub written_dirs {
     my ( $self ) = @_;
+    
+    if( $self->{fork} ) {
+        while( ( my $cpid = wait ) != -1 ) {
+            if( my $fh = delete $self->{workers}{$cpid} ) {
+                my $h;
 
-    foreach my $cpid ( keys %{ $self->{workers} } ) {
-        if( waitpid( $cpid, 0 ) > 0 ) {
-            die "Child PID $cpid died, signal $?\n" if $?;
-            
-            my $fh = delete $self->{workers}{$cpid};
-            my $h;
-            
-            while( my $r = <$fh> ) {
-                $h->{$1} = $2 if $r =~ /^(\w+):(.*)$/;
+                while( my $r = <$fh> ) {
+                    $h->{$1} = $2 if $r =~ /^(\w+):(.*)$/;
+                }
+
+                close $fh;
+                push @{ $self->{written} }, $h;
             }
-            
-            close $fh;
-            push @{ $self->{written} }, $h;
-        } else {
-            die "Couldn't read from PID $cpid";
+        }
+
+        if( keys %{ $self->{workers} } ) {
+            warn "Children still unaccounted for: " . join ", ", keys %{ $self->{workers} };
         }
     }
 

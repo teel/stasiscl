@@ -634,7 +634,11 @@ if( $action eq "print" ) {
     }
     
     # Write navigation
-    my @dirs_written = $writer->written_dirs;
+    
+    status "Waiting for children to exit .. " if $opt_fork;
+    my @dirs_written = $writer->written_dirs;    
+    status "done." if $opt_fork;
+
     if( $opt_nav && !$opt_nowrite && @dirs_written ) {
         # save dnames
         $_->{_dname} = $_->{dname} foreach (@dirs_written);
