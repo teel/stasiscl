@@ -120,7 +120,6 @@ Use the "Issues" tab.
 use strict;
 use warnings;
 use lib 'lib';
-use open ':encoding(utf8)';
 use Stasis::Parser;
 use Stasis::LogSplit;
 use Stasis::ClassGuess;
@@ -215,7 +214,7 @@ sub makeext() {
 }
 
 sub _getsource {
-    my ($db, $fh);
+    # Assign something to the INPUT handle
     
     if( $opt_file ) {
         # Get a filehandle.
@@ -235,7 +234,7 @@ sub _getsource {
                 bomb "-trash, -combine, -overall, and -navigation are not supported with -tail";
             }
             
-            tie *TAILFH, "File::Tail", ( 
+            tie *INPUT, "File::Tail", ( 
                 name => $opt_file,
 
                 # Never wait more than 1 second between checks.
@@ -248,27 +247,25 @@ sub _getsource {
                 # If the file is moved out of the way and replaced, read its entire replacement.
                 reset_tail => 1,
             );
-            
-            $fh = \*TAILFH;
         } else {
-            open $fh, $opt_file or bomb "could not open file: $opt_file";
+            open INPUT, $opt_file or bomb "could not open file: $opt_file";
         }
     } elsif( $opt_sfile ) {
         # Get a database connection.
         
-        if( $opt_tail ) {
-            bomb "SQLite mode is not supported with -tail";
-        } else {
-            status "WARNING: SQLite mode is experimental, and the file format is subject to change!";
-            $db = Stasis::DB->new( db => $opt_sfile );
-            $db->line(1);
-        }
+        bomb "SQLite files cannot be read from";
+        
+        # if( $opt_tail ) {
+        #     bomb "SQLite mode is not supported with -tail";
+        # } else {
+        #     status "WARNING: SQLite mode is experimental, and the file format is subject to change!";
+        #     $db = Stasis::DB->new( db => $opt_sfile );
+        #     $db->line(1);
+        # }
     } else {
         $opt_file = 1;
-        $fh = \*STDIN;
+        open INPUT, "<&STDIN";
     }
-    
-    return ($fh, $db);
 }
 
 ## CODE ##
@@ -326,29 +323,28 @@ my $parser = Stasis::Parser->new(
     year    => $opt_year,
 );
 
-# Set encoding of STDOUT to UTF-8 (which Blizzard uses for combat logs)
-binmode(STDOUT, ":utf8");
-
 # Case out the various actions.
 if( $action eq "print" ) {
     # action PRINT: used to print out actions from a log file
     
     # Figure out what input to use.
-    my ($fh, $db) = _getsource();
+    _getsource();
     
-    while( defined( $_ = $opt_file ? <$fh> : $db->line() ) ) {
+    # Print in utf8 (since that's what we're reading in)
+    binmode( STDOUT, "utf8" );
+    
+    while( my $line = <INPUT> ) {
         select(undef, undef, undef, $opt_throttle/1000) if $opt_throttle;
         
-        # Because File::Tail screws up Unicode
-        utf8::decode($_) if $opt_tail;
+        utf8::decode($line);
         
-        my $event = $opt_file ? $parser->parse($_) : $_;
+        my $event = $parser->parse($line);
         if( $event->{action} ) {
             if( $opt_filter ) {
                 # Check filter
                 my $match;
                 
-                FILTER: foreach (@$opt_filter) {
+                FILTER: foreach my $filter (@$opt_filter) {
                     my @ff = split /\s*[+,]\s*/;
                     
                     foreach my $f ( @ff ) {
@@ -371,11 +367,11 @@ if( $action eq "print" ) {
                         } else {
                             # check all
                             next FILTER
-                              unless $_ eq $event->{actor_name}
-                                  || $_ eq $event->{target_name}
-                                  || ( $event->{spellname}      && $_ eq $event->{spellname} )
-                                  || ( $event->{extraspellname} && $_ eq $event->{extraspellname} )
-                                  || ( $parser->action_name( $event->{action} ) =~ /$_/i );
+                              unless $filter eq $event->{actor_name}
+                                  || $filter eq $event->{target_name}
+                                  || ( $event->{spellname}      && $filter eq $event->{spellname} )
+                                  || ( $event->{extraspellname} && $filter eq $event->{extraspellname} )
+                                  || ( $parser->action_name( $event->{action} ) =~ /$filter/i );
                         }
                     }
                     
@@ -390,17 +386,15 @@ if( $action eq "print" ) {
             if( my $text = $event->toString( undef, sub { "$_[1] ($_[0])" } ) ) {
                 printf "%s  %s\n", $event->timeString(), $text;
             } else {
-                # If we're not in SQLite mode, we can print out the un-stringified line.
-                # TODO: support for sqlite mode.
-                print if !$opt_sfile;
+                print $line;
             }
         } else {
-            warn "bad line: " . $_;
+            warn "bad line: " . $line;
         }
     }
 } elsif( $action eq "add" ) {
     # Figure out what input to use.
-    my ($fh, $db) = _getsource();
+    _getsource();
     
     # Going to output in $opt_dir
     bomb "not a directory: $opt_dir" unless $opt_dir && -d $opt_dir;
@@ -532,14 +526,13 @@ if( $action eq "print" ) {
     # Keep track of when the log started.
     my $first = 0;
     
-    while( defined( $_ = $opt_file ? <$fh> : $db->line() ) ) {
+    while( my $line = <INPUT> ) {
         select(undef, undef, undef, $opt_throttle/1000) if $opt_throttle;
         
-        # Because File::Tail screws up Unicode
-        utf8::decode($_) if $opt_tail;
+        utf8::decode($line);
         
         # Get the line.
-        my $event = $opt_file ? $parser->parse($_) : $_;
+        my $event = $parser->parse($line);
         $first ||= $event->{t};
         
         # Dispatch this action.
@@ -547,7 +540,7 @@ if( $action eq "print" ) {
             $ed_splitter->process($event);
             $ed->process($event);
         } else {
-            warn "bad line: " . $_;
+            warn "bad line: " . $line;
         }
     }
     
@@ -638,8 +631,6 @@ if( $action eq "print" ) {
         }; if( $@ ) {
             bomb $@;
         }
-        
-        status "done.";
     }
     
     # Write navigation
@@ -669,9 +660,9 @@ if( $action eq "print" ) {
                 my $dname = sprintf "%s/%s", $opt_dir, $dir->{dname};
                 die "Could not find " . $opt_dir . "/" . $dir->{dname} unless -d $dname;
                 
-                open DNAV, ">$dname/raid.json" or die "Could not open $dname/raid.json";
-                print DNAV $NAV;
-                close DNAV;
+                open my $dnav, ">$dname/raid.json" or die "Could not open $dname/raid.json";
+                print $dnav $NAV;
+                close $dnav;
             }; if( $@ ) {
                 bomb $@;
             }
@@ -745,14 +736,7 @@ if( $action eq "print" ) {
 } elsif( $action eq "convert" ) {
     status "WARNING: SQLite mode is experimental, and the file format is subject to change!";
     
-    # Figure out the filehandle to use.
-    my $fh;
-    if( $opt_file ) {
-        open $fh, $opt_file or bomb "could not open file: $opt_file";
-    } else {
-        $opt_file = 1;
-        $fh = \*STDIN;
-    }
+    _getsource();
     
     if( $opt_tail ) {
         bomb "tail is not supported in SQLite mode, try again without -tail";
@@ -772,11 +756,11 @@ if( $action eq "print" ) {
         
         # Import log entries.
         my $nlog = -1;
-        while( <$fh> ) {
+        while( my $line = <INPUT> ) {
             select(undef, undef, undef, $opt_throttle/1000) if $opt_throttle;
             
             $nlog++;
-            my $event = $parser->parse($_);
+            my $event = $parser->parse($line);
             $db->addLine( $nlog, $event );
         }
         

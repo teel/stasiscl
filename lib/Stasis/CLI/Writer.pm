@@ -32,8 +32,8 @@ use POSIX qw/floor/;
 
 sub new {
     my ( $class, %params ) = @_;
-
-    bless {
+    
+    my $self = bless {
         base     => $params{base},
         server   => $params{server},
         template => $params{template} || "sws-:short:-:start:",
@@ -41,15 +41,8 @@ sub new {
         workers  => {},
         written  => [],
     }, $class;
-}
-
-sub DESTROY {
-    my ( $self ) = @_;
-    return unless $self->{fork};
     
-    # perlfork says that when using fork emulation, this can be dangerous because the threads don't have
-    # a chance to clean up. It shouldn't be a problem if written_dirs is called before the object is DESTROYed.
-    kill TERM => $_ foreach keys %{ $self->{workers} };
+    return $self;
 }
 
 sub set {
@@ -122,7 +115,7 @@ sub write_dir {
         pipe my $pfh, my $cfh or die "could not open connected pipes: $!";
         
         my $cpid = fork;
-
+        
         if( !defined $cpid ) {
             die "could not fork: $!";
         } elsif( $cpid ) {
@@ -133,19 +126,18 @@ sub write_dir {
         } else {
             # child
             close $pfh;
-            
+        
             # so we don't end up killing our siblings via DESTROY
             $self->{fork} = 0;
             
             eval {
-                my $h = $self->_write_dir(@_);
+                my $h = $self->_write_dir;
                 print $cfh join "\n", map { $_ . ":" . $h->{$_} } keys %$h;
                 print $cfh "\n";
-            }; if( $@ ) {
-                exit 1;
-            } else {
                 exit 0;
-            }
+            };
+            
+            exit 1;
         }
     } else {
         # not forking
