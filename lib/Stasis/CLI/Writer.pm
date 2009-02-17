@@ -89,6 +89,8 @@ sub written_dirs {
     
     if( $self->{fork} ) {
         while( ( my $cpid = wait ) != -1 ) {
+            die "Child exited with status: $?" if $?;
+            
             if( my $fh = delete $self->{workers}{$cpid} ) {
                 my $h;
 
