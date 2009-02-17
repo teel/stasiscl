@@ -24,6 +24,8 @@ There will be more keys that correspond to action-specific fields. For example, 
   * *actionName*: return the action name, as it was written in the original combat log. Something like `SWING_DAMAGE`, `SPELL_DRAIN`, etc.
   * *powerName*: for events with power types (e.g. `SPELL_ENERGIZE`), returns the name of the power. Something like "mana", "rage", etc.
 
+You can also access its fields (actor, target, amount, spellid, etc) directly. See the section below entitled "example of the format".
+
 ==Sample code==
 
 {{{
