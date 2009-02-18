@@ -98,7 +98,7 @@ sub page {
     );
     
     # For raiders, dpsTime is against enemies!
-    my $dpsTime = span_sum( [ map { $actOut->{$_}{spans} ? @{$actOut->{$_}{spans}} : () } grep { !$is_raider || ( !exists $self->{raid}{$_} || !$self->{raid}{$_}{class} ) } keys %$actOut ], $pstart, $pend );
+    my ($dpsStart, $dpsEnd, $dpsTime) = span_sum( [ map { $actOut->{$_}{spans} ? @{$actOut->{$_}{spans}} : () } grep { !$is_raider || ( !exists $self->{raid}{$_} || !$self->{raid}{$_}{class} ) } keys %$actOut ], $pstart, $pend );
     
     my $deOut = $self->{ext}{Damage}->sum( 
         actor => \@playpet, 
@@ -250,15 +250,10 @@ sub page {
     }
     
     # Presence
-    push @summaryRows, "Presence" => sprintf(
-        "%02d:%02d (%02d:%02d &ndash; %02d:%02d)",
-        $ptime / 60,
-        $ptime % 60,
-        ($pstart-$raidStart) / 60,
-        ($pstart-$raidStart) % 60,
-        ($pend - $raidStart) / 60,
-        ($pend - $raidStart) % 60
-    );
+    push @summaryRows, "Presence" => $pm->timespan( $pstart, $pend, $raidStart, undef, 1 );
+    
+    # Activity
+    push @summaryRows, "DPS activity" => $pm->timespan( $dpsStart, $dpsEnd, $raidStart, $dpsTime, 1 );
     
     # Owner info
     if( $self->{raid}{$MOB} && $self->{raid}{$MOB}{class} && $self->{raid}{$MOB}{class} eq "Pet" ) {
@@ -295,18 +290,11 @@ sub page {
         );
     }
     
-    # DPS Info
+    # DPS
     if( $ptime && $dpsTime ) {
         my $dps_damage = $is_raider ? $dmg_to_mobs : $dmg_to_all;
         
         push @summaryRows, (
-            "DPS activity" => sprintf
-            (
-                "%02d:%02d (%0.1f%% of presence)",
-                $dpsTime/60, 
-                $dpsTime%60, 
-                $dpsTime/$ptime*100, 
-            ),
             "DPS (over presence)" => sprintf( "%d", $dps_damage/$ptime ),
             "DPS (over activity)" => sprintf( "%d", $dps_damage/$dpsTime ),
         );
