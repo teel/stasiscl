@@ -104,6 +104,24 @@ sub timeString {
     sprintf "%d/%d %02d:%02d:%02d\.%03d", $t[4]+1, $t[3], $t[2], $t[1], $t[0], $2?$2*1000:0;
 }
 
+sub oldFormat {
+    my ($self) = @_;
+    
+    my $h = {};
+    
+    foreach my $k (keys %$self) {
+        if( grep { $k eq $_ } qw/t actor actor_name actor_relationship target target_name target_relationship/ ) {
+            $h->{$k} = $self->{$k};
+        } elsif( $k eq "action" ) {
+            $h->{$k} = $self->actionName;
+        } else {
+            $h->{extra}{$k} = $self->{$k};
+        }
+    }
+    
+    return $h;
+}
+
 # TODO -- this method blows, lots of repeated code and it's not complete
 sub toString {
     my ($self, $actor_callback, $spell_callback) = @_;
