@@ -21,7 +21,7 @@ There will be more keys that correspond to action-specific fields. For example, 
 
   * *toString*: return a string representation of the event, or an empty string if the parser isn't sure how to convert this event into one.
   * *timeString*: return a string representation of the event time, formatted the same way it would be in the original combat log.
-  * *actionName*: return the action name, as it was written in the original combat log. Something like `SWING_DAMAGE`, `SPELL_DRAIN`, etc.
+  * *actionName*: return the action name, as it was written in the original combat log. Something like `SWING_DAMAGE` or `SPELL_DRAIN`.
   * *powerName*: for events with power types (e.g. `SPELL_ENERGIZE`), returns the name of the power. Something like "mana", "rage", etc.
 
 You can also access its fields (actor, target, amount, spellid, etc) directly using syntax like `$event->{spellid}`. See the section below entitled "example of the format".
