@@ -183,10 +183,10 @@ sub _split {
             0,                       # wday
             0,                       # yday
             -1                       # is_dst
-        ) + $6 / 1000, map { $_ eq "nil" ? 0 : $_ } split $csv_regex, $7;
+        ) + $6 / 1000, map { $_ eq "nil" ? "" : $_ } split $csv_regex, $7;
     } else {
         # Couldn't recognize time
-        return 0, map { $_ eq "nil" ? 0 : $_ } split $csv_regex, $line;
+        return 0, map { $_ eq "nil" ? "" : $_ } split $csv_regex, $line;
     }
 }
 
