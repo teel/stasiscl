@@ -226,10 +226,12 @@ sub ext_sum {
 sub span_sum {
     my ($spans, $start, $end) = @_;
     
-    return 0 if !$spans;
+    return (0, 0, 0) if !$spans || !@$spans;
     
     # Sort spans by start time.
     my @span = sort { ( unpack "dd", $a )[0] <=> ( unpack "dd", $b )[0] } @$spans;
+    my $tmin = (unpack "dd", $span[0])[0];
+    my $tmax;
     
     # Store the final list in here.
     my @final = ();
@@ -238,6 +240,8 @@ sub span_sum {
         # We are assured that $span starts at the same time as, or after, everything in @final.
         # If it overlaps the last span in @final then merge it in.
         my ($sstart, $send) = unpack "dd", $span;
+        $tmax = $send if !$tmax || $send > $tmax;
+        
         $send ||= $end;
         
         if( @final ) {
@@ -264,7 +268,7 @@ sub span_sum {
         $sum += ($fend||$end) - ($fstart||$start);
     }
     
-    return $sum;
+    return wantarray ? ( $tmin, $tmax, $sum ) : $sum;
 }
 
 1;

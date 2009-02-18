@@ -554,6 +554,22 @@ sub alink {
     return sprintf '<a href="%s" %s>%s</a>', $loc, join( " ", map { "$_=\"$params->{$_}\"" } keys %$params ), $text;
 }
 
+sub timespan {
+    my ( $self, $start, $end, $zero, $diff, $use_range ) = @_;
+    
+    $start -= $zero;
+    $end -= $zero;
+    
+    $diff = defined $diff ? $diff : $end - $start;
+    my $text = sprintf( "%02d:%02d", $diff / 60, $diff % 60 );
+    
+    if( $use_range ) {
+        $text .= sprintf( " (%02d:%02d &ndash; %02d:%02d)", $start / 60, $start % 60, $end / 60, $end % 60 );
+    }
+    
+    return $text;
+}
+
 sub _commify {
     my $text = pop;
     
