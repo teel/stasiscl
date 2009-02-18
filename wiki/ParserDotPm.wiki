@@ -17,7 +17,7 @@ There will be more keys that correspond to action-specific fields. For example, 
 
 ==Event methods==
 
-`Stasis::Parser` will return an object when you ask it to parse a line. You can call these methods on it:
+`Stasis::Parser` will return a `Stasis::Event` object when you ask it to parse a line. You can call these methods on it:
 
   * *toString*: return a string representation of the event, or an empty string if the parser isn't sure how to convert this event into one.
   * *timeString*: return a string representation of the event time, formatted the same way it would be in the original combat log.
