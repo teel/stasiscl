@@ -805,6 +805,50 @@ my @fingerprints = (
     timeout => 50,
 },
 
+##########
+# ULDUAR #
+##########
+
+# {
+#     short       => "freya",
+#     zone        => "ulduar",
+#     long        => "Freya",
+#     mobStart    => [],
+#     mobContinue => [],
+#     mobEnd      => [],
+#     timeout     => 45,
+# },
+# 
+# {
+#     short       => "thorim",
+#     zone        => "ulduar",
+#     long        => "Thorim",
+#     mobStart    => [],
+#     mobContinue => [],
+#     mobEnd      => [],
+#     timeout     => 45,
+# },
+# 
+# {
+#     short       => "hodir",
+#     zone        => "ulduar",
+#     long        => "Hodir",
+#     mobStart    => [],
+#     mobContinue => [],
+#     mobEnd      => [],
+#     timeout     => 45,
+# },
+# 
+# {
+#     short       => "ironcouncil",
+#     zone        => "ulduar",
+#     long        => "The Iron Council",
+#     mobStart    => [],
+#     mobContinue => [],
+#     mobEnd      => [],
+#     timeout     => 45,
+# },
+
 ##################
 # TARGET DUMMIES #
 ##################
