@@ -809,6 +809,16 @@ my @fingerprints = (
 # ULDUAR #
 ##########
 
+{
+    short       => "hodir",
+    zone        => "ulduar",
+    long        => "Hodir",
+    mobStart    => [ 32845 ],
+    mobContinue => [ 32845 ],
+    mobEnd      => [ 32845 ],
+    timeout     => 20,
+},
+
 # {
 #     short       => "freya",
 #     zone        => "ulduar",
@@ -823,16 +833,6 @@ my @fingerprints = (
 #     short       => "thorim",
 #     zone        => "ulduar",
 #     long        => "Thorim",
-#     mobStart    => [],
-#     mobContinue => [],
-#     mobEnd      => [],
-#     timeout     => 45,
-# },
-# 
-# {
-#     short       => "hodir",
-#     zone        => "ulduar",
-#     long        => "Hodir",
 #     mobStart    => [],
 #     mobContinue => [],
 #     mobEnd      => [],
