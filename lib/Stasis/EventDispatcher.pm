@@ -50,7 +50,6 @@ sub add {
     # Listen for all actions if none are provided
     @actions = keys %Stasis::Event::action_map if ! @actions;
 
-    # Check if $listener is an EventListener or a code reference
     if( ref $f eq 'CODE' ) {
         foreach my $action ( grep { $_ } map { $Stasis::Event::action_map{$_} } @actions ) {
             push @{ $self->[$action] }, $f;
