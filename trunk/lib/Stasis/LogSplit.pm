@@ -823,10 +823,10 @@ my @fingerprints = (
     short       => "thorim",
     zone        => "ulduar",
     long        => "Thorim",
-    mobStart    => [ 32865 ],
-    mobContinue => [ 32865 ],
+    mobStart    => [ 32865, 32876, 32904, 32878, 32877 ],
+    mobContinue => [ 32865, 32876, 32904, 32878, 32877 ],
     mobEnd      => [ 32865 ],
-    timeout     => 20,
+    timeout     => 15,
 },
 
 {
@@ -836,7 +836,7 @@ my @fingerprints = (
     mobStart    => [ 32927, 32857, 32867 ],
     mobContinue => [ 32927, 32857, 32867 ],
     mobEnd      => [ 32927, 32857, 32867 ],
-    timeout     => 30,
+    timeout     => 20,
     endAll      => 1,
 },
 
