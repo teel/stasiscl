@@ -813,36 +813,37 @@ my @fingerprints = (
     short       => "hodir",
     zone        => "ulduar",
     long        => "Hodir",
-    mobStart    => [ 32845 ],
+    mobStart    => [ 32845, 32938 ],
     mobContinue => [ 32845 ],
     mobEnd      => [ 32845 ],
     timeout     => 20,
+},
+
+{
+    short       => "thorim",
+    zone        => "ulduar",
+    long        => "Thorim",
+    mobStart    => [ 32865 ],
+    mobContinue => [ 32865 ],
+    mobEnd      => [ 32865 ],
+    timeout     => 20,
+},
+
+{
+    short       => "ironcouncil",
+    zone        => "ulduar",
+    long        => "The Iron Council",
+    mobStart    => [ 32927, 32857, 32867 ],
+    mobContinue => [ 32927, 32857, 32867 ],
+    mobEnd      => [ 32927, 32857, 32867 ],
+    timeout     => 30,
+    endAll      => 1,
 },
 
 # {
 #     short       => "freya",
 #     zone        => "ulduar",
 #     long        => "Freya",
-#     mobStart    => [],
-#     mobContinue => [],
-#     mobEnd      => [],
-#     timeout     => 45,
-# },
-# 
-# {
-#     short       => "thorim",
-#     zone        => "ulduar",
-#     long        => "Thorim",
-#     mobStart    => [],
-#     mobContinue => [],
-#     mobEnd      => [],
-#     timeout     => 45,
-# },
-# 
-# {
-#     short       => "ironcouncil",
-#     zone        => "ulduar",
-#     long        => "The Iron Council",
 #     mobStart    => [],
 #     mobContinue => [],
 #     mobEnd      => [],
