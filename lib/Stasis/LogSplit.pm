@@ -37,8 +37,25 @@ use constant {
     LOCKOUT_TIME => 900,
 };
 
+our %zones = (
+    "karazhan" => "Karazhan",
+    "zulaman" => "Zul'Aman",
+    "gruul" => "Gruul's Lair",
+    "magtheridon" => "Magtheridon's Lair",
+    "serpentshrine" => "Serpentshrine Cavern",
+    "tempestkeep" => "Tempest Keep",
+    "hyjal" => "Hyjal Summit",
+    "blacktemple" => "Black Temple",
+    "sunwell" => "Sunwell Plateau",
+    "naxxramas" => "Naxxramas",
+    "obsidiansanctum" => "Obsidian Sanctum",
+    "archavon" => "Vault of Archavon",
+    "eyeofeternity" => "The Eye of Eternity",
+    "ulduar" => "Ulduar",
+);
+
 # Fingerprints of various boss encounters.
-my @fingerprints = (
+our @fingerprints = (
 
 ############
 # KARAZHAN #
@@ -387,7 +404,7 @@ my @fingerprints = (
 
 {
     short => "rage",
-    zone => "tempestkeep",
+    zone => "hyjal",
     long => "Rage Winterchill",
     mobStart => [ 17767, "Rage Winterchill" ],
     mobContinue => [ 17767, "Rage Winterchill" ],
@@ -397,7 +414,7 @@ my @fingerprints = (
 
 {
     short => "anetheron",
-    zone => "tempestkeep",
+    zone => "hyjal",
     long => "Anetheron",
     mobStart => [ 17808, "Anetheron" ],
     mobContinue => [ 17808, "Anetheron" ],
@@ -407,7 +424,7 @@ my @fingerprints = (
 
 {
     short => "kazrogal",
-    zone => "tempestkeep",
+    zone => "hyjal",
     long => "Kaz'rogal",
     mobStart => [ 17888, "Kaz'rogal" ],
     mobContinue => [ 17888, "Kaz'rogal" ],
@@ -417,7 +434,7 @@ my @fingerprints = (
 
 {
     short => "azgalor",
-    zone => "tempestkeep",
+    zone => "hyjal",
     long => "Azgalor",
     mobStart => [ 17842, "Azgalor" ],
     mobContinue => [ 17842, "Azgalor" ],
@@ -427,7 +444,7 @@ my @fingerprints = (
 
 {
     short => "archimonde",
-    zone => "tempestkeep",
+    zone => "hyjal",
     long => "Archimonde",
     mobStart => [ 17968, "Archimonde" ],
     mobContinue => [ 17968, "Archimonde" ],
@@ -805,6 +822,19 @@ my @fingerprints = (
     timeout => 50,
 },
 
+##################
+# TARGET DUMMIES #
+##################
+
+{
+    short => "dummy",
+    long => "Target Dummy",
+    mobStart => [ 31146, 30527, 31144 ],
+    mobContinue => [ 31146, 30527, 31144 ],
+    mobEnd => [],
+    timeout => 30,
+},
+
 ##########
 # ULDUAR #
 ##########
@@ -848,19 +878,6 @@ my @fingerprints = (
     mobContinue => [ 32906, 33203, 33202, 32918, 33228, 33215, 32916, 32919 ],
     mobEnd      => [ 32906 ],
     timeout     => 15,
-},
-
-##################
-# TARGET DUMMIES #
-##################
-
-{
-    short => "dummy",
-    long => "Target Dummy",
-    mobStart => [ 31146, 30527, 31144 ],
-    mobContinue => [ 31146, 30527, 31144 ],
-    mobEnd => [],
-    timeout => 30,
 },
 
 );
