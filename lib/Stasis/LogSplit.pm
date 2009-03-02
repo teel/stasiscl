@@ -840,15 +840,15 @@ my @fingerprints = (
     endAll      => 1,
 },
 
-# {
-#     short       => "freya",
-#     zone        => "ulduar",
-#     long        => "Freya",
-#     mobStart    => [],
-#     mobContinue => [],
-#     mobEnd      => [],
-#     timeout     => 45,
-# },
+{
+    short       => "freya",
+    zone        => "ulduar",
+    long        => "Freya",
+    mobStart    => [ 32906 ],
+    mobContinue => [ 32906, 33203, 33202, 32918, 33228, 33215, 32916, 32919 ],
+    mobEnd      => [ 32906 ],
+    timeout     => 15,
+},
 
 ##################
 # TARGET DUMMIES #
