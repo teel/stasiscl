@@ -880,6 +880,28 @@ our @fingerprints = (
     timeout     => 15,
 },
 
+# 0xF15 0008159 05D408,"Flame Leviathan"
+{
+    short       => "flameleviathan",
+    zone        => "ulduar",
+    long        => "Flame Leviathan",
+    mobStart    => [ 33113 ],
+    mobContinue => [ 33113 ],
+    mobEnd      => [ 33113 ],
+    timeout     => 15,
+},
+
+# 0xF15 000815E 000388,"Ignis the Furnace Master"
+{
+    short       => "ignis",
+    zone        => "ulduar",
+    long        => "Ignis the Furnace Master",
+    mobStart    => [ 33118 ],
+    mobContinue => [ 33118 ],
+    mobEnd      => [ 33118 ],
+    timeout     => 15,
+},
+
 );
 
 # Create and invert the %hfingerprints hash.
