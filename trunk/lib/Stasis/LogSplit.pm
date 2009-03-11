@@ -902,6 +902,16 @@ our @fingerprints = (
     timeout     => 15,
 },
 
+{
+    short       => "vezax",
+    zone        => "ulduar",
+    long        => "General Vezax",
+    mobStart    => [33271],
+    mobContinue => [ 33271, 33524 ],
+    mobEnd      => [33271],
+    timeout     => 25,
+},
+
 # 0xF15 000820D 01DA44, "XT-002 Deconstructor"
 {
     short       => "xt002",
