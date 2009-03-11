@@ -902,6 +902,19 @@ our @fingerprints = (
     timeout     => 15,
 },
 
+#3/8 12:50:28.781 SPELL_CAST_SUCCESS,0xF1500080A2000632,"Kologarn",0x10a48,0x0000000000000000,nil,0x80000000,64238,"Berserk",0x1 - 32930
+#3/8 12:50:28.843 SPELL_CAST_SUCCESS,0xF1300080A5000634,"Left Arm",0xa48,0x0000000000000000,nil,0x80000000,64238,"Berserk",0x1 - 32933
+#3/8 12:50:28.843 SPELL_CAST_SUCCESS,0xF1500080A600082E,"Right Arm",0xa48,0x0000000000000000,nil,0x80000000,64238,"Berserk",0x1 - 32934
+{
+   short       => "kologarn",
+   zone        => "ulduar",
+   long        => "Kologarn",
+   mobStart    => [ 32930,32933,32934 ],
+   mobContinue => [ 32930,32933,32934 ],
+   mobEnd      => [ 32930 ],
+   timeout     => 15,
+},
+
 {
     short       => "vezax",
     zone        => "ulduar",
