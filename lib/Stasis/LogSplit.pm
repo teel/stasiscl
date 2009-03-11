@@ -902,6 +902,17 @@ our @fingerprints = (
     timeout     => 15,
 },
 
+# 0xF15 000820D 01DA44, "XT-002 Deconstructor"
+{
+    short       => "xt002",
+    zone        => "ulduar",
+    long        => "XT-002 Deconstructor",
+    mobStart    => [ 33293 ],
+    mobContinue => [ 33293, 33343, 33344, 33346 ],
+    mobEnd      => [ 33293 ],
+    timeout     => 20,
+},
+
 );
 
 # Create and invert the %hfingerprints hash.
