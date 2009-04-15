@@ -839,47 +839,6 @@ our @fingerprints = (
 # ULDUAR #
 ##########
 
-{
-    short       => "hodir",
-    zone        => "ulduar",
-    long        => "Hodir",
-    mobStart    => [ 32845, 32938 ],
-    mobContinue => [ 32845 ],
-    mobEnd      => [ 32845 ],
-    timeout     => 20,
-},
-
-{
-    short       => "thorim",
-    zone        => "ulduar",
-    long        => "Thorim",
-    mobStart    => [ 32865, 32876, 32904, 32878, 32877 ],
-    mobContinue => [ 32865, 32876, 32904, 32878, 32877 ],
-    mobEnd      => [ 32865 ],
-    timeout     => 15,
-},
-
-{
-    short       => "ironcouncil",
-    zone        => "ulduar",
-    long        => "The Iron Council",
-    mobStart    => [ 32927, 32857, 32867 ],
-    mobContinue => [ 32927, 32857, 32867 ],
-    mobEnd      => [ 32927, 32857, 32867 ],
-    timeout     => 20,
-    endAll      => 1,
-},
-
-{
-    short       => "freya",
-    zone        => "ulduar",
-    long        => "Freya",
-    mobStart    => [ 32906 ],
-    mobContinue => [ 32906, 33203, 33202, 32918, 33228, 33215, 32916, 32919 ],
-    mobEnd      => [ 32906 ],
-    timeout     => 15,
-},
-
 # 0xF15 0008159 05D408,"Flame Leviathan"
 {
     short       => "flameleviathan",
@@ -902,6 +861,38 @@ our @fingerprints = (
     timeout     => 15,
 },
 
+{
+    short       => "razorscale",
+    zone        => "ulduar",
+    long        => "Razorscale",
+    mobStart    => [ 33186 ],
+    mobContinue => [ 33186, 33388, 33846, 33453 ],
+    mobEnd      => [ 33186 ],
+    timeout     => 15,
+},
+
+# 0xF15 000820D 01DA44, "XT-002 Deconstructor"
+{
+    short       => "xt002",
+    zone        => "ulduar",
+    long        => "XT-002 Deconstructor",
+    mobStart    => [ 33293 ],
+    mobContinue => [ 33293, 33343, 33344, 33346 ],
+    mobEnd      => [ 33293 ],
+    timeout     => 20,
+},
+
+{
+    short       => "ironcouncil",
+    zone        => "ulduar",
+    long        => "The Iron Council",
+    mobStart    => [ 32927, 32857, 32867 ],
+    mobContinue => [ 32927, 32857, 32867 ],
+    mobEnd      => [ 32927, 32857, 32867 ],
+    timeout     => 20,
+    endAll      => 1,
+},
+
 #3/8 12:50:28.781 SPELL_CAST_SUCCESS,0xF1500080A2000632,"Kologarn",0x10a48,0x0000000000000000,nil,0x80000000,64238,"Berserk",0x1 - 32930
 #3/8 12:50:28.843 SPELL_CAST_SUCCESS,0xF1300080A5000634,"Left Arm",0xa48,0x0000000000000000,nil,0x80000000,64238,"Berserk",0x1 - 32933
 #3/8 12:50:28.843 SPELL_CAST_SUCCESS,0xF1500080A600082E,"Right Arm",0xa48,0x0000000000000000,nil,0x80000000,64238,"Berserk",0x1 - 32934
@@ -916,6 +907,64 @@ our @fingerprints = (
 },
 
 {
+    short       => "Auriaya",
+    zone        => "ulduar",
+    long        => "Auriaya",
+    mobStart    => [ 33515 ],
+    mobContinue => [ 33515, 34034, 34014, 34035 ],
+    mobEnd      => [ 33515 ],
+    timeout     => 15,
+},
+
+#0xF15 0008298 004011,"Leviathan Mk II"		33432
+#0xF15 0008373 004181,"VX-001"			33651
+#0xF15 0008386 004A84,"Aerial Command Unit"	33670
+#0xF13 000842C 004AA5,"Bomb Bot"		33836
+#0xF13 0008509 004AA3,"Assault Bot"		34057
+#0xF13 000843F 004AA8,"Junk Bot"		33855
+
+{
+    short       => "mimiron",
+    zone        => "ulduar",
+    long        => "Mimiron",
+    mobStart	=> [ 33432 ],
+    mobContinue	=> [ 33432, 33651, 33670, 33836, 34057, 33855 ],
+    mobEnd	=> [ 33432, 33651, 33670 ],
+    timeout     => 20,
+    endAll      => 1,
+},
+
+{
+    short       => "freya",
+    zone        => "ulduar",
+    long        => "Freya",
+    mobStart    => [ 32906 ],
+    mobContinue => [ 32906, 33203, 33202, 32918, 33228, 33215, 32916, 32919 ],
+    mobEnd      => [ 32906 ],
+    timeout     => 15,
+},
+
+{
+    short       => "thorim",
+    zone        => "ulduar",
+    long        => "Thorim",
+    mobStart    => [ 32865, 32876, 32904, 32878, 32877 ],
+    mobContinue => [ 32865, 32876, 32904, 32878, 32877 ],
+    mobEnd      => [ 32865 ],
+    timeout     => 15,
+},
+
+{
+    short       => "hodir",
+    zone        => "ulduar",
+    long        => "Hodir",
+    mobStart    => [ 32845, 32938 ],
+    mobContinue => [ 32845 ],
+    mobEnd      => [ 32845 ],
+    timeout     => 20,
+},
+
+{
     short       => "vezax",
     zone        => "ulduar",
     long        => "General Vezax",
@@ -925,16 +974,8 @@ our @fingerprints = (
     timeout     => 25,
 },
 
-# 0xF15 000820D 01DA44, "XT-002 Deconstructor"
-{
-    short       => "xt002",
-    zone        => "ulduar",
-    long        => "XT-002 Deconstructor",
-    mobStart    => [ 33293 ],
-    mobContinue => [ 33293, 33343, 33344, 33346 ],
-    mobEnd      => [ 33293 ],
-    timeout     => 20,
-},
+# YOGG-SARON
+# ALGALON
 
 );
 
@@ -981,7 +1022,7 @@ sub register {
     
     # Looks for when boss encounters begin and when bosses die.
     $ed->add(
-        qw/SWING_DAMAGE SWING_MISSED RANGE_DAMAGE RANGE_MISSED SPELL_PERIODIC_DAMAGE SPELL_DAMAGE SPELL_MISSED UNIT_DIED/,
+        qw/SWING_DAMAGE SWING_MISSED RANGE_DAMAGE RANGE_MISSED SPELL_PERIODIC_DAMAGE SPELL_DAMAGE SPELL_MISSED UNIT_DIED UNIT_DESTROYED/,
         sub { $self->process( @_ ) }
     );
     
@@ -1037,7 +1078,7 @@ sub process {
             $vboss->{end} = $event->{t};
             
             # Also possibly end it.
-            if( $event->{action} == UNIT_DIED && $fend{$target_id} && $fend{$target_id} eq $kboss ) {
+            if( ($event->{action} == UNIT_DIED || $event->{action} == UNIT_DESTROYED) && $fend{$target_id} && $fend{$target_id} eq $kboss ) {
                 $vboss->{dead}{$target_id} = 1;
                 
                 if( !$hfingerprints{$kboss}{endAll} || ( scalar keys %{$vboss->{dead}} == scalar @{$hfingerprints{$kboss}{mobEnd}} ) ) {
