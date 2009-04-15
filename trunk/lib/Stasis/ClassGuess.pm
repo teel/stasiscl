@@ -169,7 +169,7 @@ sub process_misc {
         my ($atype, $anpc, $aspawn ) = Stasis::MobUtil::splitguid( $event->{actor} );
         
         # See if this actor is a player.
-        if( ($atype & 0x00F0) == 0 ) {
+        if( ($event->{actor_relationship} & 0x500) == 0x500 ) {
             my $spell = Stasis::SpellUtil->spell( $event->{spellid} );
             if( $spell && $spell->{class} ) {
                 $self->{class}{ $event->{actor} } = $spell->{class};
