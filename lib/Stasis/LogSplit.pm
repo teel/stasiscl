@@ -939,8 +939,8 @@ our @fingerprints = (
     long        => "Mimiron",
     mobStart	=> [ 33432 ],
     mobContinue	=> [ 33432, 33651, 33670, 33836, 34057, 33855 ],
-    mobEnd	=> [ 33432, 33651, 33670 ],
-    timeout     => 20,
+    mobEnd      => [ 33432, 33651, 33670 ],
+    timeout     => 70,
     endAll      => 1,
 },
 
