@@ -813,6 +813,16 @@ our @fingerprints = (
 },
 
 {
+    short => "emalon",
+    zone => "archavon",
+    long => "Emalon",
+    mobStart => [ 33993 ],
+    mobContinue => [ 33993, 33998 ],
+    mobEnd => [ 33993 ],
+    timeout => 30,
+},
+
+{
     short => "malygos",
     zone => "eyeofeternity",
     long => "Malygos",
@@ -907,7 +917,7 @@ our @fingerprints = (
 },
 
 {
-    short       => "Auriaya",
+    short       => "auriaya",
     zone        => "ulduar",
     long        => "Auriaya",
     mobStart    => [ 33515 ],
@@ -974,7 +984,16 @@ our @fingerprints = (
     timeout     => 25,
 },
 
-# YOGG-SARON
+{
+    short       => "yoggsaron",
+    zone        => "ulduar",
+    long        => "Yogg-Saron",
+    mobStart    => [ 33134 ],
+    mobContinue => [ 33134, 33717, 33988, 33882, 33716, 33991, 33292, 33719, 33567, 33136, 33890, 33983, 33985, 33966, 33990, 33433, 33288 ],
+    mobEnd      => [ 33288 ],
+    timeout     => 30,
+},
+
 # ALGALON
 
 );
