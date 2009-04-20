@@ -47,7 +47,7 @@ sub key {
 }
 
 sub value {
-    qw/count hitCount hitTotal hitMin hitMax critCount critTotal critMin critMax tickCount tickTotal tickMin tickMax partialResistCount partialBlockCount partialAbsorbCount partialResistTotal partialBlockTotal partialAbsorbTotal crushing glancing dodgeCount absorbCount resistCount parryCount missCount blockCount reflectCount deflectCount immuneCount/;
+    qw/count hitCount hitTotal hitMin hitMax critCount critTotal critMin critMax tickCount tickTotal tickMin tickMax tickCritCount partialResistCount partialBlockCount partialAbsorbCount partialResistTotal partialBlockTotal partialAbsorbTotal crushing glancing dodgeCount absorbCount resistCount parryCount missCount blockCount reflectCount deflectCount immuneCount/;
 }
 
 sub process {
@@ -88,6 +88,11 @@ sub process {
         my $type;
         if( $event->{action} == SPELL_PERIODIC_DAMAGE ) {
             $type = "tick";
+            
+            # keep track of tick crit rate, now that it's possible
+            if( $event->{critical} ) {
+                $ddata->{"tickCritCount"} ++;
+            }
         } elsif( $event->{critical} ) {
             $type = "crit";
         } else {

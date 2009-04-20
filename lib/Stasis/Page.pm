@@ -98,20 +98,38 @@ sub _cricruglaText {
     my $sdata = pop;
     
     my $swings = ($sdata->{count}||0) - ($sdata->{tickCount}||0);
-    return unless $swings;
+    my $ticks = $sdata->{tickCount}||0;
+    my $tickCrits = $sdata->{tickCritCount}||0;
+    return unless $swings || $tickCrits;
     
-    my $pct = _tidypct(($sdata->{critCount}||0) / $swings * 100 );
-    $pct &&= "$pct%";
-    
+    my $pct;
     my @text;
-    my @atype = qw/crushing glancing/;
-    foreach my $type (@atype) {
-        push @text, _tidypct( $sdata->{$type} / $swings * 100 ) . "% $type" if $sdata->{$type};
+    
+    # if there were ticking swings, record the percentage as the main one
+    # record crushes and glances as extra lines
+    if( $swings ) {
+        $pct = _tidypct(($sdata->{critCount}||0) / $swings * 100 );
+
+        my @atype = qw/crushing glancing/;
+        foreach my $type (@atype) {
+            push @text, _tidypct( $sdata->{$type} / $swings * 100 ) . "% $type" if $sdata->{$type};
+        }
     }
     
-    if( @text ) {
-        $pct ||= "0%";
+    # if there were ticking crits, record the percentage (either as the main one or as an extra line)
+    if( $tickCrits ) {
+        my $tickpct = _tidypct( $tickCrits / $ticks * 100 );
+        if( ! $pct ) {
+            $pct = $tickpct;
+        } else {
+            push @text, "${pct}% of direct damage";
+            push @text, "${tickpct}% of dots";
+        }
     }
+    
+    # make things look pretty
+    $pct &&= "$pct%";
+    $pct ||= "0%" if @text;
     
     return ($pct, @text ? join( ";", @text ) : undef );
 }
