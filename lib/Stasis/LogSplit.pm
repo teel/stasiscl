@@ -951,6 +951,7 @@ our @fingerprints = (
     mobStart    => [ 32906 ],
     mobContinue => [ 32906, 33203, 33202, 32918, 33228, 33215, 32916, 32919 ],
     mobEnd      => [ 32906 ],
+    endFriendly => 1,
     timeout     => 15,
 },
 
@@ -961,6 +962,7 @@ our @fingerprints = (
     mobStart    => [ 32865, 32876, 32904, 32878, 32877 ],
     mobContinue => [ 32865, 32876, 32904, 32878, 32877 ],
     mobEnd      => [ 32865 ],
+    endFriendly => 1,
     timeout     => 15,
 },
 
@@ -971,6 +973,7 @@ our @fingerprints = (
     mobStart    => [ 32845, 32938 ],
     mobContinue => [ 32845 ],
     mobEnd      => [ 32845 ],
+    endFriendly => 1,
     timeout     => 20,
 },
 
@@ -1101,6 +1104,22 @@ sub process {
                 $vboss->{dead}{$target_id} = 1;
                 
                 if( !$hfingerprints{$kboss}{endAll} || ( scalar keys %{$vboss->{dead}} == scalar @{$hfingerprints{$kboss}{mobEnd}} ) ) {
+                    $self->_bend(
+                        {
+                            short => $kboss,
+                            long  => $hfingerprints{ $kboss }{long},
+                            start => $vboss->{start},
+                            end   => $vboss->{end},
+                            kill  => 1,
+                        }
+                    );
+                }
+            }
+            
+            # Check if target turned friendly (Thorim, Freya, Hodir, et al.)
+            elsif( $hfingerprints{$kboss}{endFriendly} ) {
+                if( ($fend{$target_id} && $fend{$target_id} eq $kboss && ($event->{target_relationship} & 0xF0) == 16) ||
+                    ($fend{$actor_id}  && $fend{$actor_id}  eq $kboss && ($event->{actor_relationship}  & 0xF0) == 16) ) {
                     $self->_bend(
                         {
                             short => $kboss,
