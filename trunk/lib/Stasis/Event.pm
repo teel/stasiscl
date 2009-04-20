@@ -245,9 +245,10 @@ sub toString {
             $target,
             lc( $event->{misstype} );
     } elsif( $event->{action} == SPELL_PERIODIC_DAMAGE ) {
-        $text = sprintf "[%s] %s dot [%s] %d",
+        $text = sprintf "[%s] %s %s [%s] %d",
             $actor,
             $spell,
+            $event->{critical} ? "crit dot" : "dot",
             $target,
             lc( $event->{amount} );
         
@@ -262,9 +263,10 @@ sub toString {
             $text .= sprintf " {%s}", $event->{extraamount};
         }
     } elsif( $event->{action} == SPELL_PERIODIC_HEAL ) {
-        $text = sprintf "[%s] %s hot [%s] %d",
+        $text = sprintf "[%s] %s %s [%s] %d",
             $actor,
             $spell,
+            $event->{critical} ? "crit hot" : "hot",
             $target,
             $event->{amount};
         
