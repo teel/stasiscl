@@ -56,6 +56,16 @@ sub process_heal {
     # Account for overhealing, if it happened, by removing the excess.
     $self->{ohtrack}{ $event->{target} } = 0 if( $self->{ohtrack}{ $event->{target} } > 0 );
     
+    # Figure out how much effective healing there was.
+    my $effective;
+    if( exists $event->{extraamount} ) {
+        # WLK-style. Overhealing is included.
+        $self->{ohtrack}{ $event->{target} } = 0 if $event->{extraamount};
+    } else {
+        # TBC-style. Overhealing is not included.
+        $self->{ohtrack}{ $event->{target} } = 0 if( $self->{ohtrack}{ $event->{target} } > 0 );
+    }
+    
     goto &process_common;
 }
 
@@ -64,6 +74,9 @@ sub process_damage {
     
     # If someone is taking damage we need to debit the HP.
     $self->{ohtrack}{ $event->{target} } -= $event->{amount};
+    
+    # Add back overkill.
+    $self->{ohtrack}{ $event->{target} } += $event->{extraamount} if $event->{extraamount};
     
     goto &process_common;
 }
