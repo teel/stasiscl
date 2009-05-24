@@ -293,8 +293,8 @@ sub pageHeader {
 <head>
 <title>$title</title>
 <!-- YUI: http://developer.yahoo.com/yui/articles/hosting/?connection&container&event&json&menu&MIN -->
-<link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/combo?2.6.0/build/container/assets/skins/sam/container.css&2.6.0/build/menu/assets/skins/sam/menu.css"> 
-<script type="text/javascript" src="http://yui.yahooapis.com/combo?2.6.0/build/yahoo-dom-event/yahoo-dom-event.js&2.6.0/build/connection/connection-min.js&2.6.0/build/container/container-min.js&2.6.0/build/json/json-min.js&2.6.0/build/menu/menu-min.js"></script>
+<link rel="stylesheet" type="text/css" href="http://yui.yahooapis.com/combo?2.7.0/build/container/assets/skins/sam/container.css&2.7.0/build/menu/assets/skins/sam/menu.css"> 
+<script type="text/javascript" src="http://yui.yahooapis.com/combo?2.7.0/build/yahoo-dom-event/yahoo-dom-event.js&2.7.0/build/connection/connection-min.js&2.7.0/build/container/container-min.js&2.7.0/build/json/json-min.js&2.7.0/build/menu/menu-min.js"></script>
 
 <!-- SWS -->
 <link rel="stylesheet" type="text/css" href="../extras/sws2.css" />
