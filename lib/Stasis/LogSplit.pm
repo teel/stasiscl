@@ -1002,9 +1002,10 @@ our @fingerprints = (
     zone        => "ulduar",
     long        => "Algalon the Observer",
     mobStart    => [ 32871 ],
-    mobContinue => [ 32955, 33052, 33089 ],
+    mobContinue => [ 32871, 32953, 32955, 33089, 33052 ],
     mobEnd      => [ 32871 ],
-    timeout     => 30,
+    endFriendly => 1,
+    timeout     => 50,
 },
 
 );
